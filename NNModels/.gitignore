@@ -125,6 +125,8 @@ celerybeat.pid
 env/
 venv/
 .venv/
+runs/
+.idea/
 ENV/
 env.bak/
 venv.bak/
