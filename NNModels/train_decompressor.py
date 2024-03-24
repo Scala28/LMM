@@ -45,8 +45,7 @@ nlatent = 32
 seed = 1234
 batchsize = 32
 lr = 0.001
-# niter = 500000
-niter = 1
+niter = 500000
 window = 2
 dt = 1.0 / 60.0
 
@@ -75,7 +74,7 @@ Yrang = quat.inv_mul_vec(Yrot[:, 0], Yang[:, 0])  # (nframes, 3)
 Yextra = torch.as_tensor(contacts, dtype=torch.float32)
 
 # Compute mean/stds
-Ypos_scale = Ypos[:, 1:].sdt()
+Ypos_scale = Ypos[:, 1:].std()
 Ytxy_scale = Ytxy[:, 1:].std()
 Yvel_scale = Yvel[:, 1:].std()
 Yang_scale = Yang[:, 1:].std()
@@ -160,7 +159,7 @@ def _save_compressed_database():
             Yextra.reshape([1, nframes, -1])
         ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-        with open('latent.bin', 'wb') as f:
+        with open('train_ris/latent.bin', 'wb') as f:
             f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -184,7 +183,7 @@ def _generate_anim():
         Ygnd_rang = Yrang[start:stop][np.newaxis]
         Ygnd_extra = Yextra[start:stop][np.newaxis]
 
-        Xgnd = X[start:stop][np.newaxis]
+        Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
 
         Zgnd = compressor((torch.cat([
             Ygnd_pos[:, :, 1:].reshape([1, stop-start, -1]),  # (1, stop-start, (nbones-1)*3)
@@ -230,7 +229,7 @@ def _generate_anim():
 
         # Write BVH
         try:
-            bvh.save('decompressor_Ygnd.bvh', {
+            bvh.save('train_ris/decompressor_Ygnd.bvh', {
                 'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                 'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                 'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -238,7 +237,7 @@ def _generate_anim():
                 'names': ['joint_%i' % i for i in range(nbones)],
                 'order': 'zyx'
             })
-            bvh.save('decompressor_Ytil.bvh', {
+            bvh.save('train_ris/decompressor_Ytil.bvh', {
                 'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                 'positions': 100.0 * Ytil_pos,
                 'offsets': 100.0 * Ytil_pos[0],
@@ -254,11 +253,12 @@ def _generate_anim():
 
         fig, axs = plt.subplots(nfeatures, sharex=True, figsize=(12, 2*nfeatures))
         for i in range(nfeatures):
+            axs[i].plot(Xgnd[0, :500, i].cpu().numpy())
             axs[i].set_ylim(fmin, fmax)
         plt.tight_layout()
 
         try:
-            plt.savefig('decompressor_x.png')
+            plt.savefig('train_ris/decompressor_x.png')
         except IOError as e:
             print(e)
         plt.close()
@@ -273,7 +273,7 @@ def _generate_anim():
         plt.tight_layout()
 
         try:
-            plt.savefig('decompressor_Z.png')
+            plt.savefig('train_ris/decompressor_Z.png')
         except IOError as e:
             print(e)
 
@@ -345,7 +345,7 @@ for i in range(niter):
 
     Ytil_rvel = Ytil[:, :, 15*(nbones-1)+0:15*(nbones-1)+3].reshape([batchsize, window, 3])
     Ytil_rang = Ytil[:, :, 15*(nbones-1)+3:15*(nbones-1)+6].reshape([batchsize, window, 3])
-    Ytil_extra = Ytil[:, :, 15*(nbones-1)+nextra:15*(nbones-1)+nextra].reshape([batchsize, window, nextra])
+    Ytil_extra = Ytil[:, :, 15*(nbones-1)+6:15*(nbones-1)+6+nextra].reshape([batchsize, window, nextra])
 
     # Add root bone
     Ytil_pos = torch.cat([Ygnd_pos[:, :, 0:1], Ytil_pos], dim=2)
@@ -430,7 +430,7 @@ for i in range(niter):
     d_optimizer.step()
 
     # Logging
-    writer.add_scalars('decompressor/loss', loss.item(), i)
+    writer.add_scalars('decompressor/loss', {'loss': loss.item()}, i)
     writer.add_scalars('decompressor/loss_terms', {
         'loc_pos': loss_lpos.item(),
         'loc_txy': loss_ltxy.item(),
@@ -451,7 +451,7 @@ for i in range(niter):
         'lreg': loss_lreg.item(),
         'vreg': loss_vreg.item()
     }, i)
-    writer.add_scalars('decompresor/latent', {
+    writer.add_scalars('decompressor/latent', {
         'mean': Zgnd.mean().item(),
         'std': Zgnd.std().item()
     }, i)
@@ -467,9 +467,9 @@ for i in range(niter):
     if i % 1000 == 0:
         _generate_anim()
         _save_compressed_database()
-        save_network('decompressor.bin', [
-            decompressor.linear0,
-            decompressor.linear1],
+        save_network('train_ris/decompressor.bin', [
+            decompressor.layer1,
+            decompressor.predict],
             decompressor_mean_in,
             decompressor_std_in,
             decompressor_mean_out,

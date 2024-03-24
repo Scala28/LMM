@@ -4,7 +4,7 @@ import numpy as np
 
 
 def fk(lpos, lrot, lvel, lang, parents):
-    gpos, grot, gvel, gang = [lpos[..., :1, :]], [lrot[..., :1, :]], lvel[..., :1, :], lang[..., :1, :]
+    gpos, grot, gvel, gang = [lpos[..., :1, :]], [lrot[..., :1, :]], [lvel[..., :1, :]], [lang[..., :1, :]]
     for i in range(1, len(parents)):
         gpos.append(mul_vec(grot[parents[i]], lpos[..., i:i + 1, :]) + gpos[parents[i]])
         grot.append(mul(grot[parents[i]], lrot[..., i:i + 1, :]))

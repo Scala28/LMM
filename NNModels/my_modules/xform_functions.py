@@ -28,8 +28,8 @@ def mul(x, y):
     return torch.matmul(x, y)
 
 
-def mul_vec(q, x):
-    return torch.matmul(q, x[..., None])[..., 0]
+def mul_vec(q, v):
+    return torch.matmul(q, v[..., None])[..., 0]
 
 
 def inv_mul(x, y):
@@ -41,12 +41,12 @@ def inv_mul_vec(q, x):
 
 
 def fk(lpos, lrot, lvel, lang, parents):
-    gpos, grot, gvel, gang = [lpos[..., :1, :]], [lrot[..., :1, :]], [lvel[..., :1, :]], [lang[..., :1, :]]
+    gpos, grot, gvel, gang = [lpos[..., :1, :]], [lrot[..., :1, :, :]], [lvel[..., :1, :]], [lang[..., :1, :]]
     for i in range(1, len(parents)):
         gpos.append(mul_vec(grot[parents[i]], lpos[..., i:i + 1, :]) + gpos[parents[i]])
         grot.append(mul(grot[parents[i]], lrot[..., i:i + 1, :, :]))
         gvel.append(gvel[parents[i]] + mul_vec(grot[parents[i]], lvel[..., i:i + 1, :]) +
-                    torch.cross(gang[parents[i]], mul_vec(grot[parents[i]], lpos[..., i:i + 1, :])))
+                    torch.cross(gang[parents[i]], mul_vec(grot[parents[i]], lpos[..., i:i + 1, :]), dim=-1))
         gang.append(mul_vec(grot[parents[i]], lang[..., i:i + 1, :]) + gang[parents[i]])
 
     return (
