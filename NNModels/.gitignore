@@ -125,11 +125,14 @@ celerybeat.pid
 env/
 venv/
 .venv/
-runs/
 .idea/
 ENV/
 env.bak/
 venv.bak/
+
+# Results
+runs/
+train_ris/
 
 # Spyder project settings
 .spyderproject

@@ -258,7 +258,7 @@ def _generate_anim():
         plt.tight_layout()
 
         try:
-            plt.savefig('train_ris/decompressor_x.png')
+            plt.savefig('train_ris/decompressor_X.png')
         except IOError as e:
             print(e)
         plt.close()
