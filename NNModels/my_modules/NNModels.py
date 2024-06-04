@@ -21,11 +21,15 @@ class Compressor(torch.nn.Module):
 
     # feed forward
     def forward(self, x):
+        nbatch, nwindow = x.shape[:2]
+        x = x.reshape([nbatch * nwindow, -1])
+
         x = F.elu(self.layer1(x))
         x = F.elu(self.layer2(x))
         x = F.elu(self.layer3(x))
         x = self.predict(x)
-        return x
+
+        return x.reshape([nbatch, nwindow, -1])
 
 
 # neural network model
@@ -38,9 +42,13 @@ class Decompressor(torch.nn.Module):
 
     # feed forward
     def forward(self, x):
+        nbatch, nwindow = x.shape[:2]
+        x = x.reshape([nbatch * nwindow, -1])
+
         x = F.relu(self.layer1(x))
         x = self.predict(x)
-        return x
+
+        return x.reshape([nbatch, nwindow, -1])
 
 
 # neural network model
