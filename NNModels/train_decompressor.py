@@ -171,8 +171,8 @@ if __name__ == '__main__':
 
     def _generate_anim():
         with torch.no_grad():
-            start = range_starts[5]
-            stop = min(start + 1000, range_stops[5])
+            start = range_starts[2]
+            stop = min(start + 1000, range_stops[2])
 
             Ygnd_pos = Ypos[start:stop][np.newaxis]  # (1, stop-start, nbones, 3)
             Ygnd_rot = Yrot[start: stop][np.newaxis]  # (1, stop- start, nbones, 4)
@@ -227,17 +227,17 @@ if __name__ == '__main__':
                 Ytil_rrot.append(quat.mul(Ytil_rrot[-1], quat.from_scaled_axis_angle(quat.mul_vec(
                     Ytil_rrot[-1], Ytil_rang[i - 1]) * dt)))
 
-            # Ytil_rpos = torch.cat([p[np.newaxis] for p in Ytil_rpos])  # (stop-start, 3)
-            # Ytil_rrot = torch.cat([r[np.newaxis] for r in Ytil_rrot])  # (stop-start, 4)
+            Ytil_rpos = torch.cat([p[np.newaxis] for p in Ytil_rpos])  # (stop-start, 3)
+            Ytil_rrot = torch.cat([r[np.newaxis] for r in Ytil_rrot])  # (stop-start, 4)
 
-            Ytil_rpos = Ygnd_pos[0][:, 0:1]
-            Ytil_rrot = Ygnd_rot[0][:, 0:1]
+            # Ytil_rpos = Ygnd_pos[0][:, 0:1]
+            # Ytil_rrot = Ygnd_rot[0][:, 0:1]
 
-            # Ytil_pos = torch.cat([Ytil_rpos[:, np.newaxis], Ytil_pos], dim=1)  # (stop-start, nbones, 3)
-            # Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
+            Ytil_pos = torch.cat([Ytil_rpos[:, np.newaxis], Ytil_pos], dim=1)  # (stop-start, nbones, 3)
+            Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
 
-            Ytil_pos = torch.cat([Ytil_rpos, Ytil_pos], dim=1)
-            Ytil_rot = torch.cat([Ytil_rrot, Ytil_rot], dim=1)
+            # Ytil_pos = torch.cat([Ytil_rpos, Ytil_pos], dim=1)
+            # Ytil_rot = torch.cat([Ytil_rrot, Ytil_rot], dim=1)
 
             # Write BVH
             try:
@@ -489,7 +489,7 @@ if __name__ == '__main__':
             # sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
             sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, loss))
 
-        if i % 50000 == 0:
+        if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
             save_network('train_ris/decompressor.bin', [

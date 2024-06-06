@@ -142,7 +142,7 @@ def from_scaled_axis_angle(x, eps=1e-5):
 def _exp(x, eps=1e-5):
     halfangle = torch.sqrt(torch.sum(torch.square(x), dim=-1))[..., np.newaxis]
     c = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.cos(halfangle))
-    s = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.sin(halfangle / torch.pi))
+    s = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.sinc(halfangle / torch.pi))
     return torch.cat([c, s*x], dim=-1)
 
 
