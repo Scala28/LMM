@@ -29,9 +29,10 @@ if __name__ == '__main__':
     Yvel = database['bone_velocities'].astype(np.float32)
     Yang = database['bone_angular_velocities'].astype(np.float32)
 
-    # As pyTorch tensors: (nframes, nbones, 3/4)
-    X = torch.as_tensor(X)
-    Ypos = torch.as_tensor(Ypos)
+    # As pyTorch tensors
+    X = torch.as_tensor(X) # (nframes, nfeatures)
+
+    Ypos = torch.as_tensor(Ypos) # (nframes, nbones, 3/4)
     Yrot = torch.as_tensor(Yrot)
     Yvel = torch.as_tensor(Yvel)
     Yang = torch.as_tensor(Yang)
@@ -144,7 +145,7 @@ if __name__ == '__main__':
         Yextra_scale.repeat(nextra)
     ))
 
-    # Networks model
+    # NN models
     compressor = NNModels.Compressor(len(compressor_mean_in), nlatent)
     decompressor = NNModels.Decompressor(nfeatures + nlatent, len(decompressor_mean_out))
 
@@ -165,7 +166,7 @@ if __name__ == '__main__':
                 Yextra.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('train_ris/latent.bin', 'wb') as f:
+            with open('train_ris/decompressor/latent.bin', 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -241,7 +242,7 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('train_ris/decompressor_Ygnd.bvh', {
+                bvh.save('train_ris/decompressor/decompressor_Ygnd.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -249,7 +250,7 @@ if __name__ == '__main__':
                     'names': ['joint_%i' % i for i in range(nbones)],
                     'order': 'zyx'
                 })
-                bvh.save('train_ris/decompressor_Ytil.bvh', {
+                bvh.save('train_ris/decompressor/decompressor_Ytil.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
@@ -270,7 +271,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor_X.png')
+                plt.savefig('train_ris/decompressor/decompressor_X.png')
             except IOError as e:
                 print(e)
             plt.close()
@@ -285,7 +286,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor_Z.png')
+                plt.savefig('train_ris/decompressor/decompressor_Z.png')
             except IOError as e:
                 print(e)
 
@@ -492,7 +493,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('train_ris/decompressor.bin', [
+            save_network('train_ris/decompressor/decompressor.bin', [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,

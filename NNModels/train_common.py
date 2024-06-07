@@ -62,6 +62,17 @@ def load_features(filename):
     }
 
 
+def load_latent(filename):
+    with open(filename, 'rb') as f:
+        nframes, nfeatures = struct.unpack('II', f.read(8))
+        latent = np.frombuffer(f.read(nframes * nfeatures * 4), dtype=np.float32, count=nframes * nfeatures).reshape(
+            [nframes, nfeatures])
+
+    return {
+        'latent': latent,
+    }
+
+
 def save_network(filename, layers, mean_in, std_in, mean_out, std_out):
     with torch.no_grad():
         with open(filename, 'wb') as f:
