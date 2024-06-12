@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
-from train_common import load_database, load_features, load_latent, save_network
+from train_common import load_database, load_features, load_latent, save_network, save_network_onnx
 
 import matplotlib.pyplot as plt
 
@@ -218,6 +218,9 @@ if __name__ == '__main__':
                          stepper_std_in,
                          stepper_mean_out,
                          stepper_std_out)
+            save_network_onnx(stepper,
+                              stepper_mean_in,
+                              'train_ris/stepper/stepper.onnx')
 
         if i % 1000 == 0:
             scheduler.step()

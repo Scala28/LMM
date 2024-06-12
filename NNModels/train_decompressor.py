@@ -9,7 +9,7 @@ import torch
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
-from train_common import load_database, load_features, save_network
+from train_common import load_database, load_features, save_network, save_network_onnx
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -501,6 +501,9 @@ if __name__ == '__main__':
                          decompressor_mean_out,
                          decompressor_std_out
                          )
+            save_network_onnx(decompressor,
+                              decompressor_mean_in,
+                              'train_ris/decompressor/decompressor.onnx')
 
         if i % 1000 == 0:
             # c_scheduler.step()

@@ -1,6 +1,8 @@
 import struct
 import torch
 import numpy as np
+import torch.nn as nn
+import my_modules.NNModels as NNModels
 
 
 def load_database(filename):
@@ -86,4 +88,56 @@ def save_network(filename, layers, mean_in, std_in, mean_out, std_out):
                     np.float32).ravel().tobytes())
                 f.write(
                     struct.pack('I', *layer.bias.shape) + layer.bias.cpu().numpy().astype(np.float32).ravel().tobytes())
+
+
+def load_network(filename):
+    with open(filename, 'rb') as f:
+        mean_in_len = struct.unpack('I', f.read(4))[0]
+        mean_in = np.frombuffer(f.read(mean_in_len * 4), dtype=np.float32)
+
+        std_in_len = struct.unpack('I', f.read(4))[0]
+        std_in = np.frombuffer(f.read(std_in_len * 4), dtype=np.float32)
+
+        mean_out_len = struct.unpack('I', f.read(4))[0]
+        mean_out = np.frombuffer(f.read(mean_out_len * 4), dtype=np.float32)
+
+        std_out_len = struct.unpack('I', f.read(4))[0]
+        std_out = np.frombuffer(f.read(std_out_len * 4), dtype=np.float32)
+
+        num_layers = struct.unpack('I', f.read(4))[0]
+
+        layers = []
+        for _ in range(num_layers):
+            weight_shape = struct.unpack('II', f.read(8))
+            weight_size = weight_shape[0] * weight_shape[1]
+            weight = np.frombuffer(f.read(weight_size * 4), dtype=np.float32).reshape(weight_shape).T.copy()
+
+            bias_shape = struct.unpack('I', f.read(4))[0]
+            bias = np.frombuffer(f.read(bias_shape * 4), dtype=np.float32).copy()
+
+            layer = nn.Linear(weight_shape[1], weight_shape[0])  # Transpose back the shape
+            layer.weight.data = torch.from_numpy(weight)
+            layer.bias.data = torch.from_numpy(bias)
+
+            layers.append(layer)
+
+    return mean_in, std_in, mean_out, std_out, layers
+
+
+def save_network_onnx(model, input_size, filename):
+    # Example tensor
+    x = torch.ones_like(input_size)
+
+    # Export the model
+    torch.onnx.export(model,
+                      x,
+                      filename,
+                      export_params=True,
+                      opset_version=9,
+                      do_constant_folding=True,
+                      input_names=['X'],
+                      output_names=['Y']
+                      )
+
+
 
