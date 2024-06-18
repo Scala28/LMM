@@ -768,6 +768,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1410122417267007718}
+  - component: {fileID: 1790764085113240157}
   m_Layer: 0
   m_Name: model_skeleton
   m_TagString: Untagged
@@ -775,6 +776,20 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &1790764085113240157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790764085113240156}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3578941490adc442a0ca4bb2beb881f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stepper: {fileID: 5022602860645237092, guid: f50dea675594c944188795c8363b2ea2, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 4501058462cc416468d167d2f2cefddb, type: 3}
 --- !u!1 &1840260259478728771
 GameObject:
   m_ObjectHideFlags: 0
