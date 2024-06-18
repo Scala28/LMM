@@ -25,7 +25,21 @@ public class MotionMatcher : MonoBehaviour
             if (stepper_input == null)
                 return;
 
+            Debug.Log("Input shape: " + stepper_input.shape);
+
             stepper_inference.Execute(stepper_input);
+
+            using (Tensor stepper_out = stepper_inference.PeekOutput())
+            {
+                Debug.Log("Stepper output shape: " + stepper_out.shape);
+
+                decompressor_inference.Execute(stepper_out);
+
+                using (Tensor decompressor_out = decompressor_inference.PeekOutput())
+                {
+                    Debug.Log("Decompressor output shape: " + decompressor_out.shape);
+                }
+            }
         }
     }
 
@@ -35,6 +49,12 @@ public class MotionMatcher : MonoBehaviour
             ModelLoader.Load(stepper));
         decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(decompressor));
+    }
+
+    private void OnDestroy()
+    {
+        stepper_inference.Dispose();
+        decompressor_inference.Dispose();
     }
     private Tensor GetFirstFrameInputTensor()
     {
@@ -61,7 +81,7 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(z_frame1, 0, xz_frame1, x_frame1.Length, z_frame1.Length);
 
         // Convert data to Tensor and return
-        return new Tensor(1, nfeatures + nlatent, xz_frame1);
+        return new Tensor(new int[] {1, 1, 1, nfeatures + nlatent }, xz_frame1);
     }
 
     // Update is called once per frame
