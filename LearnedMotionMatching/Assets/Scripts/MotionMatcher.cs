@@ -123,7 +123,7 @@ public class MotionMatcher : MonoBehaviour
     {
         transform.position = currentPose.rootPosition; ;
         Vector4 q = currentPose.rootRotation;
-        transform.rotation = new Quaternion(q.x, q.y, q.z, q.w);
+        transform.rotation = execute_rotation(new Quaternion(q.x, q.y, q.z, q.w));
 
         for(int i=1; i<bones.Count; i++)
         {
@@ -131,8 +131,17 @@ public class MotionMatcher : MonoBehaviour
             Transform joint = bones[i];
 
             joint.localPosition = jdata.localPosition;
-            joint.localRotation = jdata.localRotation;
+            joint.localRotation = execute_rotation(jdata.localRotation);
         }
+    }
+    private Quaternion execute_rotation(Quaternion q) {
+        Vector3 angles = q.eulerAngles;
+
+        Quaternion zRotation = Quaternion.AngleAxis(angles.z, Vector3.forward);
+        Quaternion yRotation = Quaternion.AngleAxis(angles.y, Vector3.up);
+        Quaternion xRotation = Quaternion.AngleAxis(angles.x, Vector3.right);
+
+        return zRotation * yRotation * xRotation;
     }
 
 }

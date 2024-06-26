@@ -26,10 +26,14 @@ public static  class DataParser
         Vector3 prev_rootang = currentPose.rootAngularVelocity;
 
 
-        Vector3 root_pos = prev_rootpos + quat_mul_vec(prev_rootrot, prev_rootvel) * dt;
+        Vector3 root_pos = prev_rootpos + quat_mul_vec(prev_rootrot, new Vector3(root_vel[0, 0, 0, 0],
+                                                                                root_vel[1, 0, 0, 0],
+                                                                                root_vel[2, 0, 0, 0])) * dt;
 
         Vector4 root_rot = quat_mul(prev_rootrot, quat_from_scaled_axis_angle(
-            quat_mul_vec(prev_rootrot, prev_rootang) * dt));
+            quat_mul_vec(prev_rootrot, new Vector3(root_ang[0, 0, 0, 0],
+                                                    root_ang[1, 0, 0, 0],
+                                                    root_ang[2, 0, 0, 0])) * dt));
 
         Tensor positions = new Tensor(nbones, 3, 1, 1);
         positions[0, 0, 0, 0] = root_pos.x;
