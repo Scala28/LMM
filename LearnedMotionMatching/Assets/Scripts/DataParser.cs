@@ -6,9 +6,8 @@ using UnityEngine;
 public static  class DataParser 
 {
     private const float dt = 1 / 60f;
-    public static Pose ParseDecompressorOutput(Tensor decompressor_out, Pose currentPose)
+    public static Pose ParseDecompressorOutput(Tensor decompressor_out, Pose currentPose, int nbones)
     {
-        int nbones = 23;
         Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
         Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
         Tensor vel = SliceAndReshape(decompressor_out, 9 * (nbones - 1), 12 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
@@ -72,15 +71,15 @@ public static  class DataParser
         int dataCount = sliceEnd - sliceStart;
         float[] data = new float[dataCount];
         for (int i = 0; i < dataCount; i++)
-            data[i] = input[i + sliceStart];
+            data[i] = input[0, 0, 0, i + sliceStart];
 
-        for (int i = 0; i < newShape[0]; i++)
+        for (int i = 0; i < newShape.batch; i++)
         {
-            for (int h = 0; h < newShape[1]; h++)
+            for (int h = 0; h < newShape.height; h++)
             {
-                for (int w = 0; w < newShape[2]; w++)
+                for (int w = 0; w < newShape.width; w++)
                 {
-                    for (int c = 0; c < newShape[3]; c++)
+                    for (int c = 0; c < newShape.channels; c++)
                     {
                         sliced[i, h, w, c] = data[index(i, h, w, c, newShape)];
                     }
@@ -212,7 +211,10 @@ public static  class DataParser
             else
             {
                 t = 1 + xfm.m00 + xfm.m11 + xfm.m22;
-                q = new Vector4(t, xfm.m21 - xfm.m12, xfm.m02 - xfm.m20, xfm.m10 - xfm.m01);
+                q = new Vector4(t,
+                    xfm.m21 - xfm.m12, 
+                    xfm.m02 - xfm.m20,
+                    xfm.m10 - xfm.m01);
             }
         }
 

@@ -30,7 +30,7 @@ public class Pose
 
         joints = new List<JointMotionData>();
 
-        for(int i=0; i < pos.shape[0]; i++)
+        for(int i=0; i < pos.batch; i++)
         {
             JointMotionData j = new JointMotionData();
             j.localPosition = new Vector3(pos[i, 0, 0, 0], pos[i, 1, 0, 0], pos[i, 2, 0, 0]);
