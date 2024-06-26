@@ -769,6 +769,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1410122417267007718}
   - component: {fileID: 1790764085113240157}
+  - component: {fileID: 1790764085113240158}
   m_Layer: 0
   m_Name: model_skeleton
   m_TagString: Untagged
@@ -790,6 +791,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stepper: {fileID: 5022602860645237092, guid: fa39d74c6be525c4f887e3d70d86382e, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: a464680a71e6e9f4291a8aba2a878ddd, type: 3}
+--- !u!54 &1790764085113240158
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790764085113240156}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &1840260259478728771
 GameObject:
   m_ObjectHideFlags: 0

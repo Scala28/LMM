@@ -11,6 +11,15 @@ public class Pose
     public Vector3 rootVelocity;
     public Vector3 rootAngularVelocity;
 
+    public Pose(Transform root, Vector3 root_vel, Vector3 root_ang)
+    {
+        rootPosition = root.position;
+        Quaternion q = root.rotation;
+        rootRotation = new Vector4(q.x, q.y, q.z, q.w);
+        rootVelocity = root_vel;
+        rootAngularVelocity = root_ang;
+    }
+
     public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang,
         Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang)
     {
