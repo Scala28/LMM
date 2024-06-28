@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Cryptography;
 using Unity.Barracuda;
+using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
 public static  class DataParser 
@@ -37,6 +38,7 @@ public static  class DataParser
                                                     root_ang[1, 0, 0, 0],
                                                     root_ang[2, 0, 0, 0])) * dt));
 
+        Debug.Log(root_rot.x + ", " + root_rot.y + ", " + root_rot.z + ", " + root_rot.w);
 
         Tensor positions = new Tensor(nbones, 3, 1, 1);
         positions[0, 0, 0, 0] = root_pos.x;
@@ -44,9 +46,9 @@ public static  class DataParser
         positions[0, 2, 0, 0] = root_pos.z;
         for (int i = 1; i < nbones; i++)
         {
-            positions[i, 0, 0, 0] = pos[i-1, 0, 0, 0];
-            positions[i, 1, 0, 0] = pos[i-1, 1, 0, 0];
-            positions[i, 2, 0, 0] = pos[1-1, 2, 0, 0];
+            positions[index(i, 0, 0, 0, positions.shape)] = pos[index(i - 1, 0, 0, 0, pos.shape)];
+            positions[index(i, 1, 0, 0, positions.shape)] = pos[index(i - 1, 1, 0, 0, pos.shape)];
+            positions[index(i, 2, 0, 0, positions.shape)] = pos[index(i - 1, 2, 0, 0, pos.shape)];
         }
 
         Tensor quat_rotations = new Tensor(nbones, 4, 1, 1);
@@ -57,11 +59,25 @@ public static  class DataParser
         for (int i = 1; i < nbones; i++)
         {
 
-            quat_rotations[i, 0, 0, 0] = quat[i-1, 0, 0, 0];
-            quat_rotations[i, 1, 0, 0] = quat[i-1, 1, 0, 0];
-            quat_rotations[i, 2, 0, 0] = quat[i-1, 2, 0, 0];
-            quat_rotations[i, 3, 0, 0] = quat[i-1, 3, 0, 0];
+            quat_rotations[index(i, 0, 0, 0, quat_rotations.shape)] = quat[index(i - 1, 0, 0, 0, quat.shape)];
+            quat_rotations[index(i, 1, 0, 0, quat_rotations.shape)] = quat[index(i - 1, 1, 0, 0, quat.shape)];
+            quat_rotations[index(i, 2, 0, 0, quat_rotations.shape)] = quat[index(i - 1, 2, 0, 0, quat.shape)];
+            quat_rotations[index(i, 3, 0, 0, quat_rotations.shape)] = quat[index(i - 1, 3, 0, 0, quat.shape)];
         }
+
+        string poss = "";
+        for (int i = 0; i < 9; i++)
+            poss += positions[i, 0, 0, 0] + ", " + positions[i, 1, 0, 0] + ", " + positions[i, 2, 0, 0] + "\n";
+        Debug.Log(poss);
+
+        Debug.Log(quat_rotations[0, 3, 0, 0]);
+        string rots = "";
+        for (int i=0; i < 9; i++)
+        {
+            rots += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", "
+                + quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[index(i, 3, 0, 0, quat_rotations.shape)] + "\n";
+        }
+        Debug.Log(rots);
 
         //Convert quat to angle axis
         Tensor rot = quat_toEuler(quat);

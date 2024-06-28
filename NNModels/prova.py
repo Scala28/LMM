@@ -38,13 +38,17 @@ Ytil_rang = Ytil[:, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([3, ])
 Ytil_quat = quat.from_xfm_xy(Ytil_txy)
 
 
-print(Ytil_rvel)
-print(Ytil_rang)
 rots = torch.as_tensor(np.array([0, 0, 0, 1], dtype=np.float32).reshape(4,))
-print(rots)
 rootPos = torch.zeros([3,]) + quat.mul_vec(rots[np.newaxis, ...], Ytil_rvel) * dt
 rootRot = quat.mul(rots, quat.from_scaled_axis_angle(quat.mul_vec(rots, Ytil_rang) * dt))
 
-print(rootPos)
-print(rootRot)
+Pos = torch.cat([rootPos, Ytil_pos], dim=0)
+Rot = torch.cat([rootRot[np.newaxis, ...], Ytil_quat], dim=0)
 
+print(Pos.shape)
+print(Rot.shape)
+
+print(Pos[:9, ...])
+print(Rot[:9 , ...])
+
+euler = quat.to_euler(Rot.detach())
