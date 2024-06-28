@@ -38,9 +38,9 @@ public class MotionMatcher : MonoBehaviour
         initialize_skeleton(this.transform);
         initialize_pose();
 
-        Debug.Log(bones.Count);
+        Debug.Log("Bones " + bones.Count);
         
-        using (Tensor input = GetFrameInputTensor(1))
+        using (Tensor input = GetFrameInputTensor(2))
         {
             if (input == null)
                 return;
@@ -49,10 +49,17 @@ public class MotionMatcher : MonoBehaviour
 
             using(Tensor decompressor_out = decompressor_inference.PeekOutput())
             {
+                Debug.Log("decompressor_out:");
                 Debug.Log(decompressor_out.shape);
+                string x = "";
+                int start = 3 * (bones.Count - 1);
+                int stop = 9 * (bones.Count - 1);
+                for(int i=start; i<stop; i++)
+                {
+                    x += decompressor_out[0, 0, 0, i] + ", ";
+                }
+                Debug.Log(x);
                 currentPose = DataParser.ParseDecompressorOutput(decompressor_out, currentPose, bones.Count);
-
-                display_frame_pose();
             }
         }
     }
@@ -107,7 +114,6 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(x_frame1, 0, xz_frame1, 0, x_frame1.Length);
         Array.Copy(z_frame1, 0, xz_frame1, x_frame1.Length, z_frame1.Length);
 
-        // Convert data to Tensor and return
         return new Tensor(new int[] { 1, 1, 1, nfeatures + nlatent }, xz_frame1);
     }
 
@@ -121,9 +127,8 @@ public class MotionMatcher : MonoBehaviour
 
     private void display_frame_pose()
     {
-        transform.position = currentPose.rootPosition; ;
-        Vector4 q = currentPose.rootRotation;
-        transform.rotation = execute_rotation(new Quaternion(q.x, q.y, q.z, q.w));
+        transform.position = currentPose.rootPosition;
+        transform.rotation = currentPose.rootRotation;
 
         for(int i=1; i<bones.Count; i++)
         {
@@ -131,17 +136,8 @@ public class MotionMatcher : MonoBehaviour
             Transform joint = bones[i];
 
             joint.localPosition = jdata.localPosition;
-            joint.localRotation = execute_rotation(jdata.localRotation);
+            joint.localRotation = jdata.localRotation;
         }
-    }
-    private Quaternion execute_rotation(Quaternion q) {
-        Vector3 angles = q.eulerAngles;
-
-        Quaternion zRotation = Quaternion.AngleAxis(angles.z, Vector3.forward);
-        Quaternion yRotation = Quaternion.AngleAxis(angles.y, Vector3.up);
-        Quaternion xRotation = Quaternion.AngleAxis(angles.x, Vector3.right);
-
-        return zRotation * yRotation * xRotation;
     }
 
 }

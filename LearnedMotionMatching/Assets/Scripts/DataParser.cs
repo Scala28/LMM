@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Security.Cryptography;
 using Unity.Barracuda;
 using UnityEngine;
 
@@ -20,11 +23,10 @@ public static  class DataParser
 
         //Integrate root displacement
         Vector3 prev_rootpos = currentPose.rootPosition;
-        Vector4 prev_rootrot = currentPose.rootRotation;
-
-        Vector3 prev_rootvel = currentPose.rootVelocity;
-        Vector3 prev_rootang = currentPose.rootAngularVelocity;
-
+        Vector4 prev_rootrot = new Vector4(currentPose.rootRotation.x,
+                                        currentPose.rootRotation.y,
+                                        currentPose.rootRotation.z,
+                                        currentPose.rootRotation.w);
 
         Vector3 root_pos = prev_rootpos + quat_mul_vec(prev_rootrot, new Vector3(root_vel[0, 0, 0, 0],
                                                                                 root_vel[1, 0, 0, 0],
@@ -34,6 +36,7 @@ public static  class DataParser
             quat_mul_vec(prev_rootrot, new Vector3(root_ang[0, 0, 0, 0],
                                                     root_ang[1, 0, 0, 0],
                                                     root_ang[2, 0, 0, 0])) * dt));
+
 
         Tensor positions = new Tensor(nbones, 3, 1, 1);
         positions[0, 0, 0, 0] = root_pos.x;
@@ -46,24 +49,27 @@ public static  class DataParser
             positions[i, 2, 0, 0] = pos[1-1, 2, 0, 0];
         }
 
-        Tensor rotations = new Tensor(nbones, 4, 1, 1);
-        rotations[0, 0, 0, 0] = root_rot.x;
-        rotations[0, 1, 0, 0] = root_rot.y;
-        rotations[0, 2, 0, 0] = root_rot.z;
-        rotations[0, 3, 0, 0] = root_rot.w;
+        Tensor quat_rotations = new Tensor(nbones, 4, 1, 1);
+        quat_rotations[0, 0, 0, 0] = root_rot.x;
+        quat_rotations[0, 1, 0, 0] = root_rot.y;
+        quat_rotations[0, 2, 0, 0] = root_rot.z;
+        quat_rotations[0, 3, 0, 0] = root_rot.w;
         for (int i = 1; i < nbones; i++)
         {
 
-            rotations[i, 0, 0, 0] = quat[i-1, 0, 0, 0];
-            rotations[i, 1, 0, 0] = quat[i-1, 1, 0, 0];
-            rotations[i, 2, 0, 0] = quat[i-1, 2, 0, 0];
-            rotations[i, 3, 0, 0] = quat[i-1, 3, 0, 0];
+            quat_rotations[i, 0, 0, 0] = quat[i-1, 0, 0, 0];
+            quat_rotations[i, 1, 0, 0] = quat[i-1, 1, 0, 0];
+            quat_rotations[i, 2, 0, 0] = quat[i-1, 2, 0, 0];
+            quat_rotations[i, 3, 0, 0] = quat[i-1, 3, 0, 0];
         }
 
+        //Convert quat to angle axis
+        Tensor rot = quat_toEuler(quat);
+
         // Construct pose for next frame
-        Pose pose = new Pose(pos, quat, vel, ang,
+        Pose pose = new Pose(pos, rot, vel, ang,
             root_pos,
-            root_rot,
+            convert_ToEuler(new Quaternion(root_rot.x, root_rot.y, root_rot.z, root_rot.w)),
             new Vector3(root_vel[0, 0, 0, 0], root_vel[1, 0, 0, 0], root_vel[2, 0, 0, 0]),  //root vel
             new Vector3(root_ang[0, 0, 0, 0], root_ang[1, 0, 0, 0], root_ang[2, 0, 0, 0]));  // root ang
         return pose;
@@ -90,6 +96,7 @@ public static  class DataParser
                 }
             }
         }
+
         return sliced;
     }
     #region QuatFunctions
@@ -123,18 +130,20 @@ public static  class DataParser
 
 
             // Calculate c2
-            Vector3 c2Vec = crossProduct(x0, x1).normalized;
+            Vector3 c2Vec = _cross(x0, x1);
+            c2Vec = c2Vec / Mathf.Sqrt(c2Vec.x*c2Vec.x + c2Vec.y*c2Vec.y + c2Vec.z*c2Vec.z);
 
             // Calculate c1
-            Vector3 c1Vec = crossProduct(c2Vec, x0).normalized;
+            Vector3 c1Vec = _cross(c2Vec, x0);
+            c1Vec = c1Vec / Mathf.Sqrt(c1Vec.x * c1Vec.x + c1Vec.y * c1Vec.y + c1Vec.z * c1Vec.z);
 
             // c0 is x0
             Vector3 c0Vec = x0;
 
             // Assign results back to tensors
-            c0[i, 0, 0, 0] = c0Vec.x; c0[i, 1, 0, 0] = c0Vec.y; c0[i, 2, 0, 0] = c0Vec.z;
-            c1[i, 0, 0, 0] = c1Vec.x; c1[i, 1, 0, 0] = c1Vec.y; c1[i, 2, 0, 0] = c1Vec.z;
-            c2[i, 0, 0, 0] = c2Vec.x; c2[i, 1, 0, 0] = c2Vec.y; c2[i, 2, 0, 0] = c2Vec.z;
+            c0[index(i, 0, 0, 0, c0.shape)] = c0Vec.x; c0[index(i, 1, 0, 0, c0.shape)] = c0Vec.y; c0[index(i, 2, 0, 0, c0.shape)] = c0Vec.z;
+            c1[index(i, 0, 0, 0, c0.shape)] = c1Vec.x; c1[index(i, 1, 0, 0, c0.shape)] = c1Vec.y; c1[index(i, 2, 0, 0, c0.shape)] = c1Vec.z;
+            c2[index(i, 0, 0, 0, c0.shape)] = c2Vec.x; c2[index(i, 1, 0, 0, c0.shape)] = c2Vec.y; c2[index(i, 2, 0, 0, c0.shape)] = c2Vec.z;
         }
 
         // Concatenate c0, c1, c2 along the third dimension
@@ -187,7 +196,7 @@ public static  class DataParser
         {
             if (xfm.m00 > xfm.m11)
             {
-                t = 1 + xfm.m00 - xfm.m11 - xfm.m22;
+                t = 1f + xfm.m00 - xfm.m11 - xfm.m22;
                 q = new Vector4(xfm.m21 - xfm.m12,
                     t,
                     xfm.m10 + xfm.m01,
@@ -195,7 +204,7 @@ public static  class DataParser
             }
             else
             {
-                t = 1 - xfm.m00 + xfm.m11 - xfm.m22;
+                t = 1f - xfm.m00 + xfm.m11 - xfm.m22;
                 q = new Vector4(xfm.m02 - xfm.m20,
                     xfm.m10 + xfm.m01,
                     t,
@@ -227,29 +236,30 @@ public static  class DataParser
 
     private static Vector4 quat_normalize(Vector4 q, float eps = 1e-8f)
     {
-        float norm = Mathf.Sqrt(Vector4.Dot(q, q));
+        float norm = Mathf.Sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
         return q / (norm + eps);
     }
     private static Vector3 quat_mul_vec(Vector4 q, Vector3 vec)
     {
-        Vector3 q_vector = new Vector3(q.x, q.y, q.z);
-        float q_scalar = q.w;
+        Vector3 q_vector = new Vector3(q.y, q.z, q.w);
+        float q_scalar = q.x;
 
-        return vec + 2f * q_scalar * crossProduct(q_vector, vec) +
-            crossProduct(q_vector, 2f * crossProduct(q_vector, vec));
+        return vec + 2f * q_scalar * _cross(q_vector, vec) +
+            _cross(q_vector, 2f * _cross(q_vector, vec));
     }
     private static Vector4 quat_mul(Vector4 a, Vector4 b)
     {
-        Quaternion qa = new Quaternion(a.x, a.y, a.z, a.w);
-        Quaternion qb = new Quaternion(b.x, b.y, b.z, b.w);
+        float w = a.x * b.x - a.y * a.y - a.z * b.z - a.w * b.w;
+        float x = a.x * b.y + a.y * b.x + a.z * b.w - a.w * b.z;
+        float y = a.x * b.z - a.y * b.w + a.z * b.x + a.w * b.y;
+        float z = a.z * b.w + a.y * b.z - a.z * b.y + a.w * b.x;
 
-        Quaternion result = qa * qb;
-
-        return new Vector4(result.x, result.y, result.z, result.w);
+        return new Vector4(w, x, y, z);
     }
     private static Vector4 quat_from_scaled_axis_angle(Vector3 ang, float eps = 1e-5f)
     {
-        float halfAngle = Mathf.Sqrt(Vector3.Dot(ang, ang));
+        Vector3 x = ang / 2f;
+        float halfAngle = Mathf.Sqrt(x.x * x.x + x.y * x.y + x.z * x.z);
         float c, s;
         if (halfAngle < eps)
         {
@@ -261,14 +271,76 @@ public static  class DataParser
             c = Mathf.Cos(halfAngle);
             s = Mathf.Sin(halfAngle) / halfAngle;
         }
-        Vector3 q_vec = ang * s;
+        Vector3 q_vec = x * s;
 
         return new Vector4(c, q_vec.x, q_vec.y, q_vec.z);
     }
-    #endregion
-    private static Vector3 crossProduct(Vector3 a, Vector3 b)
+
+    private static Tensor quat_toEuler(Tensor quat, string order="xyz")
     {
-        return Vector3.Cross(a, b);
+        Tensor ris = new Tensor(quat.batch, 3, 1, 1);
+
+        for(int i=0; i<quat.batch;  i++)
+        {
+            float x = quat[i, 0, 0, 0];
+            float y = quat[i, 1, 0, 0];
+            float z = quat[i, 2, 0, 0];
+            float w = quat[i, 3, 0, 0];
+
+            Quaternion q = new Quaternion(x, y, z, w);
+
+            Vector3 angle = convert_ToEuler(q, order); // .eulerAngles
+            ris[i, 0, 0, 0] = angle.x;
+            ris[i, 1, 0, 0] = angle.y;
+            ris[i, 2, 0, 0] = angle.z;
+        }
+        return ris;
+    }
+    private static Vector3 convert_ToEuler(Quaternion q, string order="xyz")
+    {
+        float q0 = q.x;
+        float q1 = q.y;
+        float q2 = q.z;
+        float q3 = q.w;
+
+        float min = -1;
+        float max = 1;
+
+        if (order == "xyz")
+        {
+            return new Vector3(Mathf.Atan2(2f * (q0 * q1 + q2 * q3), 1f - 2f * (q1 * q1 + q2 * q2)),
+                Mathf.Asin(Mathf.Min(Mathf.Max(2f * (q0 * q2 - q3 * q1), min), max)),
+                Mathf.Atan2(2f * (q0 * q3 + q1 * q2), 1f - 2f * (q2 * q2 + q3 * q3)));
+        }
+        else
+            //TODO: order zyx
+            return Vector3.zero;
+    }
+    public static Quaternion quat_from_euler(Vector3 angle, string order="xyz")
+    {
+        float radX = angle.x * Mathf.Rad2Deg;
+        float radY = angle.y * Mathf.Rad2Deg;
+        float radZ = angle.z * Mathf.Rad2Deg;
+
+        // Calculate the quaternion components
+        Quaternion qX = Quaternion.AngleAxis(angle.x, Vector3.right);   // Rotation around X axis
+        Quaternion qY = Quaternion.AngleAxis(angle.y, Vector3.up);      // Rotation around Y axis
+        Quaternion qZ = Quaternion.AngleAxis(angle.z, Vector3.forward); // Rotation around Z axis
+
+        if (order == "xyz")
+            return qZ * qY * qX;
+        else
+            //TODO: order zyx
+            return Quaternion.identity;
+    }
+    #endregion
+    private static Vector3 _cross(Vector3 a, Vector3 b)
+    {
+        float x = a.y * b.z - a.z * b.y;
+        float y = a.z * b.x - a.x * b.z;
+        float z = a.x * b.y - a.y * b.x;
+
+        return new Vector3 (x, y, z);
     }
     private static int index(int bone, int vector, int component, int subcomponent, TensorShape shape)
     {

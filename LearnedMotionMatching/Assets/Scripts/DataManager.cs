@@ -21,7 +21,7 @@ public static class DataManager
         {
             int nframes = reader.ReadInt32();
             int ndata = reader.ReadInt32();
-            float[] data = new float[(memStream.Length - 8) / sizeof(float)];
+            float[] data = new float[nframes * ndata];
             for (int i = 0; i < data.Length; i++)
             {
                 data[i] = reader.ReadSingle();

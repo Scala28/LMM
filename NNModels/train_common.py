@@ -66,11 +66,13 @@ def load_features(filename):
 
 def load_latent(filename):
     with open(filename, 'rb') as f:
-        nframes, nfeatures = struct.unpack('II', f.read(8))
-        latent = np.frombuffer(f.read(nframes * nfeatures * 4), dtype=np.float32, count=nframes * nfeatures).reshape(
-            [nframes, nfeatures])
+        nframes, nlatent = struct.unpack('II', f.read(8))
+        latent = np.frombuffer(f.read(nframes * nlatent * 4), dtype=np.float32, count=nframes * nlatent).reshape(
+            [nframes, nlatent])
 
     return {
+        'frames': nframes,
+        'nlatent': nlatent,
         'latent': latent,
     }
 

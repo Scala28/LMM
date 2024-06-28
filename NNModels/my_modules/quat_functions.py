@@ -128,11 +128,13 @@ def from_xfm_xy(x):
     c1 = c1 / torch.sqrt(torch.sum(torch.square(c1), dim=-1))[..., np.newaxis]
     c0 = x[..., 0]
 
-    return from_xform(torch.cat([
+    xfm = torch.cat([
         c0[..., np.newaxis],
         c1[..., np.newaxis],
         c2[..., np.newaxis]
-    ], dim=-1))
+    ], dim=-1)
+    print(xfm[0])
+    return from_xform(xfm)
 
 
 def from_scaled_axis_angle(x, eps=1e-5):
