@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using Unity.Barracuda;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public static  class DataParser 
 {
@@ -38,8 +39,6 @@ public static  class DataParser
                                                     root_ang[1, 0, 0, 0],
                                                     root_ang[2, 0, 0, 0])) * dt));
 
-        Debug.Log(root_rot.x + ", " + root_rot.y + ", " + root_rot.z + ", " + root_rot.w);
-
         Tensor positions = new Tensor(nbones, 3, 1, 1);
         positions[0, 0, 0, 0] = root_pos.x;
         positions[0, 1, 0, 0] = root_pos.y;
@@ -65,29 +64,48 @@ public static  class DataParser
             quat_rotations[index(i, 3, 0, 0, quat_rotations.shape)] = quat[index(i - 1, 3, 0, 0, quat.shape)];
         }
 
-        string poss = "";
-        for (int i = 0; i < 9; i++)
-            poss += positions[i, 0, 0, 0] + ", " + positions[i, 1, 0, 0] + ", " + positions[i, 2, 0, 0] + "\n";
-        Debug.Log(poss);
 
-        Debug.Log(quat_rotations[0, 3, 0, 0]);
-        string rots = "";
-        for (int i=0; i < 9; i++)
+        Debug.Log("positions");
+        string s = "";
+        for (int i = 0; i < positions.batch; i++)
         {
-            rots += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", "
-                + quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[index(i, 3, 0, 0, quat_rotations.shape)] + "\n";
+            s += positions[i, 0, 0, 0] + ", " + positions[i, 1, 0, 0] + ", " +
+                positions[i, 2, 0, 0] + "\n";
         }
-        Debug.Log(rots);
+        Debug.Log(s);
+
+        Debug.Log("quat rotations");
+        s = "";
+        for (int i = 0; i < quat_rotations.batch; i++)
+        {
+            s += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", " + 
+                quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[i, 3, 0, 0] + "\n";
+        }
+        Debug.Log(s);
 
         //Convert quat to angle axis
-        Tensor rot = quat_toEuler(quat);
+        Tensor euler_rotations = quat_toEuler(quat_rotations);
+
+        Debug.Log("euler rotations");
+        s = "";
+        for (int i = 0; i < euler_rotations.batch; i++)
+        {
+            s += euler_rotations[i, 0, 0, 0] + ", " + euler_rotations[i, 1, 0, 0] + ", " +
+                euler_rotations[i, 2, 0, 0] + "\n";
+        }
+        Debug.Log(s);
+
+        Vector3 x = convert_ToEuler(root_rot);
+        Debug.Log(root_rot);
+        Debug.Log(x.x +", "+x.y+", "+x.z);
+        Quaternion q = Quaternion.Euler(x);
+        Debug.Log(q.x + ", "+q.y+", "+q.z+", "+q.w);
 
         // Construct pose for next frame
-        Pose pose = new Pose(pos, rot, vel, ang,
-            root_pos,
-            convert_ToEuler(new Quaternion(root_rot.x, root_rot.y, root_rot.z, root_rot.w)),
+        Pose pose = new Pose(positions, euler_rotations, vel, ang,
             new Vector3(root_vel[0, 0, 0, 0], root_vel[1, 0, 0, 0], root_vel[2, 0, 0, 0]),  //root vel
             new Vector3(root_ang[0, 0, 0, 0], root_ang[1, 0, 0, 0], root_ang[2, 0, 0, 0]));  // root ang
+
         return pose;
     }
     private static Tensor SliceAndReshape(Tensor input, int sliceStart, int sliceEnd, TensorShape newShape)
@@ -298,21 +316,19 @@ public static  class DataParser
 
         for(int i=0; i<quat.batch;  i++)
         {
-            float x = quat[i, 0, 0, 0];
-            float y = quat[i, 1, 0, 0];
-            float z = quat[i, 2, 0, 0];
-            float w = quat[i, 3, 0, 0];
+            Vector4 q = new Vector4(quat[index(i, 0, 0, 0, quat.shape)],
+                                    quat[i, 1, 0, 0],
+                                    quat[i, 2, 0, 0],
+                                    quat[i, 3, 0, 0]);
+            Vector3 angle = convert_ToEuler(q, order);
 
-            Quaternion q = new Quaternion(x, y, z, w);
-
-            Vector3 angle = convert_ToEuler(q, order); // .eulerAngles
-            ris[i, 0, 0, 0] = angle.x;
-            ris[i, 1, 0, 0] = angle.y;
-            ris[i, 2, 0, 0] = angle.z;
+            ris[index(i, 0, 0, 0, ris.shape)] = angle.x;
+            ris[index(i, 1, 0, 0, ris.shape)] = angle.y;
+            ris[index(i, 2, 0, 0, ris.shape)] = angle.z;
         }
         return ris;
     }
-    private static Vector3 convert_ToEuler(Quaternion q, string order="xyz")
+    private static Vector3 convert_ToEuler(Vector4 q, string order="xyz")
     {
         float q0 = q.x;
         float q1 = q.y;

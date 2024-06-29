@@ -133,7 +133,6 @@ def from_xfm_xy(x):
         c1[..., np.newaxis],
         c2[..., np.newaxis]
     ], dim=-1)
-    print(xfm[0])
     return from_xform(xfm)
 
 

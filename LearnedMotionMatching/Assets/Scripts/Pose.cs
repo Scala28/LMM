@@ -20,23 +20,24 @@ public class Pose
         rootAngularVelocity = root_ang;
     }
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang,
-        Vector3 root_pos, Vector3 root_rot, Vector3 root_vel, Vector3 root_ang)
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_vel, Vector3 root_ang)
     {
-        rootPosition = root_pos;
-        rootRotation = DataParser.quat_from_euler(root_rot);
+        rootPosition = new Vector3(pos[0, 0, 0, 0], pos[0, 1, 0, 0], pos[0, 2, 0, 0]);
+        rootRotation = Quaternion.Euler(rot[0, 0, 0, 0],
+                                        rot[0, 1, 0, 0],
+                                        rot[0, 2, 0, 0]);
         rootVelocity = root_vel;
         rootAngularVelocity = root_ang;
 
         joints = new List<JointMotionData>();
 
-        for(int i=0; i < pos.batch; i++)
+        for(int i=1; i < pos.batch; i++)
         {
             JointMotionData j = new JointMotionData();
             j.localPosition = new Vector3(pos[i, 0, 0, 0], pos[i, 1, 0, 0], pos[i, 2, 0, 0]);
-            j.localRotation = DataParser.quat_from_euler(new Vector3(rot[i, 0, 0, 0], rot[i, 1, 0, 0], rot[i, 2, 0, 0]));
-            j.velocity = new Vector3(vel[i, 0, 0, 0], vel[i, 1, 0, 0], vel[i, 2, 0, 0]);
-            j.angularVelocity = new Vector3(ang[i, 0, 0, 0], ang[i, 1, 0, 0], ang[i, 2, 0, 0]); 
+            j.localRotation = Quaternion.Euler(rot[i, 0, 0, 0], rot[i, 1, 0, 0], rot[i, 2, 0, 0]);
+            j.velocity = new Vector3(vel[i-1, 0, 0, 0], vel[i-1, 1, 0, 0], vel[i-1, 2, 0, 0]);
+            j.angularVelocity = new Vector3(ang[i-1, 0, 0, 0], ang[i-1, 1, 0, 0], ang[i-1, 2, 0, 0]);
 
             joints.Add(j);
         }

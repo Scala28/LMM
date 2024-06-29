@@ -43,12 +43,11 @@ rootPos = torch.zeros([3,]) + quat.mul_vec(rots[np.newaxis, ...], Ytil_rvel) * d
 rootRot = quat.mul(rots, quat.from_scaled_axis_angle(quat.mul_vec(rots, Ytil_rang) * dt))
 
 Pos = torch.cat([rootPos, Ytil_pos], dim=0)
-Rot = torch.cat([rootRot[np.newaxis, ...], Ytil_quat], dim=0)
+Rot_quat = torch.cat([rootRot[np.newaxis, ...], Ytil_quat], dim=0)
 
-print(Pos.shape)
-print(Rot.shape)
+print(Rot_quat)
+Rot_euler = quat.to_euler(Rot_quat.detach().numpy())
+print(Rot_euler)
 
-print(Pos[:9, ...])
-print(Rot[:9 , ...])
 
-euler = quat.to_euler(Rot.detach())
+
