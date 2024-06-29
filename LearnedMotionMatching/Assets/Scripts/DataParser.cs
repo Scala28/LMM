@@ -95,12 +95,6 @@ public static  class DataParser
         }
         Debug.Log(s);
 
-        Vector3 x = convert_ToEuler(root_rot);
-        Debug.Log(root_rot);
-        Debug.Log(x.x +", "+x.y+", "+x.z);
-        Quaternion q = Quaternion.Euler(x);
-        Debug.Log(q.x + ", "+q.y+", "+q.z+", "+q.w);
-
         // Construct pose for next frame
         Pose pose = new Pose(positions, euler_rotations, vel, ang,
             new Vector3(root_vel[0, 0, 0, 0], root_vel[1, 0, 0, 0], root_vel[2, 0, 0, 0]),  //root vel
@@ -350,20 +344,24 @@ public static  class DataParser
     }
     public static Quaternion quat_from_euler(Vector3 angle, string order="xyz")
     {
-        float radX = angle.x * Mathf.Rad2Deg;
-        float radY = angle.y * Mathf.Rad2Deg;
-        float radZ = angle.z * Mathf.Rad2Deg;
+        float roll = angle.x * Mathf.Deg2Rad;
+        float pitch = angle.y * Mathf.Deg2Rad;
+        float yaw = angle.z * Mathf.Deg2Rad;
 
-        // Calculate the quaternion components
-        Quaternion qX = Quaternion.AngleAxis(angle.x, Vector3.right);   // Rotation around X axis
-        Quaternion qY = Quaternion.AngleAxis(angle.y, Vector3.up);      // Rotation around Y axis
-        Quaternion qZ = Quaternion.AngleAxis(angle.z, Vector3.forward); // Rotation around Z axis
+        float cr = Mathf.Cos(roll * 0.5f);
+        float sr = Mathf.Sin(roll * 0.5f);
+        float cp = Mathf.Cos(pitch * 0.5f);
+        float sp = Mathf.Sin(pitch * 0.5f);
+        float cy = Mathf.Cos(yaw * 0.5f);
+        float sy = Mathf.Sin(yaw * 0.5f);
 
-        if (order == "xyz")
-            return qZ * qY * qX;
-        else
-            //TODO: order zyx
-            return Quaternion.identity;
+        Quaternion q;
+        q.w = cr * cp * cy + sr * sp * sy;
+        q.x = sr * cp * cy - cr * sp * sy;
+        q.y = cr * sp * cy + sr * cp * sy;
+        q.z = cr * cp * sy - sr * sp * cy;
+
+        return q;
     }
     #endregion
     private static Vector3 _cross(Vector3 a, Vector3 b)

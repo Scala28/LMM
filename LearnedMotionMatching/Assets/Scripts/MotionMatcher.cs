@@ -51,15 +51,26 @@ public class MotionMatcher : MonoBehaviour
             {
                 Debug.Log("decompressor_out:");
                 Debug.Log(decompressor_out.shape);
-                string x = "";
-                int start = 3 * (bones.Count - 1);
-                int stop = 9 * (bones.Count - 1);
-                for(int i=start; i<stop; i++)
-                {
-                    x += decompressor_out[0, 0, 0, i] + ", ";
-                }
-                Debug.Log(x);
+                //string x = "";
+                //int start = 3 * (bones.Count - 1);
+                //int stop = 9 * (bones.Count - 1);
+                //for(int i=start; i<stop; i++)
+                //{
+                //    x += decompressor_out[0, 0, 0, i] + ", ";
+                //}
+                //Debug.Log(x);
                 currentPose = DataParser.ParseDecompressorOutput(decompressor_out, currentPose, bones.Count);
+                //Debug.Log("Root pos & euler");
+                //Debug.Log(currentPose.rootPosition.x + ", " + currentPose.rootPosition.y + ", " + currentPose.rootPosition.z);
+                //Debug.Log(currentPose.rootRotation.eulerAngles.x + ", " +
+                //    currentPose.rootRotation.eulerAngles.y + ", " + currentPose.rootRotation.eulerAngles.z);
+
+                //Quaternion q = currentPose.rootRotation;
+                //Debug.Log(q.x + ", " + q.y + ", " + q.z + ", " + q.w);
+                //Debug.Log(q.eulerAngles.x + ", " + q.eulerAngles.y + ", " + q.eulerAngles.z);
+
+                //Quaternion q1 = Quaternion.Euler(q.eulerAngles);
+                //Debug.Log(q1.x + ", "+ q1.y + ", " + q1.z + ", " + q1.w);
             }
         }
     }

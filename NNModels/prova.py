@@ -45,6 +45,7 @@ rootRot = quat.mul(rots, quat.from_scaled_axis_angle(quat.mul_vec(rots, Ytil_ran
 Pos = torch.cat([rootPos, Ytil_pos], dim=0)
 Rot_quat = torch.cat([rootRot[np.newaxis, ...], Ytil_quat], dim=0)
 
+print(Pos)
 print(Rot_quat)
 Rot_euler = quat.to_euler(Rot_quat.detach().numpy())
 print(Rot_euler)
