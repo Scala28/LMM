@@ -74,19 +74,19 @@ public static  class DataParser
         }
         Debug.Log(s);
 
-        Debug.Log("quat rotations");
-        s = "";
-        for (int i = 0; i < quat_rotations.batch; i++)
-        {
-            s += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", " + 
-                quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[i, 3, 0, 0] + "\n";
-        }
-        Debug.Log(s);
+        //Debug.Log("quat rotations");
+        //s = "";
+        //for (int i = 0; i < quat_rotations.batch; i++)
+        //{
+        //    s += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", " + 
+        //        quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[i, 3, 0, 0] + "\n";
+        //}
+        //Debug.Log(s);
 
         //Convert quat to angle axis
         Tensor euler_rotations = quat_toEuler(quat_rotations);
 
-        Debug.Log("euler rotations");
+        Debug.Log("euler rotations - degrees");
         s = "";
         for (int i = 0; i < euler_rotations.batch; i++)
         {
@@ -94,7 +94,13 @@ public static  class DataParser
                 euler_rotations[i, 2, 0, 0] + "\n";
         }
         Debug.Log(s);
-
+        s = "";
+        for (int i = 0; i < euler_rotations.batch; i++)
+        {
+            s += euler_rotations[i, 2, 0, 0] + " " + euler_rotations[i, 1, 0, 0] + " " +
+                euler_rotations[i, 0, 0, 0] + " ";
+        }
+        Debug.Log(s);
         // Construct pose for next frame
         Pose pose = new Pose(positions, euler_rotations, vel, ang,
             new Vector3(root_vel[0, 0, 0, 0], root_vel[1, 0, 0, 0], root_vel[2, 0, 0, 0]),  //root vel
@@ -316,6 +322,9 @@ public static  class DataParser
                                     quat[i, 3, 0, 0]);
             Vector3 angle = convert_ToEuler(q, order);
 
+            //from radiants to degrees
+            angle = angle * Mathf.Rad2Deg;
+
             ris[index(i, 0, 0, 0, ris.shape)] = angle.x;
             ris[index(i, 1, 0, 0, ris.shape)] = angle.y;
             ris[index(i, 2, 0, 0, ris.shape)] = angle.z;
@@ -341,27 +350,6 @@ public static  class DataParser
         else
             //TODO: order zyx
             return Vector3.zero;
-    }
-    public static Quaternion quat_from_euler(Vector3 angle, string order="xyz")
-    {
-        float roll = angle.x * Mathf.Deg2Rad;
-        float pitch = angle.y * Mathf.Deg2Rad;
-        float yaw = angle.z * Mathf.Deg2Rad;
-
-        float cr = Mathf.Cos(roll * 0.5f);
-        float sr = Mathf.Sin(roll * 0.5f);
-        float cp = Mathf.Cos(pitch * 0.5f);
-        float sp = Mathf.Sin(pitch * 0.5f);
-        float cy = Mathf.Cos(yaw * 0.5f);
-        float sy = Mathf.Sin(yaw * 0.5f);
-
-        Quaternion q;
-        q.w = cr * cp * cy + sr * sp * sy;
-        q.x = sr * cp * cy - cr * sp * sy;
-        q.y = cr * sp * cy + sr * cp * sy;
-        q.z = cr * cp * sy - sr * sp * cy;
-
-        return q;
     }
     #endregion
     private static Vector3 _cross(Vector3 a, Vector3 b)

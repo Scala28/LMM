@@ -29,6 +29,8 @@ public class MotionMatcher : MonoBehaviour
 
     private List<Transform> bones = new List<Transform>();
 
+    private List<Vector3> tPose_offsets = new List<Vector3>();
+
     // Start is called before the first frame update
     void Start()
     {
@@ -40,7 +42,7 @@ public class MotionMatcher : MonoBehaviour
 
         Debug.Log("Bones " + bones.Count);
         
-        using (Tensor input = GetFrameInputTensor(2))
+        using (Tensor input = GetFrameInputTensor(562))
         {
             if (input == null)
                 return;
@@ -51,26 +53,10 @@ public class MotionMatcher : MonoBehaviour
             {
                 Debug.Log("decompressor_out:");
                 Debug.Log(decompressor_out.shape);
-                //string x = "";
-                //int start = 3 * (bones.Count - 1);
-                //int stop = 9 * (bones.Count - 1);
-                //for(int i=start; i<stop; i++)
-                //{
-                //    x += decompressor_out[0, 0, 0, i] + ", ";
-                //}
-                //Debug.Log(x);
+
                 currentPose = DataParser.ParseDecompressorOutput(decompressor_out, currentPose, bones.Count);
-                //Debug.Log("Root pos & euler");
-                //Debug.Log(currentPose.rootPosition.x + ", " + currentPose.rootPosition.y + ", " + currentPose.rootPosition.z);
-                //Debug.Log(currentPose.rootRotation.eulerAngles.x + ", " +
-                //    currentPose.rootRotation.eulerAngles.y + ", " + currentPose.rootRotation.eulerAngles.z);
-
-                //Quaternion q = currentPose.rootRotation;
-                //Debug.Log(q.x + ", " + q.y + ", " + q.z + ", " + q.w);
-                //Debug.Log(q.eulerAngles.x + ", " + q.eulerAngles.y + ", " + q.eulerAngles.z);
-
-                //Quaternion q1 = Quaternion.Euler(q.eulerAngles);
-                //Debug.Log(q1.x + ", "+ q1.y + ", " + q1.z + ", " + q1.w);
+                display_frame_pose();
+                
             }
         }
     }
@@ -90,9 +76,11 @@ public class MotionMatcher : MonoBehaviour
     }
     private void initialize_skeleton(Transform bone)
     {
-        bones.Add(bone);
-        foreach(Transform child in bone)
-            if(child.CompareTag("joint"))
+        tPose_offsets.Add(bone != this.transform ?
+            bone.localPosition : Vector3.zero);
+        bones.Add(bone.transform);
+        foreach (Transform child in bone)
+            if (child.CompareTag("joint"))
                 initialize_skeleton(child);
     }
     private void initialize_pose()
@@ -138,17 +126,33 @@ public class MotionMatcher : MonoBehaviour
 
     private void display_frame_pose()
     {
-        transform.position = currentPose.rootPosition;
-        transform.rotation = currentPose.rootRotation;
+        //transform.position = currentPose.rootPosition;
+        // transform.rotation = currentPose.rootRotation;
 
-        for(int i=1; i<bones.Count; i++)
+        for (int i = 2; i < bones.Count; i++)
         {
             JointMotionData jdata = currentPose.joints[i - 1];
             Transform joint = bones[i];
 
-            joint.localPosition = jdata.localPosition;
-            joint.localRotation = jdata.localRotation;
+            //joint.localPosition = jdata.localPosition * 100f;
+            joint.localRotation = jdata.localRotation * joint.localRotation;
         }
+        //List<Quaternion> qs = new List<Quaternion>();
+        //Quaternion q2 = Quaternion.Euler(171.571228f, 5.297809f, 179.759064f);
+        //qs.Add(q2);
+        //Quaternion q3 = Quaternion.Euler(0.736388f, 0.525740f, -24.190214f);
+        //qs.Add(q3);
+        //Quaternion q4 = Quaternion.Euler(-0.492687f, -0.012149f, 93.471802f);
+        //qs.Add(q4);
+        //Quaternion q5 = Quaternion.Euler(-0.000002f, 0.003090f, 21.454554f);
+        //qs.Add(q5);
+
+        //for(int i=2; i<6; i++)
+        //{
+        //    Transform joint = bones[i];
+
+        //    joint.localRotation = qs[i - 2] * joint.localRotation;
+        //}
     }
 
 }

@@ -23,6 +23,7 @@ public class Pose
     public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_vel, Vector3 root_ang)
     {
         rootPosition = new Vector3(pos[0, 0, 0, 0], pos[0, 1, 0, 0], pos[0, 2, 0, 0]);
+
         rootRotation = Quaternion.Euler(rot[0, 0, 0, 0],
                                         rot[0, 1, 0, 0],
                                         rot[0, 2, 0, 0]);
