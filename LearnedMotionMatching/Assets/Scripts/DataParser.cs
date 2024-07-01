@@ -94,13 +94,7 @@ public static  class DataParser
                 euler_rotations[i, 2, 0, 0] + "\n";
         }
         Debug.Log(s);
-        s = "";
-        for (int i = 0; i < euler_rotations.batch; i++)
-        {
-            s += euler_rotations[i, 2, 0, 0] + " " + euler_rotations[i, 1, 0, 0] + " " +
-                euler_rotations[i, 0, 0, 0] + " ";
-        }
-        Debug.Log(s);
+
         // Construct pose for next frame
         Pose pose = new Pose(positions, euler_rotations, vel, ang,
             new Vector3(root_vel[0, 0, 0, 0], root_vel[1, 0, 0, 0], root_vel[2, 0, 0, 0]),  //root vel

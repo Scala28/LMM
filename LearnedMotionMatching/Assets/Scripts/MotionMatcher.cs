@@ -21,6 +21,8 @@ public class MotionMatcher : MonoBehaviour
     private IWorker stepper_inference;
     private IWorker decompressor_inference;
 
+    private Model decompressor_parameters;
+
     #endregion
 
     private const float dt = 1 / 60f;
@@ -36,6 +38,7 @@ public class MotionMatcher : MonoBehaviour
     {
         root_rb = GetComponent<Rigidbody>();
         initialize_models();
+        decompressor_parameters = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
 
         initialize_skeleton(this.transform);
         initialize_pose();
@@ -54,7 +57,9 @@ public class MotionMatcher : MonoBehaviour
                 Debug.Log("decompressor_out:");
                 Debug.Log(decompressor_out.shape);
 
-                currentPose = DataParser.ParseDecompressorOutput(decompressor_out, currentPose, bones.Count);
+                Tensor out_ = add_decompressor_parameters(decompressor_out);
+
+                currentPose = DataParser.ParseDecompressorOutput(out_, currentPose, bones.Count);
                 display_frame_pose();
                 
             }
@@ -89,10 +94,20 @@ public class MotionMatcher : MonoBehaviour
         Vector3 ang = root_rb.angularVelocity;
         currentPose = new Pose(this.transform, vel, ang);
     }
+    private Tensor add_decompressor_parameters(Tensor decompressor_out)
+    {
+        Tensor ris = new Tensor(decompressor_out.shape);
+        for(int i=0; i<decompressor_parameters.Mean_out.Length; i++)
+        {
+            ris[i] = decompressor_out[i] * decompressor_parameters.Std_out[i] + decompressor_parameters.Mean_out[i];
+        }
+
+        return ris;
+    }
     private Tensor GetFrameInputTensor(int frame_index)
     {
-        (int nframes1, int nfeatures, float[] features) = DataManager.LoadBin_fromResources("features");
-        (int nframes2, int nlatent, float[] latent) = DataManager.LoadBin_fromResources("latent");
+        (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
+        (int nframes2, int nlatent, float[] latent) = DataManager.Load_database_fromResources("latent");
 
         if (features == null || latent == null)
             return null;
@@ -115,7 +130,6 @@ public class MotionMatcher : MonoBehaviour
 
         return new Tensor(new int[] { 1, 1, 1, nfeatures + nlatent }, xz_frame1);
     }
-
     // Update is called once per frame
     void Update()
     {
@@ -137,22 +151,6 @@ public class MotionMatcher : MonoBehaviour
             //joint.localPosition = jdata.localPosition * 100f;
             joint.localRotation = jdata.localRotation * joint.localRotation;
         }
-        //List<Quaternion> qs = new List<Quaternion>();
-        //Quaternion q2 = Quaternion.Euler(171.571228f, 5.297809f, 179.759064f);
-        //qs.Add(q2);
-        //Quaternion q3 = Quaternion.Euler(0.736388f, 0.525740f, -24.190214f);
-        //qs.Add(q3);
-        //Quaternion q4 = Quaternion.Euler(-0.492687f, -0.012149f, 93.471802f);
-        //qs.Add(q4);
-        //Quaternion q5 = Quaternion.Euler(-0.000002f, 0.003090f, 21.454554f);
-        //qs.Add(q5);
-
-        //for(int i=2; i<6; i++)
-        //{
-        //    Transform joint = bones[i];
-
-        //    joint.localRotation = qs[i - 2] * joint.localRotation;
-        //}
     }
 
 }

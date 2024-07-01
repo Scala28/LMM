@@ -488,7 +488,7 @@ if __name__ == '__main__':
 
         if i % 10 == 0:
             # sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
-            sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, loss))
+            sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
             _generate_anim()
@@ -504,6 +504,7 @@ if __name__ == '__main__':
             save_network_onnx(decompressor,
                               decompressor_mean_in,
                               'train_ris/decompressor/decompressor.onnx')
+            torch.save(decompressor, 'train_ris/decompressor/decompressor.pth')
 
         if i % 1000 == 0:
             # c_scheduler.step()
