@@ -5,6 +5,8 @@ using Unity.Barracuda;
 using System;
 using UnityEditor;
 using UnityEngine.XR;
+using UnityEditor.Experimental.GraphView;
+using System.ComponentModel;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -15,6 +17,7 @@ public class MotionMatcher : MonoBehaviour
     [SerializeField]
     private NNModel stepper;
 
+
     [SerializeField]
     private NNModel decompressor;
 
@@ -22,6 +25,9 @@ public class MotionMatcher : MonoBehaviour
     private IWorker decompressor_inference;
 
     private Model decompressor_parameters;
+    private Model stepper_parameters;
+
+    private Tensor currentXZ;
 
     #endregion
 
@@ -38,30 +44,28 @@ public class MotionMatcher : MonoBehaviour
     {
         root_rb = GetComponent<Rigidbody>();
         initialize_models();
+
         decompressor_parameters = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
+        stepper_parameters = DataManager.Load_net_fromParameters("Assets/NNModels/stepper.bin");
 
         initialize_skeleton(this.transform);
         initialize_pose();
-
-        Debug.Log("Bones " + bones.Count);
         
         using (Tensor input = GetFrameInputTensor(562))
         {
             if (input == null)
                 return;
+            currentXZ = input;
 
             decompressor_inference.Execute(input);
 
             using(Tensor decompressor_out = decompressor_inference.PeekOutput())
             {
-                Debug.Log("decompressor_out:");
-                Debug.Log(decompressor_out.shape);
 
-                Tensor out_ = add_decompressor_parameters(decompressor_out);
+                Tensor out_ = add_model_parameters(decompressor_out, decompressor_parameters);
 
-                currentPose = DataParser.ParseDecompressorOutput(out_, currentPose, bones.Count);
+                currentPose = DataParser.ParseDecompressorOutput(out_, currentPose, bones.Count, this.transform);
                 display_frame_pose();
-                
             }
         }
     }
@@ -94,12 +98,12 @@ public class MotionMatcher : MonoBehaviour
         Vector3 ang = root_rb.angularVelocity;
         currentPose = new Pose(this.transform, vel, ang);
     }
-    private Tensor add_decompressor_parameters(Tensor decompressor_out)
+    private Tensor add_model_parameters(Tensor _out, Model param)
     {
-        Tensor ris = new Tensor(decompressor_out.shape);
-        for(int i=0; i<decompressor_parameters.Mean_out.Length; i++)
+        Tensor ris = new Tensor(_out.shape);
+        for(int i=0; i<param.Mean_out.Length; i++)
         {
-            ris[i] = decompressor_out[i] * decompressor_parameters.Std_out[i] + decompressor_parameters.Mean_out[i];
+            ris[i] = _out[i] * param.Std_out[i] + param.Mean_out[i];
         }
 
         return ris;
@@ -140,17 +144,23 @@ public class MotionMatcher : MonoBehaviour
 
     private void display_frame_pose()
     {
-        //transform.position = currentPose.rootPosition;
-        // transform.rotation = currentPose.rootRotation;
-
-        for (int i = 2; i < bones.Count; i++)
+        for (int i=1; i<bones.Count; i++)
         {
-            JointMotionData jdata = currentPose.joints[i - 1];
             Transform joint = bones[i];
+            JointMotionData jdata = currentPose.joints[i-1];
 
-            //joint.localPosition = jdata.localPosition * 100f;
-            joint.localRotation = jdata.localRotation * joint.localRotation;
+            joint.localRotation = Quaternion.Euler(0f, 0f, -jdata.localRotation.z) *
+                Quaternion.Euler(0f, -jdata.localRotation.y, 0f) * Quaternion.Euler(jdata.localRotation.x, 0f, 0f);
         }
+    }
+    private void OnDrawGizmos()
+    {
+        //for(int i=1; i<bones.Count; i++)
+        //{
+        //    Transform joint = bones[i];
+        //    JointMotionData jdata = currentPose.joints[i - 1];
+        //    Gizmos.DrawSphere(joint.parent.position+jdata.localPosition, 0.2f);
+        //}
     }
 
 }

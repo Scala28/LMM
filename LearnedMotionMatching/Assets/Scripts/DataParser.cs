@@ -6,12 +6,13 @@ using System.Security.Cryptography;
 using Unity.Barracuda;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 public static  class DataParser 
 {
     private const float dt = 1 / 60f;
-    public static Pose ParseDecompressorOutput(Tensor decompressor_out, Pose currentPose, int nbones)
+    public static Pose ParseDecompressorOutput(Tensor decompressor_out, Pose currentPose, int nbones, Transform root)
     {
         Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
         Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
@@ -25,10 +26,10 @@ public static  class DataParser
 
         //Integrate root displacement
         Vector3 prev_rootpos = currentPose.rootPosition;
-        Vector4 prev_rootrot = new Vector4(currentPose.rootRotation.x,
-                                        currentPose.rootRotation.y,
-                                        currentPose.rootRotation.z,
-                                        currentPose.rootRotation.w);
+        Quaternion rootRot = ExecuteBVHRotation("ZYX", currentPose.rootRotation.x,
+                                                        currentPose.rootRotation.y,
+                                                        currentPose.rootRotation.z, root);
+        Vector4 prev_rootrot = new Vector4(rootRot.x, rootRot.y, rootRot.z, rootRot.w);
 
         Vector3 root_pos = prev_rootpos + quat_mul_vec(prev_rootrot, new Vector3(root_vel[0, 0, 0, 0],
                                                                                 root_vel[1, 0, 0, 0],
@@ -65,35 +66,9 @@ public static  class DataParser
         }
 
 
-        Debug.Log("positions");
-        string s = "";
-        for (int i = 0; i < positions.batch; i++)
-        {
-            s += positions[i, 0, 0, 0] + ", " + positions[i, 1, 0, 0] + ", " +
-                positions[i, 2, 0, 0] + "\n";
-        }
-        Debug.Log(s);
-
-        //Debug.Log("quat rotations");
-        //s = "";
-        //for (int i = 0; i < quat_rotations.batch; i++)
-        //{
-        //    s += quat_rotations[i, 0, 0, 0] + ", " + quat_rotations[i, 1, 0, 0] + ", " + 
-        //        quat_rotations[i, 2, 0, 0] + ", " + quat_rotations[i, 3, 0, 0] + "\n";
-        //}
-        //Debug.Log(s);
-
         //Convert quat to angle axis
         Tensor euler_rotations = quat_toEuler(quat_rotations);
 
-        Debug.Log("euler rotations - degrees");
-        s = "";
-        for (int i = 0; i < euler_rotations.batch; i++)
-        {
-            s += euler_rotations[i, 0, 0, 0] + ", " + euler_rotations[i, 1, 0, 0] + ", " +
-                euler_rotations[i, 2, 0, 0] + "\n";
-        }
-        Debug.Log(s);
 
         // Construct pose for next frame
         Pose pose = new Pose(positions, euler_rotations, vel, ang,
@@ -346,6 +321,27 @@ public static  class DataParser
             return Vector3.zero;
     }
     #endregion
+
+    public static Quaternion ExecuteBVHRotation(string order, float bvhX, float bvhY, float bvhZ, Transform joint)
+    {
+        //BVH's Z -> Unity's -Z
+        Quaternion rotZ = Quaternion.AngleAxis(-bvhZ, joint.forward);
+        //BVH's X -> Unity's -X
+        Quaternion rotX = Quaternion.AngleAxis(-bvhX, joint.right);
+
+        //BVH's Y -> Unity's -Y
+        Quaternion rotY = Quaternion.AngleAxis(-bvhY, joint.up);
+
+
+        if (order == "ZYX")
+        {
+            //return rotZ * rotY * rotX;
+            return Quaternion.Euler(-bvhY, -bvhZ, -bvhX);
+     
+        }
+        else
+            return Quaternion.identity;
+    }
     private static Vector3 _cross(Vector3 a, Vector3 b)
     {
         float x = a.y * b.z - a.z * b.y;

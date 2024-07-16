@@ -29,7 +29,6 @@ print(XZ.shape)
 
 mean_in, std_in, mean_out, std_out, layers = load_network('train_ris/decompressor/decompressor.bin')
 
-print(mean_out)
 # session = ort.InferenceSession('train_ris/decompressor/decompressor.onnx')
 # input_name = session.get_inputs()[0].name
 # output_name = session.get_outputs()[0].name

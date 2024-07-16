@@ -5,7 +5,7 @@ using UnityEngine;
 public class JointMotionData
 {
     public Vector3 localPosition;
-    public Quaternion localRotation;
+    public Vector3 localRotation;
     public Vector3 velocity;
     public Vector3 angularVelocity;
 }
