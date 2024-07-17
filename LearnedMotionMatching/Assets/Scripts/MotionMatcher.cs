@@ -31,6 +31,8 @@ public class MotionMatcher : MonoBehaviour
 
     #endregion
 
+    #region Animation
+    private float frame_time;
     private const float dt = 1 / 60f;
 
     private Pose currentPose;
@@ -38,6 +40,9 @@ public class MotionMatcher : MonoBehaviour
     private List<Transform> bones = new List<Transform>();
 
     private List<Vector3> tPose_offsets = new List<Vector3>();
+
+    private int frameNumber;
+    #endregion
 
     // Start is called before the first frame update
     void Start()
@@ -50,24 +55,11 @@ public class MotionMatcher : MonoBehaviour
 
         initialize_skeleton(this.transform);
         initialize_pose();
-        
-        using (Tensor input = GetFrameInputTensor(562))
-        {
-            if (input == null)
-                return;
-            currentXZ = input;
 
-            decompressor_inference.Execute(input);
+        frameNumber = 200;
+        frame_time = 0f;
 
-            using(Tensor decompressor_out = decompressor_inference.PeekOutput())
-            {
-
-                Tensor out_ = add_model_parameters(decompressor_out, decompressor_parameters);
-
-                currentPose = DataParser.ParseDecompressorOutput(out_, currentPose, bones.Count, this.transform);
-                display_frame_pose();
-            }
-        }
+        currentXZ = GetFrameInputTensor(frameNumber);
     }
 
     private void initialize_models() {
@@ -137,11 +129,44 @@ public class MotionMatcher : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // TODO: Play anim,
-        // TODO: build input tensor from currentPose - feed stepper, decompressor
-        // TODO: parse next currentPose from decompressor_out
-    }
+        frame_time += Time.deltaTime;
+        if (frame_time < dt)
+            return;
 
+        Believe();
+    }
+    private void Believe()
+    {
+        stepper_inference.Execute(currentXZ);
+        using (Tensor stepper_out = add_model_parameters(stepper_inference.PeekOutput(), stepper_parameters))
+        {
+            delta(stepper_out);
+            currentXZ = add(currentXZ, stepper_out);
+            decompressor_inference.Execute(currentXZ);
+            using (Tensor decompressor_out = add_model_parameters(decompressor_inference.PeekOutput(), decompressor_parameters))
+            {
+                currentPose = DataParser.ParseDecompressorOutput(decompressor_out, currentPose, bones.Count, this.transform);
+                display_frame_pose();
+            }
+        }
+    }
+    private void delta(Tensor stepper_out)
+    { 
+        for (int i = 0; i < stepper_out.length; i++)
+        {
+            stepper_out[i] *= dt;
+        }
+
+    }
+    private Tensor add(Tensor a, Tensor b)
+    {
+        Tensor ris = new Tensor(a.shape);
+        for(int i=0; i<a.length; i++)
+        {
+            ris[i] = a[i] + b[i];
+        }
+        return ris;
+    }
     private void display_frame_pose()
     {
         for (int i=1; i<bones.Count; i++)
@@ -152,15 +177,6 @@ public class MotionMatcher : MonoBehaviour
             joint.localRotation = Quaternion.Euler(0f, 0f, -jdata.localRotation.z) *
                 Quaternion.Euler(0f, -jdata.localRotation.y, 0f) * Quaternion.Euler(jdata.localRotation.x, 0f, 0f);
         }
-    }
-    private void OnDrawGizmos()
-    {
-        //for(int i=1; i<bones.Count; i++)
-        //{
-        //    Transform joint = bones[i];
-        //    JointMotionData jdata = currentPose.joints[i - 1];
-        //    Gizmos.DrawSphere(joint.parent.position+jdata.localPosition, 0.2f);
-        //}
     }
 
 }
