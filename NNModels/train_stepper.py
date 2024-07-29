@@ -94,7 +94,7 @@ if __name__ == '__main__':
                     Ztil_prev = Ztil[:, k-1]
 
                 delta = (stepper((torch.cat([Xtil_prev, Ztil_prev], dim=-1) -
-                                  stepper_mean_in) * stepper_std_in) *
+                                  stepper_mean_in) / stepper_std_in) *
                          stepper_std_out + stepper_mean_out)
                 Xtil[:, k] = Xtil_prev + dt * delta[:, :nfeatures]
                 Ztil[:, k] = Ztil_prev + dt * delta[:, nfeatures:]
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
         for _ in range(1, window):
             delta = (stepper((torch.cat([Xtil[-1], Ztil[-1]], dim=-1)
-                              - stepper_mean_in) / stepper_std_out) *
+                              - stepper_mean_in) / stepper_std_in) *
                      stepper_std_out + stepper_mean_out)
 
             Xtil.append(Xtil[-1] + dt * delta[:, :nfeatures])
@@ -206,7 +206,7 @@ if __name__ == '__main__':
             rolling_loss = rolling_loss * 0.99 + loss.item() * 0.01
 
         if i % 10 == 0:
-            sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, loss))
+            sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
             generate_predictions()

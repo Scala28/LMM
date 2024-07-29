@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class Model
 {
-    public float[] Mean_in {  get; private set; }
+    public float[] Mean_in { get; private set; }
     public float[] Mean_out { get; private set; }
     public float[] Std_in { get; private set; }
     public float[] Std_out { get; private set; }
@@ -22,25 +22,34 @@ public class Model
     public List<Layer> Layers { get; private set; }
 
     public void AddLayer(Layer l) { Layers.Add(l); }
-    public void AddLayer(int inputSize, int outputSize, float[,] weight, float[] biases)
+    public void AddLayer(int inputSize, int outputSize, float[][] weight, float[] biases)
     {
         Layer l = new Layer(inputSize, outputSize);
         l.Weights = weight;
         l.Biases = biases;
         Layers.Add(l);
     }
-
-    public void evaluate(float[] input, ref float[] output)
+    public void evaluate(float[] input, out float[] output)
     {
+        float[] _in;
+        float[] _out = new float[Layers[0].OutputSize];
+        _in = input;
         nnLayer_normalize(input);
-        for(int i=0; i < Layers.Count-1; i++)
+        for(int i=0; i<Layers.Count; i++)
         {
-            float[] _out = Layers[i].linear(input);
-            Layer.relu(_out);
-            input = _out; ;
+            if(i!=0)
+                _out = new float[Layers[i].OutputSize];
+
+            Layers[i].nnet_layer_linear(_in, _out);
+
+            if (i != Layers.Count - 1)
+            {
+                Layers[i].nnet_layer_relu(_out);
+                _in = _out;
+            }
         }
-        output = Layers[Layers.Count - 1].linear(input);
-        nnLayer_denormalize(output);
+        nnLayer_denormalize(_out);
+        output = _out;
     }
     private void nnLayer_denormalize(float[] _out)
     {
@@ -62,35 +71,38 @@ public class Layer
 {
     public int InputSize;
     public int OutputSize;
-    public float[,] Weights;
+    public float[][] Weights;
     public float[] Biases;
 
     public Layer(int inputSize, int outputSize)
     {
         InputSize = inputSize;
         OutputSize = outputSize;
-        Weights = new float[inputSize, outputSize];
+        Weights = new float[inputSize][];
+        for(int i=0; i<inputSize; i++)
+        {
+            Weights[i] = new float[outputSize];
+        }
         Biases = new float[outputSize];
     }
-    public float[] linear(float[] input)
+    public void nnet_layer_linear(float[] _in, float[] _out)
     {
-        float[] output = new float[OutputSize];
-        for(int j=0; j<output.Length; j++)
+        for(int j=0; j<_out.Length; j++)
         {
-            output[j] = Biases[j];
+            _out[j]  = Biases[j];
         }
-
-        for(int i=0; i<input.Length; i++)
+        for(int i=0; i<_in.Length; i++)
         {
-            if (input[i] != 0.0f)
-                for (int j = 0; j < output.Length; j++)
-                    output[j] += input[i] * Weights[i, j];
+            if (_in[i] != 0.0f)
+                for(int j=0; j<_out.Length; j++)
+                {
+                    _out[j] += _in[i] * Weights[i][j];
+                }
         }
-        return output;
     }
-    public static void relu(float[] output)
+    public void nnet_layer_relu(float[] _out)
     {
-        for(int i=0; i<output.Length; i++)
-            output[i] = Mathf.Max(output[i], 0.0f);
+        for(int i=0; i<_out.Length; i++)
+            _out[i] = _out[i] > 0.0f ? _out[i] : 0;
     }
 }

@@ -37,12 +37,10 @@ public static class Quat
 
 
             // Calculate c2
-            Vector3 c2Vec = _cross(x0, x1);
-            c2Vec = c2Vec / Mathf.Sqrt(c2Vec.x * c2Vec.x + c2Vec.y * c2Vec.y + c2Vec.z * c2Vec.z);
+            Vector3 c2Vec = vec_normalize(_cross(x0, x1));
 
             // Calculate c1
-            Vector3 c1Vec = _cross(c2Vec, x0);
-            c1Vec = c1Vec / Mathf.Sqrt(c1Vec.x * c1Vec.x + c1Vec.y * c1Vec.y + c1Vec.z * c1Vec.z);
+            Vector3 c1Vec = vec_normalize(_cross(c2Vec, x0));
 
             // c0 is x0
             Vector3 c0Vec = x0;
@@ -83,7 +81,7 @@ public static class Quat
             mat.m21 = xfm[i, 2, 1, 0];
             mat.m22 = xfm[i, 2, 2, 0];
 
-            Vector4 quat = quat_from_xform(mat);
+            Vector4 quat = quat_from_xform_b(mat);
 
             ris[i, 0, 0, 0] = quat.x;
             ris[i, 1, 0, 0] = quat.y;
@@ -95,6 +93,52 @@ public static class Quat
 
     //Matrix 3x3
     private static Vector4 quat_from_xform(Matrix4x4 xfm)
+    {
+        Vector4 q;
+        float t;
+
+        if (xfm.m22 < 0)
+        {
+            if (xfm.m00 > xfm.m11)
+            {
+                t = 1f + xfm.m00 - xfm.m11 - xfm.m22;
+                q = new Vector4(xfm.m12 - xfm.m21,
+                    t,
+                    xfm.m01 + xfm.m10,
+                    xfm.m20 + xfm.m02);
+            }
+            else
+            {
+                t = 1f - xfm.m00 + xfm.m11 - xfm.m22;
+                q = new Vector4(xfm.m20 - xfm.m02,
+                    xfm.m01 + xfm.m10,
+                    t,
+                    xfm.m12 + xfm.m21);
+            }
+        }
+        else
+        {
+            if (xfm.m00 < -xfm.m11)
+            {
+                t = 1 - xfm.m00 - xfm.m11 + xfm.m22;
+                q = new Vector4(xfm.m01 - xfm.m10,
+                    xfm.m20 + xfm.m02,
+                    xfm.m12 + xfm.m21,
+                    t);
+            }
+            else
+            {
+                t = 1 + xfm.m00 + xfm.m11 + xfm.m22;
+                q = new Vector4(t,
+                    xfm.m12 - xfm.m21,
+                    xfm.m20 - xfm.m02,
+                    xfm.m01 - xfm.m10);
+            }
+        }
+
+        return quat_normalize(q);
+    }
+    private static Vector4 quat_from_xform_b(Matrix4x4 xfm)
     {
         Vector4 q;
         float t;
@@ -149,7 +193,7 @@ public static class Quat
     public static Vector4 quat_inv(Vector4 q)
     {
         return new Vector4(-q.x, q.y, q.z, q.w);
-    } 
+    }
     public static Vector4 quat_abs(Vector4 q)
     {
         if (q.x < 0.0f)
@@ -159,20 +203,17 @@ public static class Quat
     public static Vector4 quat_exp(Vector3 x, float eps = 1e-8f)
     {
         float halfAngle = Mathf.Sqrt(x.x * x.x + x.y * x.y + x.z * x.z);
-        float c, s;
         if (halfAngle < eps)
         {
-            c = 1f;
-            s = 1f;
+            return quat_normalize(new Vector4(1.0f, x.x, x.y, x.z));
         }
         else
         {
-            c = Mathf.Cos(halfAngle);
-            s = Mathf.Sin(halfAngle) / halfAngle;
-        }
-        Vector3 q_vec = x * s;
+            float c = Mathf.Cos(halfAngle);
+            float s = Mathf.Sin(halfAngle) / halfAngle;
 
-        return new Vector4(c, q_vec.x, q_vec.y, q_vec.z);
+            return new Vector4(c, s * x.x, s * x.y, s * x.z);
+        }
     }
     public static Vector3 quat_log(Vector4 q, float eps = 1e-8f)
     {
@@ -201,6 +242,15 @@ public static class Quat
         return quat_mul_vec(quat_inv(q), vec);
     }
     public static Vector4 quat_mul(Vector4 a, Vector4 b)
+    {
+        return new Vector4(
+            b.x * a.x - b.y * a.y - b.z * a.z - b.w * a.w,
+            b.x * a.y + b.y * a.x - b.z * a.w + b.w * a.z,
+            b.x * a.z + b.y * a.w + b.z * a.x - b.w * a.y,
+            b.x * a.w - b.y * a.z + b.z * a.y + b.w * a.x
+            );
+    }
+    public static Vector4 quat_mul_b(Vector4 a, Vector4 b)
     {
         float w = a.x * b.x - a.y * a.y - a.z * b.z - a.w * b.w;
         float x = a.x * b.y + a.y * b.x + a.z * b.w - a.w * b.z;
@@ -247,7 +297,7 @@ public static class Quat
         }
         return ris;
     }
-    private static Vector3 convert_ToEuler(Vector4 q, string order = "xyz")
+    public static Vector3 convert_ToEuler(Vector4 q, string order = "xyz")
     {
         float q0 = q.x;
         float q1 = q.y;
@@ -268,6 +318,11 @@ public static class Quat
             return Vector3.zero;
     }
     #endregion
+    public static Vector3 vec_normalize(Vector3 vec, float eps = 1e-8f)
+    {
+        float norm = Mathf.Sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+        return vec / (norm + eps);
+    }
     private static Vector3 _cross(Vector3 a, Vector3 b)
     {
         float x = a.y * b.z - a.z * b.y;

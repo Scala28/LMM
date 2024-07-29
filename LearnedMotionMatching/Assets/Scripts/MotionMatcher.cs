@@ -12,10 +12,8 @@ using UnityEngine.Assertions;
 
 public class MotionMatcher : MonoBehaviour
 {
-    private Rigidbody root_rb;
-
     #region NN Inference
-
+    [Header("NN Inference")]
     [SerializeField]
     private NNModel stepper;
 
@@ -37,11 +35,39 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     #region Animation
+    [Header("Animation")]
     public float inertialize_blending_halflife = .1f;
+    public enum character
+    {
+        Bone_Entity = 0,
+        Bone_Hips = 1,
+        Bone_LeftUpLeg = 2,
+        Bone_LeftLeg = 3,
+        Bone_LeftFoot = 4,
+        Bone_LeftToe = 5,
+        Bone_RightUpLeg = 6,
+        Bone_RightLeg = 7,
+        Bone_RightFoot = 8,
+        Bone_RightToe = 9,
+        Bone_Spine = 10,
+        Bone_Spine1 = 11,
+        Bone_Spine2 = 12,
+        Bone_Neck = 13,
+        Bone_Head = 14,
+        Bone_LeftShoulder = 15,
+        Bone_LeftArm = 16,
+        Bone_LeftForeArm = 17,
+        Bone_LeftHand = 18,
+        Bone_RightShoulder = 19,
+        Bone_RightArm = 20,
+        Bone_RightForeArm = 21,
+        Bone_RightHand = 22
+    };
     private float halflife;
     private const float dt = 1 / 60f;
 
     private DataManager.database db;
+    private DataManager.character ch;
 
     private Pose pose;
     private Pose current_pose;
@@ -58,27 +84,29 @@ public class MotionMatcher : MonoBehaviour
     Vector3 transition_dst_position;
     Vector4 transition_dst_rotation;
 
-    private float frame_time;
     private int frame_index;
+    private float frame_time= 0.0f;
+    private int frame_count = 0;
 
+    private List<int> bone_indexes = new List<int>();
     private List<Transform> bones = new List<Transform>();
     #endregion
 
     // Start is called before the first frame update
     void Start()
     {
-        root_rb = GetComponent<Rigidbody>();
         halflife = inertialize_blending_halflife;
-        initialize_models();
 
-        initialize_skeleton(this.transform);
+        int root_index = 0;
+        initialize_skeleton(this.transform, ref root_index);
 
         db = DataManager.load_database("Assets/Resources/database.bin");
+        ch = DataManager.load_character("Assets/Resources/character.bin");
 
         Debug.Log(db.nbones());
-        Debug.Log(bones.Count);
-        
-        if (db.nbones() != bones.Count)
+        Debug.Log(bone_indexes.Count);
+
+        if (db.nbones() != bone_indexes.Count && db.nbones() != bones.Count && db.nbones() != ch.nbones())
         {
             Debug.LogError("Database and skeleton do not match!");
             return;
@@ -86,18 +114,23 @@ public class MotionMatcher : MonoBehaviour
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
-        frame_index = db.range_starts[0];
-        
+        frame_index = db.range_starts[2];
+        Debug.Log(frame_index);
+
+        initalize_pose();
+
+        inertialize_pose_reset();
+        inertialize_pose_update(pose.DeepClone(), 0.0f);
+
+        initialize_models();
+
         feature_curr = db.features[frame_index];
         feature_proj = db.features[frame_index];
 
         latent_curr = new float[32];
         latent_proj = new float[32];
 
-        initalize_pose();
-
-        inertialize_pose_reset();
-        inertialize_pose_update(pose.DeepClone(), 0.0f);
+        set_frame(frame_index);
     }
     private void initialize_models() {
 
@@ -109,12 +142,16 @@ public class MotionMatcher : MonoBehaviour
         stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/stepper.bin");
         decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
     }
-    private void initialize_skeleton(Transform bone)
+    private void initialize_skeleton(Transform bone, ref int n)
     {
-        bones.Add(bone.transform);
+        if (bone.CompareTag("joint"))
+        {
+            bones.Add(bone);
+            bone_indexes.Add(n);
+        }
+        n += 1;
         foreach (Transform child in bone)
-            if (child.CompareTag("joint"))
-                initialize_skeleton(child);
+            initialize_skeleton(child, ref n);
     }
     private void initalize_pose()
     {
@@ -136,10 +173,10 @@ public class MotionMatcher : MonoBehaviour
         current_pose = pose.DeepClone();
         trns_pose = pose.DeepClone();
 
-        bone_offset_positions = new Vector3[bones.Count];
-        bone_offset_rotations = new Vector4[bones.Count];
-        bone_offset_velocities = new Vector3[bones.Count];
-        bone_offset_angular_velocities = new Vector3[bones.Count];
+        bone_offset_positions = new Vector3[bone_indexes.Count];
+        bone_offset_rotations = new Vector4[bone_indexes.Count];
+        bone_offset_velocities = new Vector3[bone_indexes.Count];
+        bone_offset_angular_velocities = new Vector3[bone_indexes.Count];
 
         global_pose = new Pose(db.nbones());
     }
@@ -148,31 +185,21 @@ public class MotionMatcher : MonoBehaviour
         stepper_inference.Dispose();
         decompressor_inference.Dispose();
     }
-    private Tensor GetFrameInputTensor(int frame_index)
+    private void set_frame(int frame_index)
     {
         (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
         (int nframes2, int nlatent, float[] latent) = DataManager.Load_database_fromResources("latent");
 
         if (features == null || latent == null)
-            return null;
+            return;
 
         if (nframes1 != nframes2)
         {
             Debug.LogError("Mismatch in the number of frames between the two datasets.");
-            return null;
+            return;
         }
-
-        float[] x_frame1 = new float[nfeatures];
-        float[] z_frame1 = new float[nlatent];
-        Array.Copy(features, frame_index * nfeatures, x_frame1, 0, nfeatures);
-        Array.Copy(latent, frame_index * nlatent, z_frame1, 0, nlatent);
-
-        // Concatenate the first frame from both datasets
-        float[] xz_frame1 = new float[nfeatures + nlatent];
-        Array.Copy(x_frame1, 0, xz_frame1, 0, x_frame1.Length);
-        Array.Copy(z_frame1, 0, xz_frame1, x_frame1.Length, z_frame1.Length);
-
-        return new Tensor(new int[] { 1, 1, 1, nfeatures + nlatent }, xz_frame1);
+        Array.Copy(features, frame_index * nfeatures, feature_curr, 0, nfeatures);
+        Array.Copy(latent, frame_index * nlatent, latent_curr, 0, nlatent);
     }
 
     // Update is called once per frame
@@ -181,76 +208,83 @@ public class MotionMatcher : MonoBehaviour
         frame_time += Time.deltaTime;
         if (frame_time < dt)
             return;
-
         //Set new features_curr and latent_curr
         evaluate_stepper();
+        //Set new curr_pose
         evaluate_decompressor(ref current_pose);
 
-        inertialize_pose_update(current_pose, dt);
+        //Set new pose
+        //inertialize_pose_update(current_pose, dt);
 
+        // Full pass of forward kinematics to compute 
+        // all bone positions and rotations in the world
+        // space ready for rendering (set global_pose)
+        forward_kinamatic_full();
+
+        display_frame_pose();
         frame_time = 0f;
     }
     private void evaluate_stepper()
     {
-        //Tensor stepper_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
-        //for (int i = 0; i < feature_curr.Length; i++)
-        //    stepper_in[i] = feature_curr[i];
-        //for (int i = 0; i < latent_curr.Length; i++)
-        //    stepper_in[i + feature_curr.Length] = latent_curr[i];
+        Tensor stepper_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
+        for (int i = 0; i < feature_curr.Length; i++)
+            stepper_in[i] = feature_curr[i];
+        for (int i = 0; i < latent_curr.Length; i++)
+            stepper_in[i + feature_curr.Length] = latent_curr[i];
 
-        //nnLayer_normalize(stepper_in, stepper_nn);
-        //stepper_inference.Execute(stepper_in);
-        //Tensor stepper_out = stepper_inference.PeekOutput();
-        //nnLayer_denormalize(stepper_out, stepper_nn);
+        nnLayer_normalize(stepper_in, stepper_nn);
+        stepper_inference.Execute(stepper_in);
+        Tensor stepper_out = stepper_inference.PeekOutput();
+        nnLayer_denormalize(ref stepper_out, stepper_nn);
 
-        //for (int i = 0; i < feature_curr.Length; i++)
-        //    feature_curr[i] += dt * stepper_out[i];
-        //for (int i = 0; i < latent_curr.Length; i++)
-        //    latent_curr[i] += dt * stepper_out[feature_curr.Length + i];
+        for (int i = 0; i < feature_curr.Length; i++)
+            feature_curr[i] += dt * stepper_out[i];
+        for (int i = 0; i < latent_curr.Length; i++)
+            latent_curr[i] += dt * stepper_out[feature_curr.Length + i];
 
-        //stepper_in.Dispose();
-        //stepper_out.Dispose();
+        stepper_in.Dispose();
+        stepper_out.Dispose();
 
-        float[] stepper_in = new float[feature_curr.Length + latent_curr.Length];
-        Array.Copy(feature_curr, stepper_in, feature_curr.Length);
-        Array.Copy(latent_curr, 0, stepper_in, feature_curr.Length, latent_curr.Length);
-        float[] stepper_out = new float[feature_curr.Length + latent_curr.Length];
+        //float[] stepper_in = new float[feature_curr.Length + latent_curr.Length];
+        //Array.Copy(feature_curr, stepper_in, feature_curr.Length);
+        //Array.Copy(latent_curr, 0, stepper_in, feature_curr.Length, latent_curr.Length);
+        //float[] stepper_out = new float[feature_curr.Length + latent_curr.Length];
 
-        stepper_nn.evaluate(stepper_in, ref stepper_out);
+        //stepper_nn.evaluate(stepper_in, ref stepper_out);
 
-        Array.Copy(stepper_out, feature_curr, feature_curr.Length);
-        Array.Copy(stepper_out, feature_curr.Length, latent_curr, 0, latent_curr.Length);
+        //Array.Copy(stepper_out, feature_curr, feature_curr.Length);
+        //Array.Copy(stepper_out, feature_curr.Length, latent_curr, 0, latent_curr.Length);
     }
     private void evaluate_decompressor(ref Pose target_pose)
     {
-        //Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
-        //for (int i = 0; i < feature_curr.Length; i++)
-        //    decompressor_in[i] = feature_curr[i];
-        //for (int i = 0; i < latent_curr.Length; i++)
-        //    decompressor_in[i + feature_curr.Length] = latent_curr[i];
+        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
+        for (int i = 0; i < feature_curr.Length; i++)
+            decompressor_in[i] = feature_curr[i];
+        for (int i = 0; i < latent_curr.Length; i++)
+            decompressor_in[i + feature_curr.Length] = latent_curr[i];
 
         //nnLayer_normalize(decompressor_in, decompressor_nn);
-        //decompressor_inference.Execute(decompressor_in);
-        //Tensor decompressor_out = decompressor_inference.PeekOutput();
-        //nnLayer_denormalize(decompressor_out, decompressor_nn);
+        decompressor_inference.Execute(decompressor_in);
+        Tensor decompressor_out = decompressor_inference.PeekOutput();
+        nnLayer_denormalize(ref decompressor_out, decompressor_nn);
 
-        //target_pose = Parser.parse_decompressor_out(decompressor_out, pose, db.nbones());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, pose, db.nbones());
 
-        //decompressor_in.Dispose();
-        //decompressor_out.Dispose();
+        decompressor_in.Dispose();
+        decompressor_out.Dispose();
 
-        float[] decompressor_in = new float[feature_curr.Length + latent_curr.Length];
-        Array.Copy(feature_curr, decompressor_in, feature_curr.Length);
-        Array.Copy(latent_curr, 0, decompressor_in, feature_curr.Length, latent_curr.Length);
-        float[] decompressor_out = new float[338];
+        //float[] decompressor_in = new float[feature_curr.Length + latent_curr.Length];
+        //Array.Copy(feature_curr, decompressor_in, feature_curr.Length);
+        //Array.Copy(latent_curr, 0, decompressor_in, feature_curr.Length, latent_curr.Length);
+        //float[] decompressor_out = new float[338];
 
-        decompressor_nn.evaluate(decompressor_in, ref decompressor_out);
+        //decompressor_nn.evaluate(decompressor_in, ref decompressor_out);
 
-        Tensor _out = new Tensor(new int[] { 1, 1, 1, decompressor_out.Length }, decompressor_out);
+        //Tensor _out = new Tensor(new int[] { 1, 1, 1, decompressor_out.Length }, decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(_out, pose, db.nbones());
+        //target_pose = Parser.parse_decompressor_out(_out, pose, db.nbones());
     }
-    private void nnLayer_denormalize(Tensor _out, Model param)
+    private void nnLayer_denormalize(ref Tensor _out, Model param)
     {
         for (int i = 0; i < param.Mean_out.Length; i++)
         {
@@ -266,22 +300,24 @@ public class MotionMatcher : MonoBehaviour
         }
     }
 
-    //Quaternion euler
-    //private void display_frame_pose()
-    //{
-    //    for (int i=1; i<bones.Count; i++)
-    //    {
-    //        Transform joint = bones[i];
-    //        JointMotionData jdata = current_pose.joints[i-1];
+    private void display_frame_pose()
+    {
+        for (int i = 1; i < db.nbones(); i++)
+        {
+            Transform joint = bones[i];
+            JointMotionData jdata = current_pose.joints[i - 1];
 
-    //        joint.localRotation = Quaternion.Euler(0f, 0f, -jdata.localRotation.z) *
-    //            Quaternion.Euler(0f, -jdata.localRotation.y, 0f) * Quaternion.Euler(jdata.localRotation.x, 0f, 0f);
-    //    }
-    //}
+            Vector3 ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
+
+            joint.localRotation = Quaternion.Euler(0f, 0f, -ang.z) *
+                    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
+        }
+    }
 
     #region Inertializers
     private void inertialize_pose_reset() {
-        for(int i=0; i<bones.Count; i++)
+        for(int i=0; i<db.nbones(); i++)
         {
             bone_offset_positions[i] = Vector3.zero;
             bone_offset_rotations[i] = new Vector4(1.0f, .0f, .0f, .0f); 
@@ -321,7 +357,7 @@ public class MotionMatcher : MonoBehaviour
             pose.root_rotation,
             world_space_dst_angular_vel);
 
-        for(int i=1; i<bones.Count; i++)
+        for(int i=1; i<bone_indexes.Count; i++)
         {
             Spring.inertialize_transition(
                 ref bone_offset_positions[i],
@@ -370,7 +406,7 @@ public class MotionMatcher : MonoBehaviour
             halflife,
             _dt);
 
-        for(int i=1; i<bones.Count; i++)
+        for(int i=1; i<bone_indexes.Count; i++)
         {
             Spring.inertialize_update(
                 ref pose.joints[i - 1].position,
@@ -393,5 +429,30 @@ public class MotionMatcher : MonoBehaviour
         }
     }
     #endregion
+    private void forward_kinamatic_full()
+    {
+        for(int i=0; i<db.bone_parents.Length; i++)
+        {
+            if (db.bone_parents[i] >= i)
+            {
+                Debug.LogError("DB bone_parents does not match");
+                return;
+            }
+            if (db.bone_parents[i] == -1)
+            {
+                global_pose.root_position = pose.root_position;
+                global_pose.root_rotation = pose.root_rotation;
+            }
+            else
+            {
+                Vector3 parent_position = db.bone_parents[i] == 0 ? global_pose.root_position : 
+                    global_pose.joints[db.bone_parents[i] - 1].position;
+                Vector4 parent_rotation = db.bone_parents[i] == 0 ? global_pose.root_rotation :
+                    global_pose.joints[db.bone_parents[i] - 1].rotation;
 
+                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, pose.joints[i-1].position) + parent_position;
+                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, pose.joints[i - 1].rotation);
+            }
+        }
+    }
 }

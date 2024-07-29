@@ -56,19 +56,20 @@ public static class DataManager
 
             for(int i = 0; i < numLayers; i++)
             {
-                int weightRows = reader.ReadInt32();
                 int weightCols = reader.ReadInt32();
+                int weightRows = reader.ReadInt32();
                 float[] weightData = readFloat_toArray(reader, weightRows * weightCols);
-                float[,] weights = new float[weightRows, weightCols];
+                float[][] weights = new float[weightRows][];
 
                 int biasLen = reader.ReadInt32();
                 float[] biasData = readFloat_toArray(reader, biasLen);
 
                 for (int row = 0; row < weightRows; row++)
                 {
+                    weights[row] = new float[weightCols];
                     for (int col = 0; col < weightCols; col++)
                     {
-                        weights[row, col] = weightData[row * weightCols + col];
+                        weights[row][col] = weightData[col * weightRows + row];
                     }
                 }
                 model.AddLayer(weightRows, weightCols, weights, biasData);
@@ -87,6 +88,55 @@ public static class DataManager
     {
         byte[] buffer = reader.ReadBytes(count * sizeof(int));
         int[] array = new int[count];
+        Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
+        return array;
+    }
+    private static Vector3[] readVec3_toArray(BinaryReader reader, int count)
+    {
+        byte[] buffer = reader.ReadBytes(count * 3 * sizeof(float));
+        float[] temp = new float[count * 3];
+        Vector3[] array = new Vector3[count];
+        Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
+        for(int i = 0; i < count; i++)
+        {
+            array[i].x = temp[i * 3];
+            array[i].y = temp[i*3 + 1];
+            array[i].z = temp[i*3 + 2];
+        }
+        return array;
+    }
+    private static Vector2[] readVec2_toArray(BinaryReader reader, int count)
+    {
+        byte[] buffer = reader.ReadBytes(count * 2 * sizeof(float));
+        float[] temp = new float[count * 2];
+        Vector2[] array = new Vector2[count];
+        Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
+        for(int i = 0; i < count; i++)
+        {
+            array[i].x = temp[i * 2];
+            array[i].y = temp[i*2 + 1];
+        }
+        return array;
+    }
+    private static Vector4[] readVec4_toArray(BinaryReader reader, int count)
+    {
+        byte[] buffer = reader.ReadBytes(count * 4 * sizeof(float));
+        float[] temp = new float[count * 4];
+        Vector4[] array = new Vector4[count];
+        Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
+        for(int i = 0; i < count; i++)
+        {
+            array[i].x = temp[i * 4];
+            array[i].y = temp[i*4 + 1];
+            array[i].z = temp[i*4 + 2];
+            array[i].w = temp[i*4 + 3];
+        }
+        return array;
+    }
+    private static short[] readShort_toArray(BinaryReader reader, int count)
+    {
+        byte[] buffer = reader.ReadBytes(count *  sizeof(short));
+        short[] array = new short[count];
         Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
         return array;
     }
@@ -153,6 +203,17 @@ public static class DataManager
         }
         return array2d;
     }
+    private static short[][] readShort_toArray2d(BinaryReader reader, int rows, int cols)
+    {
+        byte[] buffer = reader.ReadBytes(rows * cols * sizeof (short));
+        short[][] array2d = new short[rows][];
+        for (int i = 0; i < rows; i++)
+        {
+            array2d[i] = new short[cols];
+            Buffer.BlockCopy(buffer, i * cols * sizeof(short), array2d[i], 0, cols * sizeof(short));
+        }
+        return array2d;
+    }
     public static database load_database(string filename)
     {
         database db = new database();
@@ -211,6 +272,79 @@ public static class DataManager
 
         return (features, features_offset, features_scale);
     }
+    public static character load_character(string filename)
+    {
+        character c = new character();
+        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        using(BinaryReader reader = new BinaryReader(fs))
+        {
+            int count = reader.ReadInt32();
+            c.positions = readVec3_toArray(reader, count);
+
+            count = reader.ReadInt32();
+            c.normals = readVec3_toArray(reader, count);
+
+            count = reader.ReadInt32();
+            c.texcoords = readVec2_toArray(reader, count);
+
+            count = reader.ReadInt32();
+            c.triangles = readShort_toArray(reader, count);
+
+            int rows = reader.ReadInt32();
+            int cols = reader.ReadInt32();
+            c.bone_weights = readFloat_toArray2d(reader,rows,cols);
+
+            rows = reader.ReadInt32();
+            cols = reader.ReadInt32();
+            c.bone_indices = readShort_toArray2d(reader, rows, cols);
+
+            count = reader.ReadInt32();
+            c.bone_rest_positions = readVec3_toArray(reader, count);
+
+            count = reader.ReadInt32();
+            c.bone_rest_rotations = readVec4_toArray(reader, count);
+        }
+        return c;
+    }
+    public static mesh gen_mesh_from_character(character c)
+    {
+        mesh mesh = new mesh();
+
+        mesh.vertexCount = c.positions.Length;
+        mesh.triangleCount = c.triangles.Length / 3;
+
+        mesh.vertices = new float[c.positions.Length * 3];
+        mesh.texcoords = new float[c.texcoords.Length * 2];
+        mesh.normals = new float[c.normals.Length * 3];
+        mesh.indices = new short[c.triangles.Length];
+
+        for(int i=0; i<mesh.vertexCount; i++)
+        {
+            Vector3 pos = c.positions[i];
+            mesh.vertices[i*3] = pos.x;
+            mesh.vertices[i*3+1] = pos.y;
+            mesh.vertices[i*3+2] = pos.z;
+        }
+        for(int i=0; i<c.texcoords.Length; i++)
+        {
+            Vector2 coord = c.texcoords[i];
+            mesh.texcoords[i*2] = coord.x;
+            mesh.texcoords[i*2+1] = coord.y;
+        }
+        for(int i=0; i<c.normals.Length; i++)
+        {
+            Vector3 normal = c.normals[i];
+            mesh.normals[i*3] = normal.x;
+            mesh.normals[i*3+1] = normal.y;
+            mesh.normals[i*3+2] = normal.z;
+        }
+        for(int i=0; i<c.triangles.Length; i++)
+        {
+            mesh.indices[i] = c.triangles[i];
+        }
+
+        return mesh;
+    }
     public struct database
     {
         public Vector3[][] bone_positions;
@@ -237,6 +371,83 @@ public static class DataManager
         public int nframes() { return bone_positions.Length; }
         public int nbones() { return bone_positions[0].Length; }
         public int nfeatures() { return features[0].Length; }
+    }
+    public struct character
+    {
+        public Vector3[] positions;
+        public Vector3[] normals;
+        public Vector2[] texcoords;
+        public short[] triangles;
+
+        public float[][] bone_weights;
+        public short[][] bone_indices;
+
+        public Vector3[] bone_rest_positions;
+        public Vector4[] bone_rest_rotations;
+
+        public int nbones() { return this.bone_rest_positions.Length; }
+
+        public static void liner_blend_skinning_positions(character c, Pose pose, out Vector3[] anim_positions)
+        {
+            anim_positions = new Vector3[c.nbones()];
+
+            for(int i=0; i<c.nbones(); i++)
+            {
+                for(int j=0; j < c.bone_indices[0].Length; j++)
+                {
+                    if (c.bone_weights[i][j] > 0.0f)
+                    {
+                        int b = c.bone_indices[i][j];
+
+                        Vector3 position = c.positions[i];
+                        position = Quat.quat_mul_vec(Quat.quat_inv(c.bone_rest_rotations[b]),
+                            position - c.bone_rest_positions[b]);
+                        if (b == 0)
+                            position = Quat.quat_mul_vec(pose.root_rotation, position) + pose.root_position;
+                        else
+                            position = Quat.quat_mul_vec(pose.joints[b-1].rotation, position) + pose.joints[b-1].position;
+
+                        anim_positions[i] = anim_positions[i] + c.bone_weights[i][j] * position;
+                    }
+                }
+            }
+        }
+        public static void liner_blend_skinning_normals(character c, Pose pose, out Vector3[] anim_normals)
+        {
+            anim_normals = new Vector3[c.nbones()];
+
+            for(int i=0; i<c.nbones(); i++)
+            {
+                for(int j=0; j < c.bone_indices[0].Length; j++)
+                {
+                    if (c.bone_weights[i][j] > 0.0f)
+                    {
+                        int b = c.bone_indices[i][j];
+
+                        Vector3 normal = c.normals[i];
+                        normal = Quat.quat_mul_vec(Quat.quat_inv(c.bone_rest_rotations[b]), normal);
+                        if (b == 0)
+                            normal = Quat.quat_mul_vec(pose.root_rotation, normal);
+                        else
+                            normal = Quat.quat_mul_vec(pose.joints[b - 1].rotation, normal);
+
+                        anim_normals[i] = anim_normals[i] + c.bone_weights[i][j] * normal;
+                    }
+                }
+            }
+            for(int i=0; i<anim_normals.Length; i++)
+                anim_normals[i] = Quat.vec_normalize(anim_normals[i]);
+        }
+    }
+    public struct mesh
+    {
+        public int vertexCount;
+        public int triangleCount;
+
+        public float[] vertices;
+        public float[] texcoords;
+        public float[] normals;
+        public short[] indices;
     }
     private static int index(int bone, int vector, int component, int subcomponent, TensorShape shape)
     {
