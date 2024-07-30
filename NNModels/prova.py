@@ -118,7 +118,7 @@ with torch.no_grad():
         Ztil[:, k] = Ztil_prev + dt * delta[:, nfeatures:]
 
     input = torch.cat([Xtil, Ztil], dim=-1)[0]
-
+    print(input.shape)
     Ytil = decompressor(input) * std_out + mean_out
     print(Ytil.shape)
     Ytil_pos = Ytil[:, 0 * (nbones - 1):3 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])

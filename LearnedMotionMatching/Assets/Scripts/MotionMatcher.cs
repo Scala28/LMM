@@ -9,6 +9,7 @@ using UnityEditor.Experimental.GraphView;
 using System.ComponentModel;
 using Unity.VisualScripting;
 using UnityEngine.Assertions;
+using Google.Protobuf.WellKnownTypes;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -85,8 +86,9 @@ public class MotionMatcher : MonoBehaviour
     Vector4 transition_dst_rotation;
 
     private int frame_index;
-    private float frame_time= 0.0f;
+    private int window = 20;
     private int frame_count = 0;
+    private float frame_time= 0.0f;
 
     private List<int> bone_indexes = new List<int>();
     private List<Transform> bones = new List<Transform>();
@@ -117,10 +119,10 @@ public class MotionMatcher : MonoBehaviour
         frame_index = db.range_starts[2];
         Debug.Log(frame_index);
 
-        initalize_pose();
+        initialize_pose();
 
-        inertialize_pose_reset();
-        inertialize_pose_update(pose.DeepClone(), 0.0f);
+        //inertialize_pose_reset();
+        //inertialize_pose_update(pose.DeepClone(), 0.0f);
 
         initialize_models();
 
@@ -129,8 +131,6 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[32];
         latent_proj = new float[32];
-
-        set_frame(frame_index);
     }
     private void initialize_models() {
 
@@ -153,7 +153,7 @@ public class MotionMatcher : MonoBehaviour
         foreach (Transform child in bone)
             initialize_skeleton(child, ref n);
     }
-    private void initalize_pose()
+    private void initialize_pose()
     {
         pose = new Pose(db.nbones());
 
@@ -206,23 +206,32 @@ public class MotionMatcher : MonoBehaviour
     void Update()
     {
         frame_time += Time.deltaTime;
-        if (frame_time < dt)
-            return;
-        //Set new features_curr and latent_curr
-        evaluate_stepper();
-        //Set new curr_pose
-        evaluate_decompressor(ref current_pose);
+        if(frame_time >= dt)
+        {
+            if (frame_count % window == 0)
+                set_frame(frame_index + frame_count);
 
-        //Set new pose
-        //inertialize_pose_update(current_pose, dt);
+            //Set new features_curr and latent_curr
+            evaluate_stepper();
 
-        // Full pass of forward kinematics to compute 
-        // all bone positions and rotations in the world
-        // space ready for rendering (set global_pose)
-        forward_kinamatic_full();
+            //Set new curr_pose
+            evaluate_decompressor(ref current_pose);
+            Debug.Log("FRAME " + frame_count);
+            Debug.Log(current_pose.root_position);
+            Debug.Log(Quat.convert_ToEuler(current_pose.root_rotation) * Mathf.Rad2Deg);
+            //Set new pose
+            //inertialize_pose_update(current_pose, dt);
 
-        display_frame_pose();
-        frame_time = 0f;
+            // Full pass of forward kinematics to compute 
+            // all bone positions and rotations in the world
+            // space ready for rendering (set global_pose)
+            forward_kinamatic_full();
+
+            display_frame_pose();
+            pose = current_pose;
+            frame_time = 0f;
+            frame_count++;
+        }
     }
     private void evaluate_stepper()
     {
@@ -302,12 +311,18 @@ public class MotionMatcher : MonoBehaviour
 
     private void display_frame_pose()
     {
+        transform.position = new Vector3(current_pose.root_position.x, current_pose.root_position.y, -current_pose.root_position.z);
+        Quaternion q = Quaternion.Euler(0f, 180f, 0f);
+        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(current_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
+        Vector3 root_angle = new Vector3(ang.x, ang.y, ang.z) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0f, 0f, -root_angle.z) *
+                    Quaternion.Euler(0f, -root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
             JointMotionData jdata = current_pose.joints[i - 1];
 
-            Vector3 ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
+            ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
 
             joint.localRotation = Quaternion.Euler(0f, 0f, -ang.z) *
                     Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);

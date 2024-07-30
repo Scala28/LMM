@@ -243,19 +243,10 @@ public static class Quat
     }
     public static Vector4 quat_mul(Vector4 a, Vector4 b)
     {
-        return new Vector4(
-            b.x * a.x - b.y * a.y - b.z * a.z - b.w * a.w,
-            b.x * a.y + b.y * a.x - b.z * a.w + b.w * a.z,
-            b.x * a.z + b.y * a.w + b.z * a.x - b.w * a.y,
-            b.x * a.w - b.y * a.z + b.z * a.y + b.w * a.x
-            );
-    }
-    public static Vector4 quat_mul_b(Vector4 a, Vector4 b)
-    {
-        float w = a.x * b.x - a.y * a.y - a.z * b.z - a.w * b.w;
+        float w = a.x * b.x - a.y * b.y - a.z * b.z - a.w * b.w;
         float x = a.x * b.y + a.y * b.x + a.z * b.w - a.w * b.z;
         float y = a.x * b.z - a.y * b.w + a.z * b.x + a.w * b.y;
-        float z = a.z * b.w + a.y * b.z - a.z * b.y + a.w * b.x;
+        float z = a.x * b.w + a.y * b.z - a.z * b.y + a.w * b.x;
 
         return new Vector4(w, x, y, z);
     }

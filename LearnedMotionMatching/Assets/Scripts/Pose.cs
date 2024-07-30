@@ -14,28 +14,24 @@ public class Pose
     public Vector3 root_velocity;
     public Vector3 root_angular_velocity;
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_vel, Vector3 root_ang)
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang)
     {
-        root_position = new Vector3(pos[0, 0, 0, 0], pos[0, 1, 0, 0], pos[0, 2, 0, 0]);
-
-        root_rotation = new Vector4(rot[0, 0, 0, 0],
-                                   rot[0, 1, 0, 0],
-                                   rot[0, 2, 0, 0],
-                                   rot[0, 3, 0, 0]);
+        root_position = root_pos;
+        root_rotation = root_rot;
         root_velocity = root_vel;
         root_angular_velocity = root_ang;
 
-        joints = new JointMotionData[pos.batch - 1];
+        joints = new JointMotionData[pos.batch];
 
-        for (int i=1; i < pos.batch; i++)
+        for (int i=0; i < pos.batch; i++)
         {
             JointMotionData j = new JointMotionData();
             j.position = new Vector3(pos[i, 0, 0, 0], pos[i, 1, 0, 0], pos[i, 2, 0, 0]);
             j.rotation = new Vector4(rot[i, 0, 0, 0], rot[i, 1, 0, 0], rot[i, 2, 0, 0], rot[i, 3, 0, 0]);
-            j.velocity = new Vector3(vel[i-1, 0, 0, 0], vel[i-1, 1, 0, 0], vel[i-1, 2, 0, 0]);
-            j.angular_velocity = new Vector3(ang[i-1, 0, 0, 0], ang[i-1, 1, 0, 0], ang[i-1, 2, 0, 0]);
+            j.velocity = new Vector3(vel[i, 0, 0, 0], vel[i, 1, 0, 0], vel[i, 2, 0, 0]);
+            j.angular_velocity = new Vector3(ang[i, 0, 0, 0], ang[i, 1, 0, 0], ang[i, 2, 0, 0]);
 
-            joints[i - 1] = j;
+            joints[i] = j;
         }
     }
     public Pose(int nbones)
