@@ -99,14 +99,29 @@ class Stepper(torch.nn.Module):
 # neural network model
 class Projector(torch.nn.Module):
     # nn layers shape
-    def __init__(self, input_size, output_size, hidden_size=512):
+    def __init__(self, input_size=None, output_size=None, layers=None, hidden_size=512):
         super(Projector, self).__init__()
-        self.layer1 = torch.nn.Linear(input_size, hidden_size)
-        self.layer2 = torch.nn.Linear(hidden_size, hidden_size)
-        self.layer3 = torch.nn.Linear(hidden_size, hidden_size)
-        self.layer4 = torch.nn.Linear(hidden_size, hidden_size)
-        self.predict = torch.nn.Linear(hidden_size, output_size)
+        if layers is None:
+            self.layer1 = torch.nn.Linear(input_size, hidden_size)
+            self.layer2 = torch.nn.Linear(hidden_size, hidden_size)
+            self.layer3 = torch.nn.Linear(hidden_size, hidden_size)
+            self.layer4 = torch.nn.Linear(hidden_size, hidden_size)
+            self.predict = torch.nn.Linear(hidden_size, output_size)
+        else:
+            self.layer1 = layers[0]
+            self.layer2 = layers[1]
+            self.layer3 = layers[2]
+            self.layer4 = layers[3]
+            self.predict = layers[4]
 
+    @classmethod
+    def load(cls, mean_in, std_in, mean_out, std_out, layers):
+        instance = cls(None, None, layers)
+        instance.mean_in = mean_in
+        instance.mean_out = mean_out
+        instance.std_in = std_in
+        instance.std_out = std_out
+        return instance
     # feed forward
     def forward(self, x):
         x = F.relu(self.layer1(x))

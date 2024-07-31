@@ -21,11 +21,16 @@ public class MotionMatcher : MonoBehaviour
     [SerializeField]
     private NNModel decompressor;
 
+    [SerializeField]
+    private NNModel projector;
+
     private IWorker stepper_inference;
     private IWorker decompressor_inference;
+    private IWorker projector_inference;
 
     private Model decompressor_nn;
     private Model stepper_nn;
+    private Model projector_nn;
     #endregion
 
     #region LMM
@@ -141,9 +146,12 @@ public class MotionMatcher : MonoBehaviour
             ModelLoader.Load(stepper));
         decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(decompressor));
+        projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+            ModelLoader.Load(projector));
 
         stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/stepper.bin");
         decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
+        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/projector.bin");
     }
     private void initialize_skeleton(Transform bone)
     {
@@ -197,6 +205,15 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(features, frame_index * nfeatures, feature_curr, 0, nfeatures);
         Array.Copy(latent, frame_index * nlatent, latent_curr, 0, nlatent);
     }
+    private float[] gen_query(int offset=5)
+    {
+        float[] Xhat = new float[feature_curr.Length];
+        (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
+        if (features == null)
+            return null;
+        Array.Copy(features, (offset + frame_count + frame_index) * nfeatures, Xhat, 0, nfeatures);
+        return Xhat;
+    }
 
     // Update is called once per frame
     void Update()
@@ -206,7 +223,12 @@ public class MotionMatcher : MonoBehaviour
         {
             if (frame_count % window == 0)
             {
-                set_frame(frame_index + frame_count);
+                Debug.Log("Projector");
+                //set_frame(frame_index + frame_count);
+                float[] query = gen_query();
+                evaluate_projector(query);
+                feature_curr = feature_proj;
+                latent_curr = latent_proj;
             }
 
             //Set new features_curr and latent_curr
@@ -241,7 +263,7 @@ public class MotionMatcher : MonoBehaviour
         nnLayer_normalize(stepper_in, stepper_nn);
         stepper_inference.Execute(stepper_in);
         Tensor stepper_out = stepper_inference.PeekOutput();
-        nnLayer_denormalize(ref stepper_out, stepper_nn);
+        nnLayer_denormalize(stepper_out, stepper_nn);
 
         for (int i = 0; i < feature_curr.Length; i++)
             feature_curr[i] += dt * stepper_out[i];
@@ -272,7 +294,7 @@ public class MotionMatcher : MonoBehaviour
         //nnLayer_normalize(decompressor_in, decompressor_nn);
         decompressor_inference.Execute(decompressor_in);
         Tensor decompressor_out = decompressor_inference.PeekOutput();
-        nnLayer_denormalize(ref decompressor_out, decompressor_nn);
+        nnLayer_denormalize(decompressor_out, decompressor_nn);
 
         target_pose = Parser.parse_decompressor_out(decompressor_out, pose, db.nbones());
 
@@ -290,7 +312,26 @@ public class MotionMatcher : MonoBehaviour
 
         //target_pose = Parser.parse_decompressor_out(_out, pose, db.nbones());
     }
-    private void nnLayer_denormalize(ref Tensor _out, Model param)
+    private void evaluate_projector(float[] query)
+    {
+        Tensor projector_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length));
+        for (int i = 0; i < feature_curr.Length; i++)
+            projector_in[i] = query[i];
+
+        nnLayer_normalize(projector_in, projector_nn);
+        projector_inference.Execute(projector_in);
+        Tensor projector_out = projector_inference.PeekOutput();
+        nnLayer_denormalize(projector_out, projector_nn);
+
+        for (int i = 0; i < feature_curr.Length; i++)
+            feature_proj[i] = projector_out[i];
+        for (int i = 0; i < latent_curr.Length; i++)
+            latent_proj[i] = projector_out[feature_curr.Length + i];
+
+        projector_in.Dispose();
+        projector_out.Dispose();
+    }
+    private void nnLayer_denormalize(Tensor _out, Model param)
     {
         for (int i = 0; i < param.Mean_out.Length; i++)
         {
@@ -481,5 +522,15 @@ public class MotionMatcher : MonoBehaviour
         mesh.RecalculateTangents();
         mesh.UploadMeshData(false);
 
+    }
+
+    private void OnDestroy()
+    {
+        if(stepper_inference != null)
+            stepper_inference.Dispose();
+        if(decompressor_inference != null)
+            decompressor_inference.Dispose();
+        if(projector_inference != null)
+            projector_inference.Dispose();
     }
 }

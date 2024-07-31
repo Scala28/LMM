@@ -33,6 +33,10 @@ public class Pose
 
             joints[i] = j;
         }
+        pos.Dispose();
+        rot.Dispose();
+        vel.Dispose();
+        ang.Dispose();
     }
     public Pose(int nbones)
     {

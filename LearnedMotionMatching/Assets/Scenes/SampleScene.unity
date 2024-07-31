@@ -231,6 +231,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stepper: {fileID: 5022602860645237092, guid: b668ac9814796254dbff6049815dd25f, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: 4501058462cc416468d167d2f2cefddb, type: 3}
+  projector: {fileID: 0}
   inertialize_blending_halflife: 0.1
 --- !u!1 &963194225
 GameObject:
@@ -380,6 +381,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stepper: {fileID: 5022602860645237092, guid: b668ac9814796254dbff6049815dd25f, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: 4501058462cc416468d167d2f2cefddb, type: 3}
+  projector: {fileID: 5022602860645237092, guid: 14cb0b4e110bb9b4aa95f328346c2096, type: 3}
   inertialize_blending_halflife: 0.1
 --- !u!23 &1013524421
 MeshRenderer:

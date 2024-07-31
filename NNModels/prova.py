@@ -7,7 +7,6 @@ from train_common import load_database, load_features, load_latent
 import my_modules.quat_functions as quat
 import bvh
 
-
 database = load_database('./data/database.bin')
 
 parents = database['bone_parents']
@@ -39,15 +38,17 @@ nextra = contacts.shape[1]
 nfeatures = X.shape[1]
 nlatent = 32
 
-
 dt = 1.0 / 60.0
 window = 20
 
 mean_in, std_in, mean_out, std_out, layers = load_network('train_ris/decompressor/decompressor.bin')
 decompressor = NNModels.Decompressor.load(mean_in, std_in, mean_out, std_out, layers)
 
-mean_in2, std_in2, mean_out2, std_out2, layers2 = load_network('train_ris/stepper/stepper_orange.bin')
+mean_in2, std_in2, mean_out2, std_out2, layers2 = load_network('train_ris/stepper/stepper.bin')
 stepper = NNModels.Stepper.load(mean_in2, std_in2, mean_out2, std_out2, layers2)
+
+mean_in3, std_in3, mean_out3, std_out3, layers3 = load_network('train_ris/projector/projector.bin')
+projector = NNModels.Projector.load(mean_in3, std_in3, mean_out3, std_out3, layers3)
 
 with torch.no_grad():
     '''
@@ -103,10 +104,14 @@ with torch.no_grad():
     Xtil = X.clone()
     Ztil = Z.clone()
 
-    for k in range(1, stop-start):
+    for k in range(1, stop - start):
         if (k - 1) % window == 0:  # Simulating the Projector's goal
-            Xtil_prev = X[:, k - 1]
-            Ztil_prev = Z[:, k - 1]
+            # Xtil_prev = X[:, k - 1]
+            # Ztil_prev = Z[:, k - 1]
+            proj_in = X[:, k-1+5]
+            proj_out = (projector((proj_in - mean_in3) / std_in3) * std_out3 + mean_out3)
+            Xtil_prev = proj_out[..., :X.shape[2]]
+            Ztil_prev = proj_out[..., X.shape[2]:]
         else:
             Xtil_prev = Xtil[:, k - 1]
             Ztil_prev = Ztil[:, k - 1]
@@ -144,7 +149,7 @@ with torch.no_grad():
     Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
 
     try:
-        bvh.save('stepper.bvh', {
+        bvh.save('projector.bvh', {
             'rotations': np.degrees(quat.to_euler(Ytil_rot)),
             'positions': 100.0 * Ytil_pos,
             'offsets': 100.0 * Ytil_pos[0],
