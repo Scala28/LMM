@@ -90,8 +90,9 @@ public class MotionMatcher : MonoBehaviour
     private int frame_count = 0;
     private float frame_time= 0.0f;
 
-    private List<int> bone_indexes = new List<int>();
     private List<Transform> bones = new List<Transform>();
+
+    private Mesh mesh;
     #endregion
 
     // Start is called before the first frame update
@@ -99,16 +100,17 @@ public class MotionMatcher : MonoBehaviour
     {
         halflife = inertialize_blending_halflife;
 
-        int root_index = 0;
-        initialize_skeleton(this.transform, ref root_index);
+        initialize_skeleton(this.transform);
 
         db = DataManager.load_database("Assets/Resources/database.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
+        mesh = DataManager.gen_mesh_from_character(ch);
+        transform.GetComponent<MeshFilter>().mesh = mesh;
 
         Debug.Log(db.nbones());
-        Debug.Log(bone_indexes.Count);
+        Debug.Log(ch.nbones());
 
-        if (db.nbones() != bone_indexes.Count && db.nbones() != bones.Count && db.nbones() != ch.nbones())
+        if (db.nbones() != ch.nbones())
         {
             Debug.LogError("Database and skeleton do not match!");
             return;
@@ -131,6 +133,7 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[32];
         latent_proj = new float[32];
+
     }
     private void initialize_models() {
 
@@ -142,16 +145,14 @@ public class MotionMatcher : MonoBehaviour
         stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/stepper.bin");
         decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
     }
-    private void initialize_skeleton(Transform bone, ref int n)
+    private void initialize_skeleton(Transform bone)
     {
         if (bone.CompareTag("joint"))
         {
             bones.Add(bone);
-            bone_indexes.Add(n);
         }
-        n += 1;
         foreach (Transform child in bone)
-            initialize_skeleton(child, ref n);
+            initialize_skeleton(child);
     }
     private void initialize_pose()
     {
@@ -173,17 +174,12 @@ public class MotionMatcher : MonoBehaviour
         current_pose = pose.DeepClone();
         trns_pose = pose.DeepClone();
 
-        bone_offset_positions = new Vector3[bone_indexes.Count];
-        bone_offset_rotations = new Vector4[bone_indexes.Count];
-        bone_offset_velocities = new Vector3[bone_indexes.Count];
-        bone_offset_angular_velocities = new Vector3[bone_indexes.Count];
+        bone_offset_positions = new Vector3[db.nbones()];
+        bone_offset_rotations = new Vector4[db.nbones()];
+        bone_offset_velocities = new Vector3[db.nbones()];
+        bone_offset_angular_velocities = new Vector3[db.nbones()];
 
         global_pose = new Pose(db.nbones());
-    }
-    private void OnDestroy()
-    {
-        stepper_inference.Dispose();
-        decompressor_inference.Dispose();
     }
     private void set_frame(int frame_index)
     {
@@ -209,16 +205,16 @@ public class MotionMatcher : MonoBehaviour
         if(frame_time >= dt)
         {
             if (frame_count % window == 0)
+            {
                 set_frame(frame_index + frame_count);
+            }
 
             //Set new features_curr and latent_curr
             evaluate_stepper();
 
             //Set new curr_pose
             evaluate_decompressor(ref current_pose);
-            Debug.Log("FRAME " + frame_count);
-            Debug.Log(current_pose.root_position);
-            Debug.Log(Quat.convert_ToEuler(current_pose.root_rotation) * Mathf.Rad2Deg);
+
             //Set new pose
             //inertialize_pose_update(current_pose, dt);
 
@@ -227,7 +223,8 @@ public class MotionMatcher : MonoBehaviour
             // space ready for rendering (set global_pose)
             forward_kinamatic_full();
 
-            display_frame_pose();
+            //display_frame_pose();
+            deform_character_mesh();
             pose = current_pose;
             frame_time = 0f;
             frame_count++;
@@ -372,7 +369,7 @@ public class MotionMatcher : MonoBehaviour
             pose.root_rotation,
             world_space_dst_angular_vel);
 
-        for(int i=1; i<bone_indexes.Count; i++)
+        for(int i=1; i<db.nbones(); i++)
         {
             Spring.inertialize_transition(
                 ref bone_offset_positions[i],
@@ -421,7 +418,7 @@ public class MotionMatcher : MonoBehaviour
             halflife,
             _dt);
 
-        for(int i=1; i<bone_indexes.Count; i++)
+        for(int i=1; i<db.nbones(); i++)
         {
             Spring.inertialize_update(
                 ref pose.joints[i - 1].position,
@@ -455,8 +452,8 @@ public class MotionMatcher : MonoBehaviour
             }
             if (db.bone_parents[i] == -1)
             {
-                global_pose.root_position = pose.root_position;
-                global_pose.root_rotation = pose.root_rotation;
+                global_pose.root_position = current_pose.root_position;
+                global_pose.root_rotation = current_pose.root_rotation;
             }
             else
             {
@@ -465,9 +462,24 @@ public class MotionMatcher : MonoBehaviour
                 Vector4 parent_rotation = db.bone_parents[i] == 0 ? global_pose.root_rotation :
                     global_pose.joints[db.bone_parents[i] - 1].rotation;
 
-                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, pose.joints[i-1].position) + parent_position;
-                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, pose.joints[i - 1].rotation);
+                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, current_pose.joints[i-1].position) + parent_position;
+                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, current_pose.joints[i - 1].rotation);
             }
         }
+    }
+    private void deform_character_mesh()
+    {
+        Vector3[] mesh_vertices = new Vector3[mesh.vertices.Length];
+        Vector3[] mesh_normals = new Vector3[mesh.normals.Length];
+        DataManager.character.liner_blend_skinning_positions(ch, global_pose, ref mesh_vertices);
+        DataManager.character.liner_blend_skinning_normals(ch, global_pose, ref mesh_normals);
+
+        mesh.vertices = mesh_vertices;
+        mesh.normals = mesh_normals;
+
+        mesh.RecalculateBounds();
+        mesh.RecalculateTangents();
+        mesh.UploadMeshData(false);
+
     }
 }

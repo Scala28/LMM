@@ -6,6 +6,7 @@ using UnityEditor;
 using System;
 using UnityEngine.Scripting;
 using Unity.Barracuda;
+using System.Linq;
 
 
 public static class DataManager
@@ -306,42 +307,27 @@ public static class DataManager
         }
         return c;
     }
-    public static mesh gen_mesh_from_character(character c)
+    public static Mesh gen_mesh_from_character(character c)
     {
-        mesh mesh = new mesh();
+        Mesh mesh = new Mesh();
 
-        mesh.vertexCount = c.positions.Length;
-        mesh.triangleCount = c.triangles.Length / 3;
+        mesh.vertices = c.positions;
+        mesh.uv = c.texcoords;
+        mesh.normals = c.normals;
 
-        mesh.vertices = new float[c.positions.Length * 3];
-        mesh.texcoords = new float[c.texcoords.Length * 2];
-        mesh.normals = new float[c.normals.Length * 3];
-        mesh.indices = new short[c.triangles.Length];
+        int[] triangles = new int[c.triangles.Length];
+        for(int i=0; i<triangles.Length; i++)
+        {
+            triangles[i] = c.triangles[i];
+        }
+        mesh.triangles = triangles;
 
-        for(int i=0; i<mesh.vertexCount; i++)
-        {
-            Vector3 pos = c.positions[i];
-            mesh.vertices[i*3] = pos.x;
-            mesh.vertices[i*3+1] = pos.y;
-            mesh.vertices[i*3+2] = pos.z;
-        }
-        for(int i=0; i<c.texcoords.Length; i++)
-        {
-            Vector2 coord = c.texcoords[i];
-            mesh.texcoords[i*2] = coord.x;
-            mesh.texcoords[i*2+1] = coord.y;
-        }
-        for(int i=0; i<c.normals.Length; i++)
-        {
-            Vector3 normal = c.normals[i];
-            mesh.normals[i*3] = normal.x;
-            mesh.normals[i*3+1] = normal.y;
-            mesh.normals[i*3+2] = normal.z;
-        }
-        for(int i=0; i<c.triangles.Length; i++)
-        {
-            mesh.indices[i] = c.triangles[i];
-        }
+
+        mesh.RecalculateBounds();
+        mesh.RecalculateTangents();
+        mesh.UploadMeshData(false);
+
+        mesh.MarkDynamic();
 
         return mesh;
     }
@@ -387,11 +373,9 @@ public static class DataManager
 
         public int nbones() { return this.bone_rest_positions.Length; }
 
-        public static void liner_blend_skinning_positions(character c, Pose pose, out Vector3[] anim_positions)
+        public static void liner_blend_skinning_positions(character c, Pose pose, ref Vector3[] anim_positions)
         {
-            anim_positions = new Vector3[c.nbones()];
-
-            for(int i=0; i<c.nbones(); i++)
+            for(int i=0; i<anim_positions.Length; i++)
             {
                 for(int j=0; j < c.bone_indices[0].Length; j++)
                 {
@@ -412,11 +396,9 @@ public static class DataManager
                 }
             }
         }
-        public static void liner_blend_skinning_normals(character c, Pose pose, out Vector3[] anim_normals)
+        public static void liner_blend_skinning_normals(character c, Pose pose, ref Vector3[] anim_normals)
         {
-            anim_normals = new Vector3[c.nbones()];
-
-            for(int i=0; i<c.nbones(); i++)
+            for(int i=0; i<anim_normals.Length; i++)
             {
                 for(int j=0; j < c.bone_indices[0].Length; j++)
                 {
@@ -438,16 +420,6 @@ public static class DataManager
             for(int i=0; i<anim_normals.Length; i++)
                 anim_normals[i] = Quat.vec_normalize(anim_normals[i]);
         }
-    }
-    public struct mesh
-    {
-        public int vertexCount;
-        public int triangleCount;
-
-        public float[] vertices;
-        public float[] texcoords;
-        public float[] normals;
-        public short[] indices;
     }
     private static int index(int bone, int vector, int component, int subcomponent, TensorShape shape)
     {

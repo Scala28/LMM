@@ -81,7 +81,7 @@ public static class Quat
             mat.m21 = xfm[i, 2, 1, 0];
             mat.m22 = xfm[i, 2, 2, 0];
 
-            Vector4 quat = quat_from_xform_b(mat);
+            Vector4 quat = quat_from_xform(mat);
 
             ris[i, 0, 0, 0] = quat.x;
             ris[i, 1, 0, 0] = quat.y;
@@ -90,55 +90,7 @@ public static class Quat
         }
         return ris;
     }
-
-    //Matrix 3x3
     private static Vector4 quat_from_xform(Matrix4x4 xfm)
-    {
-        Vector4 q;
-        float t;
-
-        if (xfm.m22 < 0)
-        {
-            if (xfm.m00 > xfm.m11)
-            {
-                t = 1f + xfm.m00 - xfm.m11 - xfm.m22;
-                q = new Vector4(xfm.m12 - xfm.m21,
-                    t,
-                    xfm.m01 + xfm.m10,
-                    xfm.m20 + xfm.m02);
-            }
-            else
-            {
-                t = 1f - xfm.m00 + xfm.m11 - xfm.m22;
-                q = new Vector4(xfm.m20 - xfm.m02,
-                    xfm.m01 + xfm.m10,
-                    t,
-                    xfm.m12 + xfm.m21);
-            }
-        }
-        else
-        {
-            if (xfm.m00 < -xfm.m11)
-            {
-                t = 1 - xfm.m00 - xfm.m11 + xfm.m22;
-                q = new Vector4(xfm.m01 - xfm.m10,
-                    xfm.m20 + xfm.m02,
-                    xfm.m12 + xfm.m21,
-                    t);
-            }
-            else
-            {
-                t = 1 + xfm.m00 + xfm.m11 + xfm.m22;
-                q = new Vector4(t,
-                    xfm.m12 - xfm.m21,
-                    xfm.m20 - xfm.m02,
-                    xfm.m01 - xfm.m10);
-            }
-        }
-
-        return quat_normalize(q);
-    }
-    private static Vector4 quat_from_xform_b(Matrix4x4 xfm)
     {
         Vector4 q;
         float t;
