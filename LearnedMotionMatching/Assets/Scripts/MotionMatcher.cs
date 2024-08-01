@@ -223,7 +223,6 @@ public class MotionMatcher : MonoBehaviour
         {
             if (frame_count % window == 0)
             {
-                Debug.Log("Projector");
                 //set_frame(frame_index + frame_count);
                 float[] query = gen_query();
                 evaluate_projector(query);

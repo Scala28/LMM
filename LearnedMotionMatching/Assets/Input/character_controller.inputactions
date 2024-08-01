@@ -1,0 +1,101 @@
+{
+    "name": "character_controller",
+    "maps": [
+        {
+            "name": "locomotion",
+            "id": "f8b37460-3ab9-482d-9158-601a0052a95d",
+            "actions": [
+                {
+                    "name": "move",
+                    "type": "PassThrough",
+                    "id": "dd4baf79-d8a9-45ae-b3ee-35381f93dca3",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "a901f541-342c-4813-b5d9-48221d4b563f",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "move",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "wasd",
+                    "id": "8cda43bc-9c93-4b7a-ac5c-345b16c2bba9",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "move",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "up",
+                    "id": "c0b8e32d-1322-42fd-af23-58553f457bf3",
+                    "path": "<Keyboard>/w",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "down",
+                    "id": "b6f07386-3cbf-44bd-a5ac-f4a019eab7d0",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "left",
+                    "id": "2867cf7e-2604-46ac-9ca8-04a502fb4585",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "right",
+                    "id": "f057af26-1143-48e9-b703-3d9727e77a43",
+                    "path": "<Keyboard>/d",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "move",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        {
+            "name": "keyboard",
+            "bindingGroup": "keyboard",
+            "devices": [
+                {
+                    "devicePath": "<Keyboard>",
+                    "isOptional": false,
+                    "isOR": false
+                }
+            ]
+        }
+    ]
+}
