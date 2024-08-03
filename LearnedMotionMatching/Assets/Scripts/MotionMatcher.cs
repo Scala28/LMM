@@ -10,6 +10,7 @@ using System.ComponentModel;
 using Unity.VisualScripting;
 using UnityEngine.Assertions;
 using Google.Protobuf.WellKnownTypes;
+using UnityEngine.UIElements;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -41,8 +42,6 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     #region Animation
-    [Header("Animation")]
-    public float inertialize_blending_halflife = .1f;
     public enum character
     {
         Bone_Entity = 0,
@@ -69,16 +68,19 @@ public class MotionMatcher : MonoBehaviour
         Bone_RightForeArm = 21,
         Bone_RightHand = 22
     };
-    private float halflife;
-    private const float dt = 1 / 60f;
+
+    private float camera_azimuth = 0.0f;
 
     private DataManager.database db;
     private DataManager.character ch;
 
+    private float inertialize_blending_halflife = .1f;
     private Pose pose;
     private Pose current_pose;
     private Pose trns_pose;
     private Pose global_pose;
+
+    private bool[] global_bone_computed;
 
     private Vector3[] bone_offset_positions;
     private Vector4[] bone_offset_rotations;
@@ -90,23 +92,91 @@ public class MotionMatcher : MonoBehaviour
     Vector3 transition_dst_position;
     Vector4 transition_dst_rotation;
 
+    [Header("Animation")]
+    #region Trajectory and gameplay data
+    public float search_time = 0.1f;
+    private float search_timer;
+    private float force_search_timer;
+
+    private InputHandler input_handler;
+
+    private Vector3 desired_velocity;
+    private Vector3 desired_velocity_change_curr;
+    private Vector3 desired_velocity_change_prev;
+    private float desired_velocity_change_threshold = 50.0f;
+
+    private Vector4 desired_rotation;
+    private Vector3 desired_rotation_change_curr;
+    private Vector3 desired_rotation_change_prev;
+    private float desired_rotation_change_threshold = 50.0f;
+
+    private float desired_gait = 0.0f;
+    private float desired_gait_velocity = 0.0f;
+
+    private Vector3 simulation_position;
+    private Vector3 simulation_velocity;
+    private Vector3 simulation_acceleration;
+    private Vector4 simulation_rotation;
+    private Vector3 simulation_angular_velocity;
+
+    private float simulation_velocity_halflife = 0.27f;
+    private float simulation_rotation_halflife = 0.27f;
+
+    // All speeds in m/s
+    private float simulation_run_fwrd_speed = 4.0f;
+    private float simulation_run_side_speed = 3.0f;
+    private float simulation_run_back_speed = 2.5f;
+
+    private float simulation_walk_fwrd_speed = 1.75f;
+    private float simulation_walk_side_speed = 1.5f;
+    private float simulation_walk_back_speed = 1.25f;
+
+    private Vector3[] trajectory_desired_velocities = new Vector3[4];
+    private Vector4[] trajectory_desired_rotations = new Vector4[4];
+    private Vector3[] trajectory_positions = new Vector3[4];
+    private Vector3[] trajectory_velocities = new Vector3[4];
+    private Vector3[] trajectory_accelerations = new Vector3[4];
+    private Vector4[] trajectory_rotations = new Vector4[4];
+    private Vector3[] trajectory_angular_velocities = new Vector3[4];
+    #endregion
+
+    public bool ik_enabled = true;
+    private float ik_foot_height = 0.02f;
+    private float ik_toe_length = 0.15f;
+    private float ik_unlock_radius = 0.2f;
+    private float ik_blending_halflife = 0.1f;
+
+    #region Contact states and foot locking
+    public int[] contact_bones = new int[2];
+
+    private bool[] contact_states;
+    private bool[] contact_locks;
+    private Vector3[] contact_positions;
+    private Vector3[] contact_velocities;
+    private Vector3[] contact_points;
+    private Vector3[] contact_targets;
+    private Vector3[] contact_offset_positions;
+    private Vector3[] contact_offset_velocities;
+
+    private Vector3[] adjusted_bone_positions;
+    private Vector4[] adjusted_bone_rotations;
+    #endregion
+
     private int frame_index;
     private int window = 20;
     private int frame_count = 0;
-    private float frame_time= 0.0f;
+    private float frame_time = 0.0f;
+
+    private const float dt = 1 / 60f;
 
     private List<Transform> bones = new List<Transform>();
-
     private Mesh mesh;
     #endregion
 
     // Start is called before the first frame update
     void Start()
     {
-        halflife = inertialize_blending_halflife;
-
-        initialize_skeleton(this.transform);
-
+        input_handler = GetComponent<InputHandler>();
         db = DataManager.load_database("Assets/Resources/database.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
         mesh = DataManager.gen_mesh_from_character(ch);
@@ -126,10 +196,46 @@ public class MotionMatcher : MonoBehaviour
         frame_index = db.range_starts[2];
         Debug.Log(frame_index);
 
+        initialize_skeleton(this.transform);
         initialize_pose();
 
         //inertialize_pose_reset();
         //inertialize_pose_update(pose.DeepClone(), 0.0f);
+
+        search_timer = search_time;
+        force_search_timer = search_time;
+
+        contact_bones[0] = (int)character.Bone_LeftToe;
+        contact_bones[1] = (int)character.Bone_RightToe;
+
+        contact_states = new bool[contact_bones.Length];
+        contact_locks = new bool[contact_bones.Length];
+        contact_positions = new Vector3[contact_bones.Length];
+        contact_velocities = new Vector3[contact_bones.Length];
+        contact_points = new Vector3[contact_bones.Length];
+        contact_targets = new Vector3[contact_bones.Length];
+        contact_offset_positions = new Vector3[contact_bones.Length];
+        contact_offset_velocities = new Vector3[contact_bones.Length];
+
+        for (int i = 0; i < contact_bones.Length; i++)
+        {
+            Vector3 bone_position;
+            Vector3 bone_velocity;
+            Vector4 bone_rotation;
+            Vector3 bone_angular_rotation;
+
+            forward_kinematics_velocity(out bone_position, out bone_velocity, out bone_rotation, out bone_angular_rotation,
+                contact_bones[i]);
+
+            contact_states[i] = false;
+            contact_locks[i] = false;
+            contact_positions[i] = bone_position;
+            contact_velocities[i] = bone_velocity;
+            contact_points[i] = bone_position;
+            contact_targets[i] = bone_position;
+            contact_offset_positions[i] = Vector3.zero;
+            contact_offset_velocities[i] = Vector3.zero;
+        }
 
         initialize_models();
 
@@ -140,6 +246,7 @@ public class MotionMatcher : MonoBehaviour
         latent_proj = new float[32];
 
     }
+    #region Initialize
     private void initialize_models() {
 
         stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
@@ -171,12 +278,12 @@ public class MotionMatcher : MonoBehaviour
         pose.root_velocity = db.bone_velocities[frame_index][0];
         pose.root_angular_velocity = db.bone_angular_velocities[frame_index][0];
 
-        for (int i=1; i<db.nbones(); i++)
+        for (int i = 1; i < db.nbones(); i++)
         {
-            pose.joints[i-1].position = db.bone_positions[frame_index][i];
-            pose.joints[i-1].rotation = db.bone_rotations[frame_index][i];
-            pose.joints[i-1].velocity = db.bone_velocities[frame_index][i];
-            pose.joints[i-1].angular_velocity = db.bone_angular_velocities[frame_index][i];
+            pose.joints[i - 1].position = db.bone_positions[frame_index][i];
+            pose.joints[i - 1].rotation = db.bone_rotations[frame_index][i];
+            pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
+            pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
 
         current_pose = pose.DeepClone();
@@ -188,7 +295,9 @@ public class MotionMatcher : MonoBehaviour
         bone_offset_angular_velocities = new Vector3[db.nbones()];
 
         global_pose = new Pose(db.nbones());
+        global_bone_computed = new bool[db.nbones()];
     }
+    #endregion
     private void set_frame(int frame_index)
     {
         (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
@@ -205,7 +314,7 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(features, frame_index * nfeatures, feature_curr, 0, nfeatures);
         Array.Copy(latent, frame_index * nlatent, latent_curr, 0, nlatent);
     }
-    private float[] gen_query(int offset=5)
+    private float[] gen_query(int offset = 5)
     {
         float[] Xhat = new float[feature_curr.Length];
         (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
@@ -218,12 +327,62 @@ public class MotionMatcher : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        Vector3 gamepad_stickleft = input_handler.MoveInput;
+        Vector3 gamepad_stickright = input_handler.LookInput;
+
+        bool desired_strafe = input_handler.StrafeInput;
+
+        // Get the desired gait (walk / run)
+        desired_gait_update();
+
+        // Get the desired simulation speeds based on the gait
+        float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait);
+        float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait);
+        float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait);
+
+        // Get the desired velocity
+        Vector3 desired_velocity_curr =
+            desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation, 
+            simulation_fwrd_speed, simulation_side_speed, simulation_back_speed);
+
+        Vector4 desired_rotation_curr =
+            desired_rotation_update(desired_rotation, gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, desired_velocity_curr);
+
+        desired_velocity_change_prev = desired_velocity_change_curr;
+        desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
+        desired_velocity = desired_velocity_curr;
+
+        desired_rotation_change_prev = desired_rotation_change_curr;
+        desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
+        desired_rotation = desired_rotation_curr;
+
+        bool force_search = false;
+
+        if (force_search_timer <= 0.0f && (
+            (length(desired_velocity_change_prev) >= desired_velocity_change_threshold &&
+            length(desired_velocity_change_curr) < desired_velocity_change_threshold) ||
+            (length(desired_rotation_change_prev) >= desired_rotation_change_threshold &&
+            length(desired_rotation_change_curr) < desired_rotation_change_threshold)))
+        {
+            force_search = true;
+            force_search_timer = search_time;
+        }
+        else if (force_search_timer > 0f)
+            force_search_timer -= dt;
+
+        //trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
+        //trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
+
+        trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 
+            simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
+
+        trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
+
         frame_time += Time.deltaTime;
-        if(frame_time >= dt)
+        if (frame_time >= dt)
         {
             if (frame_count % window == 0)
             {
-                //set_frame(frame_index + frame_count);
                 float[] query = gen_query();
                 evaluate_projector(query);
                 feature_curr = feature_proj;
@@ -251,6 +410,7 @@ public class MotionMatcher : MonoBehaviour
             frame_count++;
         }
     }
+    #region NN inferences
     private void evaluate_stepper()
     {
         Tensor stepper_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
@@ -271,16 +431,6 @@ public class MotionMatcher : MonoBehaviour
 
         stepper_in.Dispose();
         stepper_out.Dispose();
-
-        //float[] stepper_in = new float[feature_curr.Length + latent_curr.Length];
-        //Array.Copy(feature_curr, stepper_in, feature_curr.Length);
-        //Array.Copy(latent_curr, 0, stepper_in, feature_curr.Length, latent_curr.Length);
-        //float[] stepper_out = new float[feature_curr.Length + latent_curr.Length];
-
-        //stepper_nn.evaluate(stepper_in, ref stepper_out);
-
-        //Array.Copy(stepper_out, feature_curr, feature_curr.Length);
-        //Array.Copy(stepper_out, feature_curr.Length, latent_curr, 0, latent_curr.Length);
     }
     private void evaluate_decompressor(ref Pose target_pose)
     {
@@ -299,17 +449,6 @@ public class MotionMatcher : MonoBehaviour
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();
-
-        //float[] decompressor_in = new float[feature_curr.Length + latent_curr.Length];
-        //Array.Copy(feature_curr, decompressor_in, feature_curr.Length);
-        //Array.Copy(latent_curr, 0, decompressor_in, feature_curr.Length, latent_curr.Length);
-        //float[] decompressor_out = new float[338];
-
-        //decompressor_nn.evaluate(decompressor_in, ref decompressor_out);
-
-        //Tensor _out = new Tensor(new int[] { 1, 1, 1, decompressor_out.Length }, decompressor_out);
-
-        //target_pose = Parser.parse_decompressor_out(_out, pose, db.nbones());
     }
     private void evaluate_projector(float[] query)
     {
@@ -345,34 +484,14 @@ public class MotionMatcher : MonoBehaviour
             _out[i] = (_out[i] - param.Mean_in[i]) / param.Std_in[i];
         }
     }
-
-    private void display_frame_pose()
-    {
-        transform.position = new Vector3(current_pose.root_position.x, current_pose.root_position.y, -current_pose.root_position.z);
-        Quaternion q = Quaternion.Euler(0f, 180f, 0f);
-        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(current_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
-        Vector3 root_angle = new Vector3(ang.x, ang.y, ang.z) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, -root_angle.z) *
-                    Quaternion.Euler(0f, -root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
-        for (int i = 1; i < db.nbones(); i++)
-        {
-            Transform joint = bones[i];
-            JointMotionData jdata = current_pose.joints[i - 1];
-
-            ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
-
-            joint.localRotation = Quaternion.Euler(0f, 0f, -ang.z) *
-                    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
-            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
-        }
-    }
+    #endregion
 
     #region Inertializers
     private void inertialize_pose_reset() {
-        for(int i=0; i<db.nbones(); i++)
+        for (int i = 0; i < db.nbones(); i++)
         {
             bone_offset_positions[i] = Vector3.zero;
-            bone_offset_rotations[i] = new Vector4(1.0f, .0f, .0f, .0f); 
+            bone_offset_rotations[i] = new Vector4(1.0f, .0f, .0f, .0f);
             bone_offset_velocities[i] = Vector3.zero;
             bone_offset_angular_velocities[i] = Vector3.zero;
         }
@@ -409,7 +528,7 @@ public class MotionMatcher : MonoBehaviour
             pose.root_rotation,
             world_space_dst_angular_vel);
 
-        for(int i=1; i<db.nbones(); i++)
+        for (int i = 1; i < db.nbones(); i++)
         {
             Spring.inertialize_transition(
                 ref bone_offset_positions[i],
@@ -446,7 +565,7 @@ public class MotionMatcher : MonoBehaviour
             ref bone_offset_velocities[0],
             world_space_pos,
             world_space_vel,
-            halflife,
+            inertialize_blending_halflife,
             _dt);
         Spring.inertialize_update(
             ref pose.root_rotation,
@@ -455,10 +574,10 @@ public class MotionMatcher : MonoBehaviour
             ref bone_offset_angular_velocities[0],
             world_space_rot,
             world_space_angular_vel,
-            halflife,
+            inertialize_blending_halflife,
             _dt);
 
-        for(int i=1; i<db.nbones(); i++)
+        for (int i = 1; i < db.nbones(); i++)
         {
             Spring.inertialize_update(
                 ref pose.joints[i - 1].position,
@@ -467,7 +586,7 @@ public class MotionMatcher : MonoBehaviour
                 ref bone_offset_velocities[i],
                 input_pose.joints[i - 1].position,
                 input_pose.joints[i - 1].velocity,
-                halflife,
+                inertialize_blending_halflife,
                 _dt);
             Spring.inertialize_update(
                 ref pose.joints[i - 1].rotation,
@@ -476,11 +595,171 @@ public class MotionMatcher : MonoBehaviour
                 ref bone_offset_angular_velocities[i],
                 input_pose.joints[i - 1].rotation,
                 input_pose.joints[i - 1].angular_velocity,
-                halflife,
+                inertialize_blending_halflife,
                 _dt);
         }
     }
     #endregion
+
+    #region Player input
+    private float lerpf(float x, float y, float a)
+    {
+        return (1.0f - a) * x + a * y;
+    }
+    private void desired_gait_update(float gait_change_halflife = 0.1f)
+    {
+        Spring.simple_spring_damper_exact(
+            ref desired_gait,
+            ref desired_gait_velocity,
+            input_handler.GaitInput ? 0.0f : 1.0f,
+            gait_change_halflife,
+            dt);
+    }
+    private Vector3 desired_velocity_update(Vector3 gamepad_stickleft, float camera_azimuth, Vector3 simulation_rotation, float fwrd_speed, float side_speed, float back_speed)
+    {
+        // Find stick position in world space by rotating using camera azimuth
+        Vector3 global_stick_direction = Quat.quat_mul_vec(
+            Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1.0f, 0f)), gamepad_stickleft);
+
+        // Find stick position local to current facing direction
+        Vector3 local_stick_direction = Quat.quat_inv_mul_vec(
+            simulation_rotation, global_stick_direction);
+
+        // Scale stick by forward, sideways and backwards speeds
+        Vector3 local_desired_velocity = local_stick_direction.z > 0.0 ?
+            new Vector3(side_speed * local_stick_direction.x, 0.0f, fwrd_speed * local_stick_direction.z) :
+            new Vector3(side_speed * local_stick_direction.x, 0.0f, back_speed * local_stick_direction.z);
+
+        return Quat.quat_mul_vec(simulation_rotation, local_desired_velocity);
+    }
+    private Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, Vector3 gamepad_stickright, float camera_azimuth, bool desired_strafe, Vector3 desired_velocity)
+    {
+        Vector4 desired_rotation_curr = desired_rotation;
+        float gamepadstick_right_norm = length(gamepad_stickleft);
+        float gamepadstick_left_norm = length(gamepad_stickright);
+        // If strafe is active then desired direction is coming from right
+        // stick as long as that stick is being used, otherwise we assume
+        // forward facing
+        if (desired_strafe)
+        {
+            Vector3 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1.0f)), new Vector3(0f, 0f, -1f));
+            if(gamepadstick_right_norm > 0.01f)
+            {
+                desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), Quat.vec_normalize(gamepad_stickright));
+            }
+            return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
+        }
+        // If strafe is not active the desired direction comes from the left 
+        // stick as long as that stick is being used
+        else if(gamepadstick_left_norm > 0.01f)
+        {
+            Vector3 desired_dir = Quat.vec_normalize(desired_velocity);
+            return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
+        }
+        // Otherwise desired direction remains the same
+        else
+        {
+            return desired_rotation_curr;
+        }
+    }
+    private void simulation_rotation_update(ref Vector4 rotation, ref Vector3 angular_velocity, Vector4 desired_rotation, float halflife, float dt)
+    {
+        Spring.simple_spring_damper_exact(
+            ref rotation,
+            ref angular_velocity,
+            desired_rotation,
+            halflife,
+            dt);
+    }
+    private void simulation_position_update(ref Vector3 position, ref Vector3 velocity, ref Vector3 acceleration, Vector3 desired_velocity, float halflife, float dt)
+    {
+        float y = Spring.halflife_to_damping(halflife) / 2.0f;
+        Vector3 j0 = velocity - desired_velocity;
+        Vector3 j1 = acceleration + j0 * y;
+        float eydt = Spring.fast_negexpf(y * dt);
+
+        Vector3 position_prev = position;
+
+        position = eydt * (((-j1) / (y * y)) + ((-j0 - j1 * dt) / y)) +
+            (j1 / (y * y)) + j0 / y + desired_velocity * dt + position_prev;
+        velocity = eydt * (j0 + j1 * dt) + desired_velocity;
+        acceleration = eydt * (acceleration - j1 * y * dt);
+    }
+    private void trajectory_desired_rotations_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camer_azimuth, bool desired_strafe, float dt)
+    {
+        trajectory_desired_rotations[0] = desired_rotation;
+
+        for(int i=1; i<trajectory_desired_rotations.Length; i++)
+        {
+            trajectory_desired_rotations[i] = desired_rotation_update(
+                trajectory_desired_rotations[i - 1],
+                gamepadstick_left,
+                gamepadstick_right,
+                orbit_camera_azimuth(camera_azimuth, gamepadstick_right, desired_strafe, i * dt),
+                desired_strafe,
+                trajectory_desired_velocities[i]);
+        }
+    }
+    private void trajectory_rotations_predict(float halflife, float dt)
+    {
+        trajectory_rotations[0] = simulation_rotation;
+        trajectory_angular_velocities[0] = simulation_angular_velocity;
+
+        for(int i=1; i<trajectory_rotations.Length; i++)
+        {
+            simulation_rotation_update(
+                ref trajectory_rotations[i],
+                ref trajectory_angular_velocities[i],
+                trajectory_desired_rotations[i],
+                halflife,
+                i * dt);
+        }
+
+    }
+    private void trajectory_desired_velocities_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camera_azimuth, bool desired_strafe,
+        float fwrd_speed, float side_speed, float back_speed, float dt)
+    {
+        trajectory_desired_velocities[0] = desired_velocity;
+        for(int i=1; i<trajectory_desired_velocities.Length; i++)
+        {
+            trajectory_desired_velocities[i] = desired_velocity_update(
+                gamepadstick_left,
+                orbit_camera_azimuth(camera_azimuth, gamepadstick_right, desired_strafe, i * dt),
+                trajectory_rotations[i],
+                fwrd_speed,
+                side_speed,
+                back_speed);
+        }
+    }
+    private void trajectory_positions_predict(float halflife, float dt)
+    {
+        trajectory_positions[0] = simulation_position;
+        trajectory_velocities[0] = simulation_velocity;
+        trajectory_accelerations[0] = simulation_acceleration;
+
+        for(int i=1; i<trajectory_positions.Length; i++)
+        {
+            trajectory_positions[i] = trajectory_positions[i - 1];
+            trajectory_velocities[i] = trajectory_velocities[i - 1];
+            trajectory_accelerations[i] = trajectory_accelerations[i - 1];
+
+            simulation_position_update(
+                ref trajectory_positions[i],
+                ref trajectory_velocities[i],
+                ref trajectory_accelerations[i],
+                trajectory_desired_velocities[i],
+                halflife,
+                dt);
+        }
+    }
+    private float orbit_camera_azimuth(float azimuth, Vector3 gamepadstick_right, bool desired_strafe, float dt)
+    {
+        Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
+        return azimuth + 2.0f * dt * -gamepadaxis.x;
+    }
+    #endregion
+
+    #region FKs
     private void forward_kinamatic_full()
     {
         for(int i=0; i<db.bone_parents.Length; i++)
@@ -507,6 +786,57 @@ public class MotionMatcher : MonoBehaviour
             }
         }
     }
+    private void forward_kinematics_velocity(out Vector3 bone_pos,
+                                             out Vector3 bone_vel,
+                                             out Vector4 bone_rot,
+                                             out Vector3 bone_ang_vel,
+                                             int bone)
+    {
+        if (db.bone_parents[bone] != -1)
+        {
+            Vector3 parent_pos;
+            Vector3 parent_vel;
+            Vector4 parent_rot;
+            Vector3 parent_ang_vel;
+
+            forward_kinematics_velocity(out parent_pos, out parent_vel, out parent_rot, out parent_ang_vel, 
+                db.bone_parents[bone]);
+
+            bone_pos = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].position) + parent_pos;
+            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].velocity) +
+                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].position));
+            bone_rot = Quat.quat_mul(parent_rot, current_pose.joints[bone-1].rotation);
+            bone_ang_vel = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].angular_velocity) + parent_ang_vel;
+        }
+        else
+        {
+            bone_pos = current_pose.root_position;
+            bone_vel = current_pose.root_velocity;
+            bone_rot = current_pose.root_rotation;
+            bone_ang_vel = current_pose.root_angular_velocity;
+        }
+    }
+    private void forward_kinematic_partial(int bone)
+    {
+        if (db.bone_parents[bone] == -1)
+        {
+            global_pose.root_position = current_pose.root_position;
+            global_pose.root_rotation = current_pose.root_rotation;
+            global_bone_computed[bone] = true;
+            return;
+        }
+        
+        if (!global_bone_computed[db.bone_parents[bone]]){
+            forward_kinematic_partial(db.bone_parents[bone]);
+        }
+        Vector3 parent_pos = global_pose.joints[db.bone_parents[bone]-1].position;
+        Vector4 parent_rot = global_pose.joints[db.bone_parents[bone] - 1].rotation;
+        global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone - 1].position)
+            + parent_pos;
+        global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, current_pose.joints[bone - 1].rotation);
+        global_bone_computed[bone] = true;
+    }
+    #endregion
     private void deform_character_mesh()
     {
         Vector3[] mesh_vertices = new Vector3[mesh.vertices.Length];
@@ -522,7 +852,34 @@ public class MotionMatcher : MonoBehaviour
         mesh.UploadMeshData(false);
 
     }
+    private void display_frame_pose()
+    {
+        transform.position = new Vector3(current_pose.root_position.x, current_pose.root_position.y, -current_pose.root_position.z);
+        Quaternion q = Quaternion.Euler(0f, 180f, 0f);
+        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(current_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
+        Vector3 root_angle = new Vector3(ang.x, ang.y, ang.z) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0f, 0f, -root_angle.z) *
+                    Quaternion.Euler(0f, -root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
+        for (int i = 1; i < db.nbones(); i++)
+        {
+            Transform joint = bones[i];
+            JointMotionData jdata = current_pose.joints[i - 1];
 
+            ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
+
+            joint.localRotation = Quaternion.Euler(0f, 0f, -ang.z) *
+                    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
+        }
+    }
+    private float length(Vector3 v)
+    {
+        return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+    private float length(Vector4 v)
+    {
+        return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+    }
     private void OnDestroy()
     {
         if(stepper_inference != null)
@@ -531,5 +888,12 @@ public class MotionMatcher : MonoBehaviour
             decompressor_inference.Dispose();
         if(projector_inference != null)
             projector_inference.Dispose();
+    }
+    private void OnDrawGizmosSelected()
+    {
+        for(int i=0; i<trajectory_positions.Length; i++)
+        {
+            Gizmos.DrawSphere(trajectory_positions[i], .2f);
+        }
     }
 }

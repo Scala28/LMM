@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using Unity.Barracuda;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public static class Quat
 {
@@ -215,9 +216,15 @@ public static class Quat
         Vector3 x = ang / 2f;
         return quat_exp(x, eps);
     }
-    public static Vector3 quat_to_scaled_anle_axis(Vector4 q, float eps = 1e-8f)
+    public static Vector3 quat_to_scaled_angle_axis(Vector4 q, float eps = 1e-8f)
     {
         return 2.0f * quat_log(q, eps);
+    }
+    public static Vector4 quat_from_angle_axis(float angle, Vector3 axis)
+    {
+        float c = Mathf.Cos(angle / 2.0f);
+        float s = Mathf.Sin(angle / 2.0f);
+        return new Vector4(c, s * axis.x, s * axis.y, s * axis.z);
     }
     private static Tensor quat_toEuler(Tensor quat, string order = "xyz")
     {
@@ -266,7 +273,7 @@ public static class Quat
         float norm = Mathf.Sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
         return vec / (norm + eps);
     }
-    private static Vector3 _cross(Vector3 a, Vector3 b)
+    public static Vector3 _cross(Vector3 a, Vector3 b)
     {
         float x = a.y * b.z - a.z * b.y;
         float y = a.z * b.x - a.x * b.z;

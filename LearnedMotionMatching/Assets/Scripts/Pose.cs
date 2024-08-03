@@ -75,4 +75,34 @@ public class Pose
         return clone;
     }
 
+    public Vector3[] getPositions()
+    {
+        Vector3[] _out = new Vector3[joints.Length + 1];
+        _out[0] = root_position;
+        int count = 1;
+        foreach(JointMotionData jdata in joints)
+        {
+            _out[count] = new Vector3(jdata.position.x,
+                                      jdata.position.y,
+                                      jdata.position.z); 
+            count++;
+        }
+        return _out;
+    }
+    public Vector4[] getRotations()
+    {
+        Vector4[] _out = new Vector4[joints.Length + 1];
+        _out[0] = root_rotation;
+        int count = 1;
+        foreach(JointMotionData jdata in joints)
+        {
+            _out[count] = new Vector4(jdata.rotation.x,
+                                      jdata.rotation.y,
+                                      jdata.rotation.z,
+                                      jdata.rotation.w);
+            count++;
+        }
+        return _out;
+    }
+
 }

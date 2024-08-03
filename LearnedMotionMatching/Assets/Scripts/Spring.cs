@@ -76,7 +76,7 @@ public static class Spring
         float dt)
     {
         float y = halflife_to_damping(halflife) / 2.0f;
-        Vector3 j0 = Quat.quat_to_scaled_anle_axis(x);
+        Vector3 j0 = Quat.quat_to_scaled_angle_axis(x);
         Vector3 j1 = v + j0 * y;
 
         float eydt = fast_negexpf(y * dt);
@@ -84,11 +84,42 @@ public static class Spring
         x = Quat.quat_from_scaled_angle_axis(eydt * (j0 + j1 * dt));
         v = eydt * (v - j1 * y * dt);
     }
-    private static float halflife_to_damping(float halflife, float eps = 1e-5f)
+    public static void simple_spring_damper_exact(
+        ref float x,
+        ref float v, 
+        float x_goal,
+        float halflife,
+        float dt)
+    {
+        float y = halflife_to_damping(halflife) / 2.0f;
+        float j0 = x - x_goal;
+        float j1 = v + j0 * y;
+        float eydt = fast_negexpf(y * dt);
+
+        x = eydt * (j0 + j1 * dt) + x_goal;
+        v = eydt * (v - j1 * y * dt);
+    }
+    public static void simple_spring_damper_exact(
+        ref Vector4 x,
+        ref Vector3 v,
+        Vector4 x_goal,
+        float halflife,
+        float dt)
+    {
+        float y = halflife_to_damping(halflife) / 2.0f;
+        Vector3 j0 = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul(x, Quat.quat_inv(x_goal))));
+        Vector3 j1 = v + j0 * y;
+
+        float eydt = fast_negexpf(y * dt);
+
+        x = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(eydt * (j0 + j1 * dt)), x_goal);
+        v = eydt * (v - j1 * y * dt);
+    }
+    public static float halflife_to_damping(float halflife, float eps = 1e-5f)
     {
         return (4.0f * LN2f) / (halflife + eps);
     }
-    private static float fast_negexpf(float x)
+    public static float fast_negexpf(float x)
     {
         return 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
     }
