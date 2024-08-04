@@ -345,9 +345,12 @@ public class MotionMatcher : MonoBehaviour
             desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation, 
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed);
 
+
+        // Get the desired rotation/direction
         Vector4 desired_rotation_curr =
             desired_rotation_update(desired_rotation, gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, desired_velocity_curr);
-
+        Debug.Log("Desired vel: " + desired_velocity_curr);
+        Debug.Log("Desired rot: " + Quat.convert_ToEuler(desired_rotation_curr) * Mathf.Rad2Deg);
         desired_velocity_change_prev = desired_velocity_change_curr;
         desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
         desired_velocity = desired_velocity_curr;
@@ -370,13 +373,41 @@ public class MotionMatcher : MonoBehaviour
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
 
-        //trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
-        //trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
+        trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
+        trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
+
+        Debug.Log("Trajectory desired Rotations");
+        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[0]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[1]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[2]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[3]) * Mathf.Rad2Deg);
+
+        Debug.Log("Trajectory Rotations");
+        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[0]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[1]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[2]) * Mathf.Rad2Deg);
+        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[3]) * Mathf.Rad2Deg);
 
         trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
-
         trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
+
+        Debug.Log("Trajectory desired velocities");
+        Debug.Log(trajectory_desired_velocities[0]);
+        Debug.Log(trajectory_desired_velocities[1]);
+        Debug.Log(trajectory_desired_velocities[2]);
+        Debug.Log(trajectory_desired_velocities[3]);
+        Debug.Log("Trajectory velocities");
+        Debug.Log(trajectory_velocities[0]);
+        Debug.Log(trajectory_velocities[1]);
+        Debug.Log(trajectory_velocities[2]);
+        Debug.Log(trajectory_velocities[3]);
+        Debug.Log("Trajectory positions");
+        Debug.Log(trajectory_positions[0]);
+        Debug.Log(trajectory_positions[1]);
+        Debug.Log(trajectory_positions[2]);
+        Debug.Log(trajectory_positions[3]);
+
 
         frame_time += Time.deltaTime;
         if (frame_time >= dt)
@@ -635,15 +666,13 @@ public class MotionMatcher : MonoBehaviour
     private Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, Vector3 gamepad_stickright, float camera_azimuth, bool desired_strafe, Vector3 desired_velocity)
     {
         Vector4 desired_rotation_curr = desired_rotation;
-        float gamepadstick_right_norm = length(gamepad_stickleft);
-        float gamepadstick_left_norm = length(gamepad_stickright);
         // If strafe is active then desired direction is coming from right
         // stick as long as that stick is being used, otherwise we assume
         // forward facing
         if (desired_strafe)
         {
-            Vector3 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1.0f)), new Vector3(0f, 0f, -1f));
-            if(gamepadstick_right_norm > 0.01f)
+            Vector3 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), new Vector3(0f, 0f, 1f));
+            if(length(gamepad_stickright) > 0.01f)
             {
                 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), Quat.vec_normalize(gamepad_stickright));
             }
@@ -651,7 +680,7 @@ public class MotionMatcher : MonoBehaviour
         }
         // If strafe is not active the desired direction comes from the left 
         // stick as long as that stick is being used
-        else if(gamepadstick_left_norm > 0.01f)
+        else if(length(gamepad_stickleft) > 0.01f)
         {
             Vector3 desired_dir = Quat.vec_normalize(desired_velocity);
             return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
@@ -685,7 +714,7 @@ public class MotionMatcher : MonoBehaviour
         velocity = eydt * (j0 + j1 * dt) + desired_velocity;
         acceleration = eydt * (acceleration - j1 * y * dt);
     }
-    private void trajectory_desired_rotations_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camer_azimuth, bool desired_strafe, float dt)
+    private void trajectory_desired_rotations_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camera_azimuth, bool desired_strafe, float dt)
     {
         trajectory_desired_rotations[0] = desired_rotation;
 
@@ -702,8 +731,11 @@ public class MotionMatcher : MonoBehaviour
     }
     private void trajectory_rotations_predict(float halflife, float dt)
     {
-        trajectory_rotations[0] = simulation_rotation;
-        trajectory_angular_velocities[0] = simulation_angular_velocity;
+        for(int i=0; i < trajectory_rotations.Length; i++)
+        {
+            trajectory_rotations[i] = simulation_rotation;
+            trajectory_angular_velocities[i] = simulation_angular_velocity;
+        }
 
         for(int i=1; i<trajectory_rotations.Length; i++)
         {
@@ -714,7 +746,6 @@ public class MotionMatcher : MonoBehaviour
                 halflife,
                 i * dt);
         }
-
     }
     private void trajectory_desired_velocities_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camera_azimuth, bool desired_strafe,
         float fwrd_speed, float side_speed, float back_speed, float dt)
@@ -755,7 +786,7 @@ public class MotionMatcher : MonoBehaviour
     private float orbit_camera_azimuth(float azimuth, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
         Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
-        return azimuth + 2.0f * dt * -gamepadaxis.x;
+        return azimuth + 2.0f * dt * gamepadaxis.x;
     }
     #endregion
 
