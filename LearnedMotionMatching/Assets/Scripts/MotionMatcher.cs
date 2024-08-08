@@ -70,6 +70,8 @@ public class MotionMatcher : MonoBehaviour
     };
 
     private float camera_azimuth = 0.0f;
+    private float camera_altitude = .4f;
+    private float camera_distance = 4.0f;
 
     private DataManager.database db;
     private DataManager.character ch;
@@ -105,7 +107,7 @@ public class MotionMatcher : MonoBehaviour
     private Vector3 desired_velocity_change_prev;
     private float desired_velocity_change_threshold = 50.0f;
 
-    private Vector4 desired_rotation;
+    private Vector4 desired_rotation = new Vector4(1f, 0f, 0f, 0f);
     private Vector3 desired_rotation_change_curr;
     private Vector3 desired_rotation_change_prev;
     private float desired_rotation_change_threshold = 50.0f;
@@ -116,7 +118,7 @@ public class MotionMatcher : MonoBehaviour
     private Vector3 simulation_position;
     private Vector3 simulation_velocity;
     private Vector3 simulation_acceleration;
-    private Vector4 simulation_rotation;
+    private Vector4 simulation_rotation = new Vector4(1f, 0f, 0f, 0f);
     private Vector3 simulation_angular_velocity;
 
     private float simulation_velocity_halflife = 0.27f;
@@ -349,8 +351,7 @@ public class MotionMatcher : MonoBehaviour
         // Get the desired rotation/direction
         Vector4 desired_rotation_curr =
             desired_rotation_update(desired_rotation, gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, desired_velocity_curr);
-        Debug.Log("Desired vel: " + desired_velocity_curr);
-        Debug.Log("Desired rot: " + Quat.convert_ToEuler(desired_rotation_curr) * Mathf.Rad2Deg);
+
         desired_velocity_change_prev = desired_velocity_change_curr;
         desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
         desired_velocity = desired_velocity_curr;
@@ -358,6 +359,9 @@ public class MotionMatcher : MonoBehaviour
         desired_rotation_change_prev = desired_rotation_change_curr;
         desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
         desired_rotation = desired_rotation_curr;
+
+        Debug.Log("Desired vel: " + desired_velocity);
+        Debug.Log("Desired rot: " + desired_rotation + " -> " + Quat.convert_ToEuler(desired_rotation) * Mathf.Rad2Deg);
 
         bool force_search = false;
 
@@ -377,69 +381,67 @@ public class MotionMatcher : MonoBehaviour
         trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
 
         Debug.Log("Trajectory desired Rotations");
-        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[0]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[1]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[2]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_desired_rotations[3]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_desired_rotations[0] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[0]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_desired_rotations[1] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[1]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_desired_rotations[2] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[2]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_desired_rotations[3] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[3]) * Mathf.Rad2Deg);
 
         Debug.Log("Trajectory Rotations");
-        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[0]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[1]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[2]) * Mathf.Rad2Deg);
-        Debug.Log(Quat.convert_ToEuler(trajectory_rotations[3]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_rotations[0] + " -> " + Quat.convert_ToEuler(trajectory_rotations[0]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_rotations[1] + " -> " + Quat.convert_ToEuler(trajectory_rotations[1]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_rotations[2] + " -> " + Quat.convert_ToEuler(trajectory_rotations[2]) * Mathf.Rad2Deg);
+        Debug.Log(trajectory_rotations[3] + " -> " + Quat.convert_ToEuler(trajectory_rotations[3]) * Mathf.Rad2Deg);
 
         trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
         trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
 
-        Debug.Log("Trajectory desired velocities");
-        Debug.Log(trajectory_desired_velocities[0]);
-        Debug.Log(trajectory_desired_velocities[1]);
-        Debug.Log(trajectory_desired_velocities[2]);
-        Debug.Log(trajectory_desired_velocities[3]);
-        Debug.Log("Trajectory velocities");
-        Debug.Log(trajectory_velocities[0]);
-        Debug.Log(trajectory_velocities[1]);
-        Debug.Log(trajectory_velocities[2]);
-        Debug.Log(trajectory_velocities[3]);
-        Debug.Log("Trajectory positions");
-        Debug.Log(trajectory_positions[0]);
-        Debug.Log(trajectory_positions[1]);
-        Debug.Log(trajectory_positions[2]);
-        Debug.Log(trajectory_positions[3]);
+        simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
+            desired_velocity, simulation_velocity_halflife, dt);
+        simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
+            desired_rotation, simulation_rotation_halflife, dt);
 
+        Debug.Log("Simulation");
+        Debug.Log(simulation_position);
+        Debug.Log(simulation_velocity);
+        Debug.Log(simulation_rotation + " -> " + Quat.convert_ToEuler(simulation_rotation) * Mathf.Rad2Deg);
+        Debug.Log(simulation_angular_velocity);
 
-        frame_time += Time.deltaTime;
-        if (frame_time >= dt)
-        {
-            if (frame_count % window == 0)
-            {
-                float[] query = gen_query();
-                evaluate_projector(query);
-                feature_curr = feature_proj;
-                latent_curr = latent_proj;
-            }
+        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
-            //Set new features_curr and latent_curr
-            evaluate_stepper();
+        //orbit_camera_update(transform.position, gamepad_stickright, desired_strafe, dt);
 
-            //Set new curr_pose
-            evaluate_decompressor(ref current_pose);
+        //frame_time += Time.deltaTime;
+        //if (frame_time >= dt)
+        //{
+        //    if (frame_count % window == 0)
+        //    {
+        //        float[] query = gen_query();
+        //        evaluate_projector(query);
+        //        feature_curr = feature_proj;
+        //        latent_curr = latent_proj;
+        //    }
 
-            //Set new pose
-            //inertialize_pose_update(current_pose, dt);
+        //    //Set new features_curr and latent_curr
+        //    evaluate_stepper();
 
-            // Full pass of forward kinematics to compute 
-            // all bone positions and rotations in the world
-            // space ready for rendering (set global_pose)
-            forward_kinamatic_full();
+        //    //Set new curr_pose
+        //    evaluate_decompressor(ref current_pose);
 
-            //display_frame_pose();
-            deform_character_mesh();
-            pose = current_pose;
-            frame_time = 0f;
-            frame_count++;
-        }
+        //    //Set new pose
+        //    //inertialize_pose_update(current_pose, dt);
+
+        //    // Full pass of forward kinematics to compute 
+        //    // all bone positions and rotations in the world
+        //    // space ready for rendering (set global_pose)
+        //    forward_kinamatic_full();
+
+        //    //display_frame_pose();
+        //    deform_character_mesh();
+        //    pose = current_pose;
+        //    frame_time = 0f;
+        //    frame_count++;
+        //}
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -632,11 +634,7 @@ public class MotionMatcher : MonoBehaviour
     }
     #endregion
 
-    #region Player input
-    private float lerpf(float x, float y, float a)
-    {
-        return (1.0f - a) * x + a * y;
-    }
+    #region Trajectory & Gameplay Data
     private void desired_gait_update(float gait_change_halflife = 0.1f)
     {
         Spring.simple_spring_damper_exact(
@@ -788,6 +786,33 @@ public class MotionMatcher : MonoBehaviour
         Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
         return azimuth + 2.0f * dt * gamepadaxis.x;
     }
+    private float orbit_camera_altitude(float altitude, Vector3 gamepadstick_right, bool desired_strafe, float dt) 
+    {
+        Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
+        return clampf(altitude + 2.0f * dt * gamepadaxis.z, 0.0f, 0.4f * Mathf.PI);
+    }
+    private float orbit_camera_distance(float distance, float dt)
+    {
+        float gamepadzoom = 0.0f;
+        return clampf(distance + 10f * dt * gamepadzoom, 0.1f, 100.0f);
+    }
+    private void orbit_camera_update(Vector3 target, Vector3 gamepadstick_right, bool desired_strafe, float dt)
+    {
+        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepadstick_right, desired_strafe, dt);
+        camera_altitude = orbit_camera_altitude(camera_altitude, gamepadstick_right, desired_strafe, dt);
+        camera_distance = orbit_camera_distance(camera_distance, dt);
+
+        Vector4 rotation_azimuth = Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0, 1f, 0));
+
+        Vector3 position = Quat.quat_mul_vec(rotation_azimuth, new Vector3(0, 0, camera_distance));
+        Vector3 axis = Quat.vec_normalize(Quat._cross(position, new Vector3(0, 1f, 0)));
+
+        Vector4 rotation_altitude = Quat.quat_from_angle_axis(camera_altitude, axis);
+
+        Vector3 eye = target + Quat.quat_mul_vec(rotation_altitude, position);
+
+
+    }
     #endregion
 
     #region FKs
@@ -902,6 +927,14 @@ public class MotionMatcher : MonoBehaviour
                     Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
             //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
         }
+    }
+    private float lerpf(float x, float y, float a)
+    {
+        return (1.0f - a) * x + a * y;
+    }
+    private float clampf(float x, float min, float max)
+    {
+        return x > max ? max : x < min ? min : x;
     }
     private float length(Vector3 v)
     {

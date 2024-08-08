@@ -24,8 +24,6 @@ public class InputHandler : MonoBehaviour
     #region Smooth movement input
     [Header("Input options")]
     public float deadzone = .2f;
-    public float smoothMoveInputSpeed = .2f;
-    public float smoothLookInputSpeed = .8f;
     #endregion
 
     // Start is called before the first frame update

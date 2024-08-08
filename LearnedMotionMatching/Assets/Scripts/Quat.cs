@@ -170,16 +170,16 @@ public static class Quat
     }
     public static Vector3 quat_log(Vector4 q, float eps = 1e-8f)
     {
-        float length = Mathf.Sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+        float length = Mathf.Sqrt(q.y * q.y + q.z * q.z + q.w * q.w);
 
         if (length < eps)
         {
-            return new Vector3(q.x, q.y, q.z);
+            return new Vector3(q.y, q.z, q.w);
         }
         else
         {
-            float halfangle = Mathf.Acos(clampf(q.w, -1.0f, 1.0f));
-            return halfangle * (new Vector3(q.x, q.y, q.z) / length);
+            float halfangle = Mathf.Acos(clampf(q.x, -1.0f, 1.0f));
+            return halfangle * (new Vector3(q.y, q.z, q.w) / length);
         }
     }
     public static Vector3 quat_mul_vec(Vector4 q, Vector3 vec)
