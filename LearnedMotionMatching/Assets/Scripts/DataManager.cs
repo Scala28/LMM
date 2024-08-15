@@ -357,6 +357,23 @@ public static class DataManager
         public int nframes() { return bone_positions.Length; }
         public int nbones() { return bone_positions[0].Length; }
         public int nfeatures() { return features[0].Length; }
+        public int nranges() { return range_starts.Length; }
+        public int ncontacts() { return contact_states.Length; }
+
+        public int database_trajectory_index_clamp(int frame, int offset)
+        {
+            for (int i = 0; i < this.nranges(); i++)
+            {
+                if (frame >= this.range_starts[i] && frame < this.range_stops[i])
+                {
+                    return clamp(frame + offset, this.range_starts[i], this.range_stops[i] - 1);
+                }
+            }
+
+            Debug.Assert(false);
+
+            return -1;
+        }
     }
     public struct character
     {
@@ -420,6 +437,10 @@ public static class DataManager
             for(int i=0; i<anim_normals.Length; i++)
                 anim_normals[i] = Quat.vec_normalize(anim_normals[i]);
         }
+    }
+    private static int clamp(int x, int min, int max)
+    {
+        return x > max ? max : x < min ? min : x;
     }
     private static int index(int bone, int vector, int component, int subcomponent, TensorShape shape)
     {

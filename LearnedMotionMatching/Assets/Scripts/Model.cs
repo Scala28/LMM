@@ -29,29 +29,7 @@ public class Model
         l.Biases = biases;
         Layers.Add(l);
     }
-    public void evaluate(float[] input, out float[] output)
-    {
-        float[] _in;
-        float[] _out = new float[Layers[0].OutputSize];
-        _in = input;
-        nnLayer_normalize(input);
-        for(int i=0; i<Layers.Count; i++)
-        {
-            if(i!=0)
-                _out = new float[Layers[i].OutputSize];
-
-            Layers[i].nnet_layer_linear(_in, _out);
-
-            if (i != Layers.Count - 1)
-            {
-                Layers[i].nnet_layer_relu(_out);
-                _in = _out;
-            }
-        }
-        nnLayer_denormalize(_out);
-        output = _out;
-    }
-    private void nnLayer_denormalize(float[] _out)
+    public void nnLayer_denormalize(Tensor _out)
     {
         for (int i = 0; i < Mean_out.Length; i++)
         {
@@ -59,7 +37,7 @@ public class Model
         }
 
     }
-    private void nnLayer_normalize(float[] _out)
+    public void nnLayer_normalize(Tensor _out)
     {
         for (int i = 0; i < Mean_in.Length; i++)
         {
@@ -84,25 +62,5 @@ public class Layer
             Weights[i] = new float[outputSize];
         }
         Biases = new float[outputSize];
-    }
-    public void nnet_layer_linear(float[] _in, float[] _out)
-    {
-        for(int j=0; j<_out.Length; j++)
-        {
-            _out[j]  = Biases[j];
-        }
-        for(int i=0; i<_in.Length; i++)
-        {
-            if (_in[i] != 0.0f)
-                for(int j=0; j<_out.Length; j++)
-                {
-                    _out[j] += _in[i] * Weights[i][j];
-                }
-        }
-    }
-    public void nnet_layer_relu(float[] _out)
-    {
-        for(int i=0; i<_out.Length; i++)
-            _out[i] = _out[i] > 0.0f ? _out[i] : 0;
     }
 }

@@ -450,8 +450,6 @@ MonoBehaviour:
   GaitInput: 0
   StrafeInput: 1
   deadzone: 0.2
-  smoothMoveInputSpeed: 0.2
-  smoothLookInputSpeed: 0.8
 --- !u!114 &1013524423
 MonoBehaviour:
   m_ObjectHideFlags: 0

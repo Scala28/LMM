@@ -43,7 +43,7 @@ public class InputHandler : MonoBehaviour
     public void OnMoveInput(InputAction.CallbackContext context)
     {
         RawMoveInput = context.ReadValue<Vector2>();
-        float movenorm = Mathf.Sqrt(RawMoveInput.x * RawMoveInput.x + RawMoveInput.y * RawMoveInput .y);
+        float movenorm = Mathf.Sqrt(RawMoveInput.x * RawMoveInput.x + RawMoveInput.y * RawMoveInput.y);
         float movex;
         float movey;
         if(movenorm > deadzone)

@@ -11,6 +11,7 @@ using Unity.VisualScripting;
 using UnityEngine.Assertions;
 using Google.Protobuf.WellKnownTypes;
 using UnityEngine.UIElements;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -39,10 +40,13 @@ public class MotionMatcher : MonoBehaviour
     private float[] feature_proj;
     private float[] latent_curr;
     private float[] latent_proj;
+
+    // Maximum value of a float, from bit pattern 01111111011111111111111111111111
+    private const float FLT_MAX = 340282346638528859811704183484516925440.0f;
     #endregion
 
     #region Animation
-    public enum character
+    private enum character
     {
         Bone_Entity = 0,
         Bone_Hips = 1,
@@ -187,16 +191,11 @@ public class MotionMatcher : MonoBehaviour
         Debug.Log(db.nbones());
         Debug.Log(ch.nbones());
 
-        if (db.nbones() != ch.nbones())
-        {
-            Debug.LogError("Database and skeleton do not match!");
-            return;
-        }
+        Debug.Assert(db.nbones() == ch.nbones());
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
-        frame_index = db.range_starts[2];
-        Debug.Log(frame_index);
+        frame_index = db.range_starts[0];
 
         initialize_skeleton(this.transform);
         initialize_pose();
@@ -308,11 +307,8 @@ public class MotionMatcher : MonoBehaviour
         if (features == null || latent == null)
             return;
 
-        if (nframes1 != nframes2)
-        {
-            Debug.LogError("Mismatch in the number of frames between the two datasets.");
-            return;
-        }
+        Debug.Assert(nframes1 == nframes2);
+
         Array.Copy(features, frame_index * nfeatures, feature_curr, 0, nfeatures);
         Array.Copy(latent, frame_index * nlatent, latent_curr, 0, nlatent);
     }
@@ -380,36 +376,37 @@ public class MotionMatcher : MonoBehaviour
         trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
         trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
 
-        Debug.Log("Trajectory desired Rotations");
-        Debug.Log(trajectory_desired_rotations[0] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[0]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_desired_rotations[1] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[1]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_desired_rotations[2] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[2]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_desired_rotations[3] + " -> " + Quat.convert_ToEuler(trajectory_desired_rotations[3]) * Mathf.Rad2Deg);
-
-        Debug.Log("Trajectory Rotations");
-        Debug.Log(trajectory_rotations[0] + " -> " + Quat.convert_ToEuler(trajectory_rotations[0]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_rotations[1] + " -> " + Quat.convert_ToEuler(trajectory_rotations[1]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_rotations[2] + " -> " + Quat.convert_ToEuler(trajectory_rotations[2]) * Mathf.Rad2Deg);
-        Debug.Log(trajectory_rotations[3] + " -> " + Quat.convert_ToEuler(trajectory_rotations[3]) * Mathf.Rad2Deg);
-
         trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
         trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
 
-        simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
-            desired_velocity, simulation_velocity_halflife, dt);
-        simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
-            desired_rotation, simulation_rotation_halflife, dt);
+        //// Do we need to search?
+        if (force_search || search_timer <= 0.0f)
+        {
+            // Compute the features of the query vector
+            (float[] query, int offset) = compute_query_vector();
 
-        Debug.Log("Simulation");
-        Debug.Log(simulation_position);
-        Debug.Log(simulation_velocity);
-        Debug.Log(simulation_rotation + " -> " + Quat.convert_ToEuler(simulation_rotation) * Mathf.Rad2Deg);
-        Debug.Log(simulation_angular_velocity);
+            Debug.Assert(offset == db.nfeatures());
 
-        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+            evaluate_projector(query);
 
-        //orbit_camera_update(transform.position, gamepad_stickright, desired_strafe, dt);
+            bool transition = compute_projection_distance(query);
+
+            if (transition)
+            {
+                feature_curr = feature_proj;
+                latent_curr = latent_proj;
+            }
+
+            search_timer = search_time;
+            Debug.Log("Projected");
+        }
+        search_timer -= dt;
+
+        evaluate_stepper();
+
+        evaluate_decompressor(ref current_pose);
+
 
         //frame_time += Time.deltaTime;
         //if (frame_time >= dt)
@@ -442,6 +439,16 @@ public class MotionMatcher : MonoBehaviour
         //    frame_time = 0f;
         //    frame_count++;
         //}
+        simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
+            desired_velocity, simulation_velocity_halflife, dt);
+        simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
+            desired_rotation, simulation_rotation_halflife, dt);
+
+        forward_kinamatic_full();
+        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+
+        deform_character_mesh();
+        pose = current_pose;
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -487,7 +494,7 @@ public class MotionMatcher : MonoBehaviour
     {
         Tensor projector_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length));
         for (int i = 0; i < feature_curr.Length; i++)
-            projector_in[i] = query[i];
+            projector_in[i] = (query[i] - db.features_offset[i]) / db.features_scale[i];
 
         nnLayer_normalize(projector_in, projector_nn);
         projector_inference.Execute(projector_in);
@@ -501,6 +508,45 @@ public class MotionMatcher : MonoBehaviour
 
         projector_in.Dispose();
         projector_out.Dispose();
+    }
+    private bool compute_projection_distance(float[] query, float transition_cost=0.0f)
+    {
+        bool transition;
+
+        float best_cost = 0.0f;
+        for(int i=0; i<feature_proj.Length; i++)
+        {
+            best_cost += squaref(query[i] - feature_proj[i]);
+        }
+        best_cost = Mathf.Sqrt(best_cost);
+
+        float trns_dist_squared = 0.0f;
+        for(int i=0; i<feature_proj.Length; i++)
+        {
+            trns_dist_squared += squaref(feature_curr[i] - feature_proj[i]);
+        }
+
+        if(trns_dist_squared > squaref(transition_cost))
+        {
+            transition = true;
+            best_cost += transition_cost;
+        }
+        else
+        {
+            transition = false;
+            for(int i=0; i<feature_proj.Length; i++)
+            {
+                feature_proj[i] = feature_curr[i];
+            }
+
+            best_cost = 0.0f;
+            for (int i = 0; i < feature_curr.Length; i++)
+            {
+                best_cost += squaref(query[i] - feature_curr[i]);
+            }
+            best_cost = Mathf.Sqrt(best_cost);
+        }
+        return transition;
     }
     private void nnLayer_denormalize(Tensor _out, Model param)
     {
@@ -781,6 +827,77 @@ public class MotionMatcher : MonoBehaviour
                 dt);
         }
     }
+    private (float[], int) compute_query_vector()
+    {
+        float[] query = new float[db.nfeatures()];
+        int offset = 0;
+
+        // query_copy_denormalized_feature
+        // Left foot pos
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // Right foot pos
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // Left foot velocity
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // Right foot velocity
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // Hip velocity
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // query_compute_trajectory_position_feature
+        Vector3 traj0 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[1] - current_pose.root_position);
+        Vector3 traj1 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[2] - current_pose.root_position);
+        Vector3 traj2 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[3] - current_pose.root_position);
+
+        query[offset + 0] = traj0.x;
+        query[offset + 1] = traj0.z;
+        query[offset + 2] = traj1.x;
+        query[offset + 3] = traj1.z;
+        query[offset + 4] = traj2.x;
+        query[offset + 5] = traj2.z;
+
+        offset += 6;
+
+        // query_compute_trajectory_direction_feature
+        Vector3 dir0 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[1], new Vector3(0, 0, 1f)));
+        Vector3 dir1 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[2], new Vector3(0, 0, 1f)));
+        Vector3 dir2 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[3], new Vector3(0, 0, 1f)));
+
+        query[offset + 0] = dir0.x;
+        query[offset + 1] = dir0.z;
+        query[offset + 2] = dir1.x;
+        query[offset + 3] = dir1.z;
+        query[offset + 4] = dir2.x;
+        query[offset + 5] = dir2.z;
+
+        offset += 6;
+
+        return (query, offset);
+    }
     private float orbit_camera_azimuth(float azimuth, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
         Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
@@ -820,11 +937,7 @@ public class MotionMatcher : MonoBehaviour
     {
         for(int i=0; i<db.bone_parents.Length; i++)
         {
-            if (db.bone_parents[i] >= i)
-            {
-                Debug.LogError("DB bone_parents does not match");
-                return;
-            }
+            Debug.Assert(db.bone_parents[i] < i);
             if (db.bone_parents[i] == -1)
             {
                 global_pose.root_position = current_pose.root_position;
@@ -928,22 +1041,11 @@ public class MotionMatcher : MonoBehaviour
             //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
         }
     }
-    private float lerpf(float x, float y, float a)
-    {
-        return (1.0f - a) * x + a * y;
-    }
-    private float clampf(float x, float min, float max)
-    {
-        return x > max ? max : x < min ? min : x;
-    }
-    private float length(Vector3 v)
-    {
-        return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    }
-    private float length(Vector4 v)
-    {
-        return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
-    }
+    private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
+    private float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
+    private float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+    private float length(Vector4 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w); }
+    private float squaref(float x) { return x * x; }
     private void OnDestroy()
     {
         if(stepper_inference != null)
