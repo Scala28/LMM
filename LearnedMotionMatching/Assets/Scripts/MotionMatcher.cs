@@ -240,8 +240,11 @@ public class MotionMatcher : MonoBehaviour
 
         initialize_models();
 
-        feature_curr = db.features[frame_index];
-        feature_proj = db.features[frame_index];
+        feature_curr = new float[db.nfeatures()];
+        feature_proj = new float[db.nfeatures()];
+
+        Array.Copy(db.features[frame_index], feature_curr, db.nfeatures());
+        Array.Copy(db.features[frame_index], feature_proj, db.nfeatures());
 
         latent_curr = new float[32];
         latent_proj = new float[32];
@@ -299,28 +302,6 @@ public class MotionMatcher : MonoBehaviour
         global_bone_computed = new bool[db.nbones()];
     }
     #endregion
-    private void set_frame(int frame_index)
-    {
-        (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
-        (int nframes2, int nlatent, float[] latent) = DataManager.Load_database_fromResources("latent");
-
-        if (features == null || latent == null)
-            return;
-
-        Debug.Assert(nframes1 == nframes2);
-
-        Array.Copy(features, frame_index * nfeatures, feature_curr, 0, nfeatures);
-        Array.Copy(latent, frame_index * nlatent, latent_curr, 0, nlatent);
-    }
-    private float[] gen_query(int offset = 5)
-    {
-        float[] Xhat = new float[feature_curr.Length];
-        (int nframes1, int nfeatures, float[] features) = DataManager.Load_database_fromResources("features");
-        if (features == null)
-            return null;
-        Array.Copy(features, (offset + frame_count + frame_index) * nfeatures, Xhat, 0, nfeatures);
-        return Xhat;
-    }
 
     // Update is called once per frame
     void Update()
@@ -356,9 +337,6 @@ public class MotionMatcher : MonoBehaviour
         desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
         desired_rotation = desired_rotation_curr;
 
-        Debug.Log("Desired vel: " + desired_velocity);
-        Debug.Log("Desired rot: " + desired_rotation + " -> " + Quat.convert_ToEuler(desired_rotation) * Mathf.Rad2Deg);
-
         bool force_search = false;
 
         if (force_search_timer <= 0.0f && (
@@ -380,7 +358,7 @@ public class MotionMatcher : MonoBehaviour
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
         trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
 
-        //// Do we need to search?
+        // Do we need to search?
         if (force_search || search_timer <= 0.0f)
         {
             // Compute the features of the query vector
@@ -389,17 +367,14 @@ public class MotionMatcher : MonoBehaviour
             Debug.Assert(offset == db.nfeatures());
 
             evaluate_projector(query);
-
             bool transition = compute_projection_distance(query);
-
             if (transition)
             {
-                feature_curr = feature_proj;
-                latent_curr = latent_proj;
+                Array.Copy(feature_proj, feature_curr, db.nfeatures());
+                Array.Copy(latent_proj, latent_curr, latent_curr.Length);
             }
 
             search_timer = search_time;
-            Debug.Log("Projected");
         }
         search_timer -= dt;
 
@@ -407,38 +382,6 @@ public class MotionMatcher : MonoBehaviour
 
         evaluate_decompressor(ref current_pose);
 
-
-        //frame_time += Time.deltaTime;
-        //if (frame_time >= dt)
-        //{
-        //    if (frame_count % window == 0)
-        //    {
-        //        float[] query = gen_query();
-        //        evaluate_projector(query);
-        //        feature_curr = feature_proj;
-        //        latent_curr = latent_proj;
-        //    }
-
-        //    //Set new features_curr and latent_curr
-        //    evaluate_stepper();
-
-        //    //Set new curr_pose
-        //    evaluate_decompressor(ref current_pose);
-
-        //    //Set new pose
-        //    //inertialize_pose_update(current_pose, dt);
-
-        //    // Full pass of forward kinematics to compute 
-        //    // all bone positions and rotations in the world
-        //    // space ready for rendering (set global_pose)
-        //    forward_kinamatic_full();
-
-        //    //display_frame_pose();
-        //    deform_character_mesh();
-        //    pose = current_pose;
-        //    frame_time = 0f;
-        //    frame_count++;
-        //}
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
             desired_velocity, simulation_velocity_halflife, dt);
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
@@ -459,10 +402,10 @@ public class MotionMatcher : MonoBehaviour
         for (int i = 0; i < latent_curr.Length; i++)
             stepper_in[i + feature_curr.Length] = latent_curr[i];
 
-        nnLayer_normalize(stepper_in, stepper_nn);
+        stepper_nn.nnLayer_normalize(stepper_in);
         stepper_inference.Execute(stepper_in);
         Tensor stepper_out = stepper_inference.PeekOutput();
-        nnLayer_denormalize(stepper_out, stepper_nn);
+        stepper_nn.nnLayer_denormalize(stepper_out);
 
         for (int i = 0; i < feature_curr.Length; i++)
             feature_curr[i] += dt * stepper_out[i];
@@ -483,7 +426,7 @@ public class MotionMatcher : MonoBehaviour
         //nnLayer_normalize(decompressor_in, decompressor_nn);
         decompressor_inference.Execute(decompressor_in);
         Tensor decompressor_out = decompressor_inference.PeekOutput();
-        nnLayer_denormalize(decompressor_out, decompressor_nn);
+        decompressor_nn.nnLayer_denormalize(decompressor_out);
 
         target_pose = Parser.parse_decompressor_out(decompressor_out, pose, db.nbones());
 
@@ -492,19 +435,19 @@ public class MotionMatcher : MonoBehaviour
     }
     private void evaluate_projector(float[] query)
     {
-        Tensor projector_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length));
-        for (int i = 0; i < feature_curr.Length; i++)
+        Tensor projector_in = new Tensor(new TensorShape(1, 1, 1, query.Length));
+        for (int i = 0; i < query.Length; i++)
             projector_in[i] = (query[i] - db.features_offset[i]) / db.features_scale[i];
 
-        nnLayer_normalize(projector_in, projector_nn);
+        projector_nn.nnLayer_normalize(projector_in);
         projector_inference.Execute(projector_in);
         Tensor projector_out = projector_inference.PeekOutput();
-        nnLayer_denormalize(projector_out, projector_nn);
+        projector_nn.nnLayer_denormalize(projector_out);
 
-        for (int i = 0; i < feature_curr.Length; i++)
+        for (int i = 0; i < feature_proj.Length; i++)
             feature_proj[i] = projector_out[i];
-        for (int i = 0; i < latent_curr.Length; i++)
-            latent_proj[i] = projector_out[feature_curr.Length + i];
+        for (int i = 0; i < latent_proj.Length; i++)
+            latent_proj[i] = projector_out[feature_proj.Length + i];
 
         projector_in.Dispose();
         projector_out.Dispose();
@@ -547,21 +490,6 @@ public class MotionMatcher : MonoBehaviour
             best_cost = Mathf.Sqrt(best_cost);
         }
         return transition;
-    }
-    private void nnLayer_denormalize(Tensor _out, Model param)
-    {
-        for (int i = 0; i < param.Mean_out.Length; i++)
-        {
-            _out[i] = _out[i] * param.Std_out[i] + param.Mean_out[i];
-        }
-
-    }
-    private void nnLayer_normalize(Tensor _out, Model param)
-    {
-        for (int i = 0; i < param.Mean_in.Length; i++)
-        {
-            _out[i] = (_out[i] - param.Mean_in[i]) / param.Std_in[i];
-        }
     }
     #endregion
 
