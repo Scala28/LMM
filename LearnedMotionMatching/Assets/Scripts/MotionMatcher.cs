@@ -44,8 +44,6 @@ public class MotionMatcher : MonoBehaviour
     // Maximum value of a float, from bit pattern 01111111011111111111111111111111
     private const float FLT_MAX = 340282346638528859811704183484516925440.0f;
     #endregion
-
-    #region Animation
     private enum character
     {
         Bone_Entity = 0,
@@ -169,15 +167,11 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     private int frame_index;
-    private int window = 20;
-    private int frame_count = 0;
-    private float frame_time = 0.0f;
 
     private const float dt = 1 / 60f;
 
     private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
-    #endregion
 
     // Start is called before the first frame update
     void Start()
@@ -188,20 +182,17 @@ public class MotionMatcher : MonoBehaviour
         mesh = DataManager.gen_mesh_from_character(ch);
         transform.GetComponent<MeshFilter>().mesh = mesh;
 
-        Debug.Log(db.nbones());
-        Debug.Log(ch.nbones());
-
         Debug.Assert(db.nbones() == ch.nbones());
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
         frame_index = db.range_starts[0];
 
-        initialize_skeleton(this.transform);
+        //initialize_skeleton(this.transform);
         initialize_pose();
 
-        //inertialize_pose_reset();
-        //inertialize_pose_update(pose.DeepClone(), 0.0f);
+        inertialize_pose_reset();
+        inertialize_pose_update(pose.DeepClone(), 0.0f);
 
         search_timer = search_time;
         force_search_timer = search_time;
@@ -299,6 +290,7 @@ public class MotionMatcher : MonoBehaviour
         bone_offset_angular_velocities = new Vector3[db.nbones()];
 
         global_pose = new Pose(db.nbones());
+
         global_bone_computed = new bool[db.nbones()];
     }
     #endregion
@@ -370,6 +362,8 @@ public class MotionMatcher : MonoBehaviour
             bool transition = compute_projection_distance(query);
             if (transition)
             {
+                evaluate_decompressor(ref trns_pose, feature_proj, latent_proj);
+                inertialize_pose_transition();
                 Array.Copy(feature_proj, feature_curr, db.nfeatures());
                 Array.Copy(latent_proj, latent_curr, latent_curr.Length);
             }
@@ -380,7 +374,9 @@ public class MotionMatcher : MonoBehaviour
 
         evaluate_stepper();
 
-        evaluate_decompressor(ref current_pose);
+        evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
+
+        inertialize_pose_update(current_pose, dt);
 
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
             desired_velocity, simulation_velocity_halflife, dt);
@@ -391,7 +387,6 @@ public class MotionMatcher : MonoBehaviour
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
         deform_character_mesh();
-        pose = current_pose;
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -415,20 +410,20 @@ public class MotionMatcher : MonoBehaviour
         stepper_in.Dispose();
         stepper_out.Dispose();
     }
-    private void evaluate_decompressor(ref Pose target_pose)
+    private void evaluate_decompressor(ref Pose target_pose, float[] features, float[] latents)
     {
         Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
-        for (int i = 0; i < feature_curr.Length; i++)
-            decompressor_in[i] = feature_curr[i];
-        for (int i = 0; i < latent_curr.Length; i++)
-            decompressor_in[i + feature_curr.Length] = latent_curr[i];
+        for (int i = 0; i < features.Length; i++)
+            decompressor_in[i] = features[i];
+        for (int i = 0; i < latents.Length; i++)
+            decompressor_in[i + features.Length] = latents[i];
 
         //nnLayer_normalize(decompressor_in, decompressor_nn);
         decompressor_inference.Execute(decompressor_in);
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, pose, db.nbones());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones());
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();
@@ -797,9 +792,9 @@ public class MotionMatcher : MonoBehaviour
         offset += 3;
 
         // query_compute_trajectory_position_feature
-        Vector3 traj0 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[1] - current_pose.root_position);
-        Vector3 traj1 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[2] - current_pose.root_position);
-        Vector3 traj2 = Quat.quat_inv_mul_vec(current_pose.root_rotation, trajectory_positions[3] - current_pose.root_position);
+        Vector3 traj0 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[1] - pose.root_position);
+        Vector3 traj1 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[2] - pose.root_position);
+        Vector3 traj2 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[3] - pose.root_position);
 
         query[offset + 0] = traj0.x;
         query[offset + 1] = traj0.z;
@@ -811,9 +806,9 @@ public class MotionMatcher : MonoBehaviour
         offset += 6;
 
         // query_compute_trajectory_direction_feature
-        Vector3 dir0 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[1], new Vector3(0, 0, 1f)));
-        Vector3 dir1 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[2], new Vector3(0, 0, 1f)));
-        Vector3 dir2 = Quat.quat_inv_mul_vec(current_pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[3], new Vector3(0, 0, 1f)));
+        Vector3 dir0 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[1], new Vector3(0, 0, 1f)));
+        Vector3 dir1 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[2], new Vector3(0, 0, 1f)));
+        Vector3 dir2 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[3], new Vector3(0, 0, 1f)));
 
         query[offset + 0] = dir0.x;
         query[offset + 1] = dir0.z;
@@ -868,8 +863,8 @@ public class MotionMatcher : MonoBehaviour
             Debug.Assert(db.bone_parents[i] < i);
             if (db.bone_parents[i] == -1)
             {
-                global_pose.root_position = current_pose.root_position;
-                global_pose.root_rotation = current_pose.root_rotation;
+                global_pose.root_position = pose.root_position;
+                global_pose.root_rotation = pose.root_rotation;
             }
             else
             {
@@ -878,8 +873,8 @@ public class MotionMatcher : MonoBehaviour
                 Vector4 parent_rotation = db.bone_parents[i] == 0 ? global_pose.root_rotation :
                     global_pose.joints[db.bone_parents[i] - 1].rotation;
 
-                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, current_pose.joints[i-1].position) + parent_position;
-                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, current_pose.joints[i - 1].rotation);
+                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, pose.joints[i-1].position) + parent_position;
+                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, pose.joints[i - 1].rotation);
             }
         }
     }
