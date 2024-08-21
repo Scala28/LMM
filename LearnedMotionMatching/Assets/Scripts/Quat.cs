@@ -149,9 +149,7 @@ public static class Quat
     }
     public static Vector4 quat_abs(Vector4 q)
     {
-        if (q.x < 0.0f)
-            return -q;
-        return q;
+        return q.x < 0.0f ? -q : q;
     }
     public static Vector4 quat_exp(Vector3 x, float eps = 1e-8f)
     {
@@ -213,8 +211,7 @@ public static class Quat
     }
     public static Vector4 quat_from_scaled_angle_axis(Vector3 ang, float eps = 1e-8f)
     {
-        Vector3 x = ang / 2f;
-        return quat_exp(x, eps);
+        return quat_exp(ang / 2.0f, eps);
     }
     public static Vector3 quat_to_scaled_angle_axis(Vector4 q, float eps = 1e-8f)
     {

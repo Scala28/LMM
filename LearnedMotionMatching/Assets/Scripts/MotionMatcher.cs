@@ -4,14 +4,6 @@ using UnityEngine;
 using Unity.Barracuda;
 using System;
 using UnityEditor;
-using UnityEngine.XR;
-using UnityEditor.Experimental.GraphView;
-using System.ComponentModel;
-using Unity.VisualScripting;
-using UnityEngine.Assertions;
-using Google.Protobuf.WellKnownTypes;
-using UnityEngine.UIElements;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -97,7 +89,7 @@ public class MotionMatcher : MonoBehaviour
     Vector4 transition_dst_rotation;
 
     [Header("Animation")]
-    #region Trajectory and gameplay data
+    #region Trajectory & gameplay
     public float search_time = 0.1f;
     private float search_timer;
     private float force_search_timer;
@@ -150,8 +142,9 @@ public class MotionMatcher : MonoBehaviour
     private float ik_unlock_radius = 0.2f;
     private float ik_blending_halflife = 0.1f;
 
+
     #region Contact states and foot locking
-    public int[] contact_bones = new int[2];
+    private int[] contact_bones = new int[2];
 
     private bool[] contact_states;
     private bool[] contact_locks;
@@ -194,6 +187,7 @@ public class MotionMatcher : MonoBehaviour
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
 
+        #region contacts
         search_timer = search_time;
         force_search_timer = search_time;
 
@@ -228,6 +222,7 @@ public class MotionMatcher : MonoBehaviour
             contact_offset_positions[i] = Vector3.zero;
             contact_offset_velocities[i] = Vector3.zero;
         }
+        #endregion
 
         initialize_models();
 
@@ -313,7 +308,7 @@ public class MotionMatcher : MonoBehaviour
 
         // Get the desired velocity
         Vector3 desired_velocity_curr =
-            desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation, 
+            desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation,
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed);
 
 
@@ -346,7 +341,7 @@ public class MotionMatcher : MonoBehaviour
         trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
         trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
 
-        trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 
+        trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe,
             simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
         trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
 
@@ -358,14 +353,15 @@ public class MotionMatcher : MonoBehaviour
 
             Debug.Assert(offset == db.nfeatures());
 
-            evaluate_projector(query);
             bool transition = compute_projection_distance(query);
             if (transition)
             {
+                evaluate_projector(query);
                 evaluate_decompressor(ref trns_pose, feature_proj, latent_proj);
                 inertialize_pose_transition();
                 Array.Copy(feature_proj, feature_curr, db.nfeatures());
                 Array.Copy(latent_proj, latent_curr, latent_curr.Length);
+                Debug.Log("transition");
             }
 
             search_timer = search_time;
@@ -378,6 +374,18 @@ public class MotionMatcher : MonoBehaviour
 
         inertialize_pose_update(current_pose, dt);
 
+        //pose.root_position = current_pose.root_position;
+        //pose.root_velocity = current_pose.root_velocity;
+        pose.root_rotation = current_pose.root_rotation;
+        pose.root_angular_velocity = current_pose.root_angular_velocity;
+        for(int i=0; i<db.nbones()-1; i++)
+        {
+            //pose.joints[i].position = current_pose.joints[i].position;
+            //pose.joints[i].velocity = current_pose.joints[i].velocity;
+            pose.joints[i].rotation = current_pose.joints[i].rotation;
+            pose.joints[i].angular_velocity = current_pose.joints[i].angular_velocity;
+        }
+
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
             desired_velocity, simulation_velocity_halflife, dt);
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
@@ -387,6 +395,7 @@ public class MotionMatcher : MonoBehaviour
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
         deform_character_mesh();
+        
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -412,7 +421,7 @@ public class MotionMatcher : MonoBehaviour
     }
     private void evaluate_decompressor(ref Pose target_pose, float[] features, float[] latents)
     {
-        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
+        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, features.Length + latents.Length));
         for (int i = 0; i < features.Length; i++)
             decompressor_in[i] = features[i];
         for (int i = 0; i < latents.Length; i++)
@@ -984,5 +993,7 @@ public class MotionMatcher : MonoBehaviour
         {
             Gizmos.DrawSphere(trajectory_positions[i], .2f);
         }
+        if (current_pose != null)
+            Gizmos.DrawSphere(current_pose.root_position, .2f);
     }
 }
