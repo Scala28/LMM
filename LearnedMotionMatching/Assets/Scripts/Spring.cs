@@ -25,7 +25,7 @@ public static class Spring
         ref Vector3 out_v,
         ref Vector4 off_x,
         ref Vector3 off_v,
-        Vector3 in_x,
+        Vector4 in_x,
         Vector3 in_v,
         float halflife,
         float dt)

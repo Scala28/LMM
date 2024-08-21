@@ -89,7 +89,9 @@ public class MotionMatcher : MonoBehaviour
     Vector4 transition_dst_rotation;
 
     [Header("Animation")]
+
     #region Trajectory & gameplay
+
     public float search_time = 0.1f;
     private float search_timer;
     private float force_search_timer;
@@ -136,14 +138,14 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] trajectory_angular_velocities = new Vector3[4];
     #endregion
 
+    #region Contact states and foot locking
+
     public bool ik_enabled = true;
     private float ik_foot_height = 0.02f;
     private float ik_toe_length = 0.15f;
     private float ik_unlock_radius = 0.2f;
     private float ik_blending_halflife = 0.1f;
 
-
-    #region Contact states and foot locking
     private int[] contact_bones = new int[2];
 
     private bool[] contact_states;
@@ -361,7 +363,6 @@ public class MotionMatcher : MonoBehaviour
                 inertialize_pose_transition();
                 Array.Copy(feature_proj, feature_curr, db.nfeatures());
                 Array.Copy(latent_proj, latent_curr, latent_curr.Length);
-                Debug.Log("transition");
             }
 
             search_timer = search_time;
@@ -373,18 +374,6 @@ public class MotionMatcher : MonoBehaviour
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 
         inertialize_pose_update(current_pose, dt);
-
-        //pose.root_position = current_pose.root_position;
-        //pose.root_velocity = current_pose.root_velocity;
-        pose.root_rotation = current_pose.root_rotation;
-        pose.root_angular_velocity = current_pose.root_angular_velocity;
-        for(int i=0; i<db.nbones()-1; i++)
-        {
-            //pose.joints[i].position = current_pose.joints[i].position;
-            //pose.joints[i].velocity = current_pose.joints[i].velocity;
-            pose.joints[i].rotation = current_pose.joints[i].rotation;
-            pose.joints[i].angular_velocity = current_pose.joints[i].angular_velocity;
-        }
 
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
             desired_velocity, simulation_velocity_halflife, dt);
@@ -993,7 +982,5 @@ public class MotionMatcher : MonoBehaviour
         {
             Gizmos.DrawSphere(trajectory_positions[i], .2f);
         }
-        if (current_pose != null)
-            Gizmos.DrawSphere(current_pose.root_position, .2f);
     }
 }
