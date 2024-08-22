@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Barracuda;
 using System;
 using UnityEditor;
+using Unity.VisualScripting;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -145,8 +146,9 @@ public class MotionMatcher : MonoBehaviour
     private float ik_toe_length = 0.15f;
     private float ik_unlock_radius = 0.2f;
     private float ik_blending_halflife = 0.1f;
+    private float ik_max_length_buffer = 0.015f;
 
-    private int[] contact_bones = new int[2];
+    private int[] contact_bones = new int[2] { (int)character.Bone_LeftToe, (int)character.Bone_RightToe };
 
     private bool[] contact_states;
     private bool[] contact_locks;
@@ -189,12 +191,10 @@ public class MotionMatcher : MonoBehaviour
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
 
-        #region contacts
         search_timer = search_time;
         force_search_timer = search_time;
 
-        contact_bones[0] = (int)character.Bone_LeftToe;
-        contact_bones[1] = (int)character.Bone_RightToe;
+        #region contacts
 
         contact_states = new bool[contact_bones.Length];
         contact_locks = new bool[contact_bones.Length];
@@ -224,6 +224,10 @@ public class MotionMatcher : MonoBehaviour
             contact_offset_positions[i] = Vector3.zero;
             contact_offset_velocities[i] = Vector3.zero;
         }
+
+        adjusted_bone_positions = pose.getPositions();
+        adjusted_bone_rotations = pose.getRotations();
+
         #endregion
 
         initialize_models();
@@ -236,6 +240,8 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[32];
         latent_proj = new float[32];
+
+        Debug.Log(db.ncontacts());
 
     }
     #region Initialize
@@ -263,7 +269,7 @@ public class MotionMatcher : MonoBehaviour
     }
     private void initialize_pose()
     {
-        pose = new Pose(db.nbones());
+        pose = new Pose(db.nbones(), db.ncontacts());
 
         pose.root_position = db.bone_positions[frame_index][0];
         pose.root_rotation = db.bone_rotations[frame_index][0];
@@ -277,16 +283,17 @@ public class MotionMatcher : MonoBehaviour
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
-
         current_pose = pose.DeepClone();
-        trns_pose = pose.DeepClone();
+        current_pose.contact_states = db.contact_states[frame_index];
+
+        trns_pose = current_pose.DeepClone();
 
         bone_offset_positions = new Vector3[db.nbones()];
         bone_offset_rotations = new Vector4[db.nbones()];
         bone_offset_velocities = new Vector3[db.nbones()];
         bone_offset_angular_velocities = new Vector3[db.nbones()];
 
-        global_pose = new Pose(db.nbones());
+        global_pose = new Pose(db.nbones(), db.ncontacts());
 
         global_bone_computed = new bool[db.nbones()];
     }
@@ -380,6 +387,48 @@ public class MotionMatcher : MonoBehaviour
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
             desired_rotation, simulation_rotation_halflife, dt);
 
+        adjusted_bone_positions = pose.getPositions();
+        adjusted_bone_rotations = pose.getRotations();
+        if (ik_enabled)
+        {
+            for(int i=0; i<contact_bones.Length; i++)
+            {
+                int toe_bone = contact_bones[i];
+                int heel_bone = db.bone_parents[toe_bone];
+                int knee_bone = db.bone_parents[heel_bone];
+                int hip_bone = db.bone_parents[knee_bone];
+                int root_bone = db.bone_parents[hip_bone];
+
+                global_bone_computed = new bool[db.nbones()];
+
+                forward_kinematic_partial(toe_bone);
+
+                contact_update(
+                    ref contact_states[i],
+                    ref contact_locks[i],
+                    ref contact_positions[i],
+                    ref contact_velocities[i],
+                    ref contact_points[i],
+                    ref contact_targets[i],
+                    ref contact_offset_positions[i],
+                    ref contact_offset_velocities[i],
+                    global_pose.joints[toe_bone - 1].position,
+                    current_pose.contact_states[i],
+                    ik_blending_halflife,
+                    dt);
+
+                Vector3 contact_pos_clamp = contact_positions[i];
+                contact_pos_clamp.y = Math.Max(contact_pos_clamp.y, ik_foot_height);
+
+                int[] bones = new int[] { heel_bone, knee_bone, hip_bone, root_bone };
+                foreach(int bone in bones)
+                {
+                    forward_kinematic_partial(bone);
+                }
+
+            }
+        }
+
         forward_kinamatic_full();
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
@@ -421,7 +470,7 @@ public class MotionMatcher : MonoBehaviour
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts());
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();
@@ -892,26 +941,26 @@ public class MotionMatcher : MonoBehaviour
             forward_kinematics_velocity(out parent_pos, out parent_vel, out parent_rot, out parent_ang_vel, 
                 db.bone_parents[bone]);
 
-            bone_pos = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].position) + parent_pos;
-            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].velocity) +
-                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].position));
-            bone_rot = Quat.quat_mul(parent_rot, current_pose.joints[bone-1].rotation);
-            bone_ang_vel = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone-1].angular_velocity) + parent_ang_vel;
+            bone_pos = Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].position) + parent_pos;
+            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].velocity) +
+                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].position));
+            bone_rot = Quat.quat_mul(parent_rot, pose.joints[bone-1].rotation);
+            bone_ang_vel = Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].angular_velocity) + parent_ang_vel;
         }
         else
         {
-            bone_pos = current_pose.root_position;
-            bone_vel = current_pose.root_velocity;
-            bone_rot = current_pose.root_rotation;
-            bone_ang_vel = current_pose.root_angular_velocity;
+            bone_pos = pose.root_position;
+            bone_vel = pose.root_velocity;
+            bone_rot = pose.root_rotation;
+            bone_ang_vel = pose.root_angular_velocity;
         }
     }
     private void forward_kinematic_partial(int bone)
     {
         if (db.bone_parents[bone] == -1)
         {
-            global_pose.root_position = current_pose.root_position;
-            global_pose.root_rotation = current_pose.root_rotation;
+            global_pose.root_position = pose.root_position;
+            global_pose.root_rotation = pose.root_rotation;
             global_bone_computed[bone] = true;
             return;
         }
@@ -919,12 +968,78 @@ public class MotionMatcher : MonoBehaviour
         if (!global_bone_computed[db.bone_parents[bone]]){
             forward_kinematic_partial(db.bone_parents[bone]);
         }
-        Vector3 parent_pos = global_pose.joints[db.bone_parents[bone]-1].position;
+        Vector3 parent_pos = global_pose.joints[db.bone_parents[bone] - 1].position;
         Vector4 parent_rot = global_pose.joints[db.bone_parents[bone] - 1].rotation;
-        global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, current_pose.joints[bone - 1].position)
+        global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].position)
             + parent_pos;
-        global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, current_pose.joints[bone - 1].rotation);
+        global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, pose.joints[bone - 1].rotation);
         global_bone_computed[bone] = true;
+    }
+    #endregion
+
+    #region contact & foot locking
+    private void contact_update(ref bool contact_state, 
+                                ref bool contact_lock, 
+                                ref Vector3 contact_position,
+                                ref Vector3 contact_velocity,
+                                ref Vector3 contact_point,
+                                ref Vector3 contact_target,
+                                ref Vector3 contact_offset_position,
+                                ref Vector3 contact_offset_velocity,
+                                Vector3 input_contact_position,
+                                bool input_contact_state,
+                                float halflife,
+                                float _dt,
+                                float eps=1e-8f)
+    {
+        Vector3 input_contact_velocity = (input_contact_position - contact_target) / (_dt + eps);
+        contact_target = input_contact_position;
+
+        Spring.inertialize_update(ref contact_position,
+                                  ref contact_velocity,
+                                  ref contact_offset_position,
+                                  ref contact_offset_velocity,
+                                  // If locked we feed the contact point and zero velocity, 
+                                  // otherwise we feed the input from the animation
+                                  contact_lock ? contact_point : input_contact_position,
+                                  contact_lock ? Vector3.zero : input_contact_velocity,
+                                  halflife,
+                                  _dt);
+
+        bool unlock_contact = contact_lock &&
+            length(contact_point - input_contact_position) > ik_unlock_radius;
+
+        // If the contact was previously inactive but is now active we 
+        // need to transition to the locked contact state
+        if (!contact_state && input_contact_state)
+        {
+            contact_lock = true;
+            contact_point = contact_position;
+            contact_point.y = ik_foot_height;
+
+            Spring.inertialize_transition(ref contact_offset_position,
+                                          ref contact_offset_velocity,
+                                          input_contact_position,
+                                          input_contact_velocity,
+                                          contact_point,
+                                          Vector3.zero);
+        }
+        // Otherwise if we need to unlock or we were previously in 
+        // contact but are no longer we transition to just taking 
+        // the input position as-is
+        else if((contact_lock && contact_state && !input_contact_state) || unlock_contact)
+        {
+            contact_lock = false;
+
+            Spring.inertialize_transition(ref contact_offset_position,
+                                          ref contact_offset_velocity,
+                                          contact_point,
+                                          Vector3.zero,
+                                          input_contact_position,
+                                          input_contact_velocity);
+        }
+
+        contact_state = input_contact_state;
     }
     #endregion
     private void deform_character_mesh()

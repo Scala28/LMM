@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using Unity.Barracuda;
 using UnityEditor;
@@ -14,7 +16,9 @@ public class Pose
     public Vector3 root_velocity;
     public Vector3 root_angular_velocity;
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang)
+    public bool[] contact_states;
+
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts)
     {
         root_position = root_pos;
         root_rotation = root_rot;
@@ -37,8 +41,11 @@ public class Pose
         rot.Dispose();
         vel.Dispose();
         ang.Dispose();
+
+        contact_states = new bool[contacts.Length];
+        Array.Copy(contacts, contact_states, contacts.Length);
     }
-    public Pose(int nbones)
+    public Pose(int nbones, int nextra)
     {
         joints = new JointMotionData[nbones-1];
         root_position = Vector3.zero;
@@ -50,6 +57,8 @@ public class Pose
         {
             joints[i] = new JointMotionData();
         }
+
+        contact_states = new bool[nextra];
     }
     public Pose() { }
     public Pose DeepClone()
@@ -60,7 +69,8 @@ public class Pose
             root_rotation = this.root_rotation,
             root_velocity = this.root_velocity,
             root_angular_velocity = this.root_angular_velocity,
-            joints = new JointMotionData[this.joints.Length]
+            joints = new JointMotionData[this.joints.Length],
+            contact_states = new bool[this.contact_states.Length]
         };
         for(int i=0; i<joints.Length; i++)
         {
@@ -72,6 +82,7 @@ public class Pose
                 angular_velocity = this.joints[i].angular_velocity
             };
         }
+        Array.Copy(this.contact_states, clone.contact_states, this.contact_states.Length);
         return clone;
     }
 

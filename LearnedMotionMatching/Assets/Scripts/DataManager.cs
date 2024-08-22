@@ -358,7 +358,7 @@ public static class DataManager
         public int nbones() { return bone_positions[0].Length; }
         public int nfeatures() { return features[0].Length; }
         public int nranges() { return range_starts.Length; }
-        public int ncontacts() { return contact_states.Length; }
+        public int ncontacts() { return contact_states[0].Length; }
 
         public int database_trajectory_index_clamp(int frame, int offset)
         {
