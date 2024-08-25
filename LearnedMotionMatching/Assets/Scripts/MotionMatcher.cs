@@ -197,9 +197,9 @@ public class MotionMatcher : MonoBehaviour
         search_timer = search_time;
         force_search_timer = search_time;
 
-        contact_bones[0] = (int)character.Bone_LeftToe;
-        contact_bones[1] = (int)character.Bone_RightToe;
-
+        contact_bones[0] = (int)character.Bone_RightToe;
+        contact_bones[1] = (int)character.Bone_LeftToe;
+        
         contact_states = new bool[contact_bones.Length];
         contact_locks = new bool[contact_bones.Length];
         contact_positions = new Vector3[contact_bones.Length];
@@ -376,6 +376,9 @@ public class MotionMatcher : MonoBehaviour
         evaluate_stepper();
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
+
+        Debug.Log(current_pose.contact_states[0]);
+        Debug.Log(current_pose.contact_states[1]);
 
         inertialize_pose_update(current_pose, dt);
 
