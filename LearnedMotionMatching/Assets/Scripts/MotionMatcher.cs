@@ -4,7 +4,6 @@ using UnityEngine;
 using Unity.Barracuda;
 using System;
 using UnityEditor;
-using Unity.VisualScripting;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -76,6 +75,7 @@ public class MotionMatcher : MonoBehaviour
     private Pose current_pose;
     private Pose trns_pose;
     private Pose global_pose;
+    private Pose adjusted_bones_pose;
 
     private bool[] global_bone_computed;
 
@@ -142,13 +142,13 @@ public class MotionMatcher : MonoBehaviour
     #region Contact states and foot locking
 
     public bool ik_enabled = true;
+    private float ik_max_length_buffer = 0.015f;
     private float ik_foot_height = 0.02f;
     private float ik_toe_length = 0.15f;
     private float ik_unlock_radius = 0.2f;
     private float ik_blending_halflife = 0.1f;
-    private float ik_max_length_buffer = 0.015f;
 
-    private int[] contact_bones = new int[2] { (int)character.Bone_LeftToe, (int)character.Bone_RightToe };
+    private int[] contact_bones = new int[2];
 
     private bool[] contact_states;
     private bool[] contact_locks;
@@ -162,6 +162,8 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] adjusted_bone_positions;
     private Vector4[] adjusted_bone_rotations;
     #endregion
+
+    public bool gizmos = false;
 
     private int frame_index;
 
@@ -191,10 +193,12 @@ public class MotionMatcher : MonoBehaviour
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
 
+        #region contacts
         search_timer = search_time;
         force_search_timer = search_time;
 
-        #region contacts
+        contact_bones[0] = (int)character.Bone_LeftToe;
+        contact_bones[1] = (int)character.Bone_RightToe;
 
         contact_states = new bool[contact_bones.Length];
         contact_locks = new bool[contact_bones.Length];
@@ -224,10 +228,6 @@ public class MotionMatcher : MonoBehaviour
             contact_offset_positions[i] = Vector3.zero;
             contact_offset_velocities[i] = Vector3.zero;
         }
-
-        adjusted_bone_positions = pose.getPositions();
-        adjusted_bone_rotations = pose.getRotations();
-
         #endregion
 
         initialize_models();
@@ -240,12 +240,10 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[32];
         latent_proj = new float[32];
-
-        Debug.Log(db.ncontacts());
-
     }
     #region Initialize
-    private void initialize_models() {
+    private void initialize_models()
+    {
 
         stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(stepper));
@@ -283,10 +281,9 @@ public class MotionMatcher : MonoBehaviour
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
-        current_pose = pose.DeepClone();
-        current_pose.contact_states = db.contact_states[frame_index];
 
-        trns_pose = current_pose.DeepClone();
+        current_pose = pose.DeepClone();
+        trns_pose = pose.DeepClone();
 
         bone_offset_positions = new Vector3[db.nbones()];
         bone_offset_rotations = new Vector4[db.nbones()];
@@ -387,53 +384,16 @@ public class MotionMatcher : MonoBehaviour
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
             desired_rotation, simulation_rotation_halflife, dt);
 
-        adjusted_bone_positions = pose.getPositions();
-        adjusted_bone_rotations = pose.getRotations();
+        adjusted_bones_pose = pose.DeepClone();
         if (ik_enabled)
         {
-            for(int i=0; i<contact_bones.Length; i++)
-            {
-                int toe_bone = contact_bones[i];
-                int heel_bone = db.bone_parents[toe_bone];
-                int knee_bone = db.bone_parents[heel_bone];
-                int hip_bone = db.bone_parents[knee_bone];
-                int root_bone = db.bone_parents[hip_bone];
-
-                global_bone_computed = new bool[db.nbones()];
-
-                forward_kinematic_partial(toe_bone);
-
-                contact_update(
-                    ref contact_states[i],
-                    ref contact_locks[i],
-                    ref contact_positions[i],
-                    ref contact_velocities[i],
-                    ref contact_points[i],
-                    ref contact_targets[i],
-                    ref contact_offset_positions[i],
-                    ref contact_offset_velocities[i],
-                    global_pose.joints[toe_bone - 1].position,
-                    current_pose.contact_states[i],
-                    ik_blending_halflife,
-                    dt);
-
-                Vector3 contact_pos_clamp = contact_positions[i];
-                contact_pos_clamp.y = Math.Max(contact_pos_clamp.y, ik_foot_height);
-
-                int[] bones = new int[] { heel_bone, knee_bone, hip_bone, root_bone };
-                foreach(int bone in bones)
-                {
-                    forward_kinematic_partial(bone);
-                }
-
-            }
+            compute_feet_positions();
         }
 
         forward_kinamatic_full();
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
         deform_character_mesh();
-        
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -494,24 +454,24 @@ public class MotionMatcher : MonoBehaviour
         projector_in.Dispose();
         projector_out.Dispose();
     }
-    private bool compute_projection_distance(float[] query, float transition_cost=0.0f)
+    private bool compute_projection_distance(float[] query, float transition_cost = 0.0f)
     {
         bool transition;
 
         float best_cost = 0.0f;
-        for(int i=0; i<feature_proj.Length; i++)
+        for (int i = 0; i < feature_proj.Length; i++)
         {
             best_cost += squaref(query[i] - feature_proj[i]);
         }
         best_cost = Mathf.Sqrt(best_cost);
 
         float trns_dist_squared = 0.0f;
-        for(int i=0; i<feature_proj.Length; i++)
+        for (int i = 0; i < feature_proj.Length; i++)
         {
             trns_dist_squared += squaref(feature_curr[i] - feature_proj[i]);
         }
 
-        if(trns_dist_squared > squaref(transition_cost))
+        if (trns_dist_squared > squaref(transition_cost))
         {
             transition = true;
             best_cost += transition_cost;
@@ -519,7 +479,7 @@ public class MotionMatcher : MonoBehaviour
         else
         {
             transition = false;
-            for(int i=0; i<feature_proj.Length; i++)
+            for (int i = 0; i < feature_proj.Length; i++)
             {
                 feature_proj[i] = feature_curr[i];
             }
@@ -536,7 +496,8 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     #region Inertializers
-    private void inertialize_pose_reset() {
+    private void inertialize_pose_reset()
+    {
         for (int i = 0; i < db.nbones(); i++)
         {
             bone_offset_positions[i] = Vector3.zero;
@@ -595,7 +556,8 @@ public class MotionMatcher : MonoBehaviour
                 trns_pose.joints[i - 1].angular_velocity);
         }
     }
-    private void inertialize_pose_update(Pose input_pose, float _dt) {
+    private void inertialize_pose_update(Pose input_pose, float _dt)
+    {
 
         Vector3 world_space_pos = Quat.quat_mul_vec(transition_dst_rotation,
             Quat.quat_inv_mul_vec(transition_src_rotation, input_pose.root_position - transition_src_position)) + transition_dst_position;
@@ -686,7 +648,7 @@ public class MotionMatcher : MonoBehaviour
         if (desired_strafe)
         {
             Vector3 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), new Vector3(0f, 0f, 1f));
-            if(length(gamepad_stickright) > 0.01f)
+            if (length(gamepad_stickright) > 0.01f)
             {
                 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), Quat.vec_normalize(gamepad_stickright));
             }
@@ -694,7 +656,7 @@ public class MotionMatcher : MonoBehaviour
         }
         // If strafe is not active the desired direction comes from the left 
         // stick as long as that stick is being used
-        else if(length(gamepad_stickleft) > 0.01f)
+        else if (length(gamepad_stickleft) > 0.01f)
         {
             Vector3 desired_dir = Quat.vec_normalize(desired_velocity);
             return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
@@ -732,7 +694,7 @@ public class MotionMatcher : MonoBehaviour
     {
         trajectory_desired_rotations[0] = desired_rotation;
 
-        for(int i=1; i<trajectory_desired_rotations.Length; i++)
+        for (int i = 1; i < trajectory_desired_rotations.Length; i++)
         {
             trajectory_desired_rotations[i] = desired_rotation_update(
                 trajectory_desired_rotations[i - 1],
@@ -745,13 +707,13 @@ public class MotionMatcher : MonoBehaviour
     }
     private void trajectory_rotations_predict(float halflife, float dt)
     {
-        for(int i=0; i < trajectory_rotations.Length; i++)
+        for (int i = 0; i < trajectory_rotations.Length; i++)
         {
             trajectory_rotations[i] = simulation_rotation;
             trajectory_angular_velocities[i] = simulation_angular_velocity;
         }
 
-        for(int i=1; i<trajectory_rotations.Length; i++)
+        for (int i = 1; i < trajectory_rotations.Length; i++)
         {
             simulation_rotation_update(
                 ref trajectory_rotations[i],
@@ -765,7 +727,7 @@ public class MotionMatcher : MonoBehaviour
         float fwrd_speed, float side_speed, float back_speed, float dt)
     {
         trajectory_desired_velocities[0] = desired_velocity;
-        for(int i=1; i<trajectory_desired_velocities.Length; i++)
+        for (int i = 1; i < trajectory_desired_velocities.Length; i++)
         {
             trajectory_desired_velocities[i] = desired_velocity_update(
                 gamepadstick_left,
@@ -782,7 +744,7 @@ public class MotionMatcher : MonoBehaviour
         trajectory_velocities[0] = simulation_velocity;
         trajectory_accelerations[0] = simulation_acceleration;
 
-        for(int i=1; i<trajectory_positions.Length; i++)
+        for (int i = 1; i < trajectory_positions.Length; i++)
         {
             trajectory_positions[i] = trajectory_positions[i - 1];
             trajectory_velocities[i] = trajectory_velocities[i - 1];
@@ -873,7 +835,7 @@ public class MotionMatcher : MonoBehaviour
         Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
         return azimuth + 2.0f * dt * gamepadaxis.x;
     }
-    private float orbit_camera_altitude(float altitude, Vector3 gamepadstick_right, bool desired_strafe, float dt) 
+    private float orbit_camera_altitude(float altitude, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
         Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
         return clampf(altitude + 2.0f * dt * gamepadaxis.z, 0.0f, 0.4f * Mathf.PI);
@@ -905,23 +867,23 @@ public class MotionMatcher : MonoBehaviour
     #region FKs
     private void forward_kinamatic_full()
     {
-        for(int i=0; i<db.bone_parents.Length; i++)
+        for (int i = 0; i < db.bone_parents.Length; i++)
         {
             Debug.Assert(db.bone_parents[i] < i);
             if (db.bone_parents[i] == -1)
             {
-                global_pose.root_position = pose.root_position;
-                global_pose.root_rotation = pose.root_rotation;
+                global_pose.root_position = adjusted_bones_pose.root_position;
+                global_pose.root_rotation = adjusted_bones_pose.root_rotation;
             }
             else
             {
-                Vector3 parent_position = db.bone_parents[i] == 0 ? global_pose.root_position : 
+                Vector3 parent_position = db.bone_parents[i] == 0 ? global_pose.root_position :
                     global_pose.joints[db.bone_parents[i] - 1].position;
                 Vector4 parent_rotation = db.bone_parents[i] == 0 ? global_pose.root_rotation :
                     global_pose.joints[db.bone_parents[i] - 1].rotation;
 
-                global_pose.joints[i-1].position = Quat.quat_mul_vec(parent_rotation, pose.joints[i-1].position) + parent_position;
-                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, pose.joints[i - 1].rotation);
+                global_pose.joints[i - 1].position = Quat.quat_mul_vec(parent_rotation, adjusted_bones_pose.joints[i - 1].position) + parent_position;
+                global_pose.joints[i - 1].rotation = Quat.quat_mul(parent_rotation, adjusted_bones_pose.joints[i - 1].rotation);
             }
         }
     }
@@ -938,14 +900,14 @@ public class MotionMatcher : MonoBehaviour
             Vector4 parent_rot;
             Vector3 parent_ang_vel;
 
-            forward_kinematics_velocity(out parent_pos, out parent_vel, out parent_rot, out parent_ang_vel, 
+            forward_kinematics_velocity(out parent_pos, out parent_vel, out parent_rot, out parent_ang_vel,
                 db.bone_parents[bone]);
 
-            bone_pos = Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].position) + parent_pos;
-            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].velocity) +
-                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].position));
-            bone_rot = Quat.quat_mul(parent_rot, pose.joints[bone-1].rotation);
-            bone_ang_vel = Quat.quat_mul_vec(parent_rot, pose.joints[bone-1].angular_velocity) + parent_ang_vel;
+            bone_pos = Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].position) + parent_pos;
+            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].velocity) +
+                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].position));
+            bone_rot = Quat.quat_mul(parent_rot, pose.joints[bone - 1].rotation);
+            bone_ang_vel = Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].angular_velocity) + parent_ang_vel;
         }
         else
         {
@@ -955,91 +917,252 @@ public class MotionMatcher : MonoBehaviour
             bone_ang_vel = pose.root_angular_velocity;
         }
     }
-    private void forward_kinematic_partial(int bone)
+    private void forward_kinematic_partial(Pose input_pose, int bone)
     {
         if (db.bone_parents[bone] == -1)
         {
-            global_pose.root_position = pose.root_position;
-            global_pose.root_rotation = pose.root_rotation;
+            global_pose.root_position = input_pose.root_position;
+            global_pose.root_rotation = input_pose.root_rotation;
             global_bone_computed[bone] = true;
             return;
         }
-        
-        if (!global_bone_computed[db.bone_parents[bone]]){
-            forward_kinematic_partial(db.bone_parents[bone]);
+        if (!global_bone_computed[db.bone_parents[bone]])
+        {
+            forward_kinematic_partial(input_pose, db.bone_parents[bone]);
         }
-        Vector3 parent_pos = global_pose.joints[db.bone_parents[bone] - 1].position;
-        Vector4 parent_rot = global_pose.joints[db.bone_parents[bone] - 1].rotation;
-        global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, pose.joints[bone - 1].position)
-            + parent_pos;
-        global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, pose.joints[bone - 1].rotation);
+        if (db.bone_parents[bone] == 0)
+        {
+            Vector3 parent_pos = global_pose.root_position;
+            Vector4 parent_rot = global_pose.root_rotation;
+            global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, input_pose.joints[bone - 1].position)
+                + parent_pos;
+            global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, input_pose.joints[bone - 1].rotation);
+        }
+        else
+        {
+            Vector3 parent_pos = global_pose.joints[db.bone_parents[bone] - 1].position;
+            Vector4 parent_rot = global_pose.joints[db.bone_parents[bone] - 1].rotation;
+            global_pose.joints[bone - 1].position = Quat.quat_mul_vec(parent_rot, input_pose.joints[bone - 1].position)
+                + parent_pos;
+            global_pose.joints[bone - 1].rotation = Quat.quat_mul(parent_rot, input_pose.joints[bone - 1].rotation);
+        }
         global_bone_computed[bone] = true;
     }
     #endregion
 
-    #region contact & foot locking
-    private void contact_update(ref bool contact_state, 
-                                ref bool contact_lock, 
-                                ref Vector3 contact_position,
-                                ref Vector3 contact_velocity,
-                                ref Vector3 contact_point,
-                                ref Vector3 contact_target,
-                                ref Vector3 contact_offset_position,
-                                ref Vector3 contact_offset_velocity,
-                                Vector3 input_contact_position,
-                                bool input_contact_state,
-                                float halflife,
-                                float _dt,
-                                float eps=1e-8f)
+    #region Contact & feet 
+    private void compute_feet_positions()
     {
-        Vector3 input_contact_velocity = (input_contact_position - contact_target) / (_dt + eps);
-        contact_target = input_contact_position;
 
-        Spring.inertialize_update(ref contact_position,
-                                  ref contact_velocity,
-                                  ref contact_offset_position,
-                                  ref contact_offset_velocity,
-                                  // If locked we feed the contact point and zero velocity, 
-                                  // otherwise we feed the input from the animation
-                                  contact_lock ? contact_point : input_contact_position,
-                                  contact_lock ? Vector3.zero : input_contact_velocity,
-                                  halflife,
-                                  _dt);
+        for (int i = 0; i < contact_bones.Length; i++)
+        {
+            // Find all the relevant bone indices
+            int toe_bone = contact_bones[i];
+            int heel_bone = db.bone_parents[toe_bone];
+            int knee_bone = db.bone_parents[heel_bone];
+            int hip_bone = db.bone_parents[knee_bone];
+            int root_bone = db.bone_parents[hip_bone];
+            // Compute the world space position for the toe
+            global_bone_computed = new bool[db.nbones()];
 
-        bool unlock_contact = contact_lock &&
-            length(contact_point - input_contact_position) > ik_unlock_radius;
+            forward_kinematic_partial(pose, toe_bone);
+            // Update the contact state
+            contact_update(i, global_pose.joints[toe_bone - 1].position);
+
+            // Ensure contact position never goes through floor
+            Vector3 contact_position_clamp = contact_positions[i];
+            contact_position_clamp.y = Mathf.Max(contact_position_clamp.y, ik_foot_height);
+
+            // Re-compute toe, heel, knee, hip, and root bone positions
+            int[] bones = new int[] { heel_bone, knee_bone, hip_bone, root_bone };
+
+            for (int bone_indx = 0; bone_indx < bones.Length; bone_indx++)
+            {
+                forward_kinematic_partial(pose, bones[bone_indx]);
+            }
+            // Perform simple two-joint IK to place heel
+            // Qua lascio piu input variables in caso dobbiamo fare mani in futuro (per combattimento o altre cose)
+
+            ik_two_bone(contact_position_clamp,
+                hip_bone,
+                knee_bone,
+                heel_bone,
+                toe_bone,
+                root_bone,
+                ik_max_length_buffer
+                );
+            // Re-compute toe, heel, and knee positions 
+            global_bone_computed = new bool[db.nbones()];
+
+            int[] bones_stptwo = new int[] { toe_bone, heel_bone, knee_bone };
+            for (int bone_indx = 0; bone_indx < bones_stptwo.Length; bone_indx++)
+            {
+                forward_kinematic_partial(adjusted_bones_pose, bones_stptwo[bone_indx]);
+            }
+
+            // Rotate heel so toe is facing toward contact point
+            ik_look_at(ref adjusted_bones_pose.joints[heel_bone - 1].rotation, global_pose.joints[toe_bone - 1].position, contact_position_clamp, heel_bone, knee_bone);
+
+            // Re-compute toe and heel positions 
+            global_bone_computed = new bool[db.nbones()];
+
+            int[] bones_stptree = new int[] { toe_bone, heel_bone };
+            for (int bone_indx = 0; bone_indx < bones_stptree.Length; bone_indx++)
+            {
+                forward_kinematic_partial(adjusted_bones_pose, bones_stptree[bone_indx]);
+            }
+
+            // Rotate toe bone so that the end of the toe
+            // does not intersect with the ground
+            Vector3 toe_end_curr = Quat.quat_mul_vec(global_pose.joints[toe_bone - 1].rotation, new Vector3(ik_toe_length, 0.0f, 0.0f)) +
+                    global_pose.joints[toe_bone - 1].position;
+
+            Vector3 toe_end_targ = toe_end_curr;
+            toe_end_targ.y = Mathf.Max(toe_end_targ.y, ik_foot_height);
+
+            ik_look_at(ref adjusted_bones_pose.joints[toe_bone - 1].rotation, toe_end_curr, toe_end_targ, toe_bone, heel_bone);
+
+        }
+    }
+
+    private void contact_update(int indx, Vector3 input_contact_position, float eps = 1e-8f)
+    {
+        Vector3 input_contact_velocity = (input_contact_position - contact_targets[indx]) / (dt + eps);
+        contact_targets[indx] = input_contact_position;
+
+        // Update the inertializer to tick forward in time
+        Spring.inertialize_update(
+            ref contact_positions[indx],
+            ref contact_velocities[indx],
+            ref contact_offset_positions[indx],
+            ref contact_offset_velocities[indx],
+            // If locked we feed the contact point and zero velocity,    
+            // otherwise we feed the input from the animation
+            contact_locks[indx] ? contact_points[indx] : input_contact_position,
+            contact_locks[indx] ? new Vector3() : input_contact_velocity,
+            ik_blending_halflife,
+            dt);
+
+        // If the contact point is too far from the current input position 
+        // then we need to unlock the contact
+        bool unlock_contact = contact_locks[indx] && (length(contact_points[indx] - input_contact_position) > ik_unlock_radius);
 
         // If the contact was previously inactive but is now active we 
         // need to transition to the locked contact state
-        if (!contact_state && input_contact_state)
+        if (!contact_states[indx] && current_pose.contact_states[indx])
         {
-            contact_lock = true;
-            contact_point = contact_position;
-            contact_point.y = ik_foot_height;
+            // Contact point is given by the current position of 
+            // the foot projected onto the ground plus foot height
+            contact_locks[indx] = true;
+            contact_points[indx] = contact_positions[indx];
+            contact_points[indx].y = ik_foot_height;
 
-            Spring.inertialize_transition(ref contact_offset_position,
-                                          ref contact_offset_velocity,
-                                          input_contact_position,
-                                          input_contact_velocity,
-                                          contact_point,
-                                          Vector3.zero);
+            Spring.inertialize_transition(
+                ref contact_offset_positions[indx],
+                ref contact_offset_velocities[indx],
+                input_contact_position,
+                input_contact_velocity,
+                contact_points[indx],
+                new Vector3());
         }
         // Otherwise if we need to unlock or we were previously in 
         // contact but are no longer we transition to just taking 
         // the input position as-is
-        else if((contact_lock && contact_state && !input_contact_state) || unlock_contact)
+        else if ((contact_locks[indx] && contact_states[indx] && !current_pose.contact_states[indx]) || unlock_contact)
         {
-            contact_lock = false;
+            contact_locks[indx] = false;
 
-            Spring.inertialize_transition(ref contact_offset_position,
-                                          ref contact_offset_velocity,
-                                          contact_point,
-                                          Vector3.zero,
-                                          input_contact_position,
-                                          input_contact_velocity);
+            Spring.inertialize_transition(
+                ref contact_offset_positions[indx],
+                ref contact_offset_velocities[indx],
+                contact_points[indx],
+                new Vector3(),
+                input_contact_position,
+                input_contact_velocity);
+        }
+        // Update contact state
+        contact_states[indx] = current_pose.contact_states[indx];
+    }
+    #endregion
+
+    #region IKs
+    private void ik_look_at(ref Vector4 bone_rotation,
+        Vector3 child_position,
+        Vector3 target_position,
+        int indx_bone,
+        int indx_parent,
+        float eps = 1e-5f)
+    {
+        Vector4 global_parent_rotation = global_pose.joints[indx_parent - 1].rotation;
+        Vector4 global_rotation = global_pose.joints[indx_bone - 1].rotation;
+        Vector3 global_position = global_pose.joints[indx_bone - 1].position;
+
+        Vector3 curr_dir = Quat.vec_normalize(child_position - global_position);
+        Vector3 targ_dir = Quat.vec_normalize(target_position - global_position);
+
+        if (Mathf.Abs(1.0f - Quat.vec_dot(curr_dir, targ_dir)) > eps)
+        {
+            bone_rotation = Quat.quat_inv_mul(global_parent_rotation, Quat.quat_mul(Quat.quat_between(curr_dir, targ_dir), global_rotation));
+        }
+    }
+
+    // Basic two-joint IK in the style of https://theorangeduck.com/page/simple-two-joint
+    // Here I add a basic "forward vector" which acts like a kind of pole-vetor
+    // to control the bending direction
+    private void ik_two_bone(
+        Vector3 contact_position_clamp,
+        int indx_hips,
+        int indx_mid,
+        int indx_end,
+        int indx_toe,
+        int indx_root,
+        float max_length_buffer)
+    {
+        Vector3 bone_root = global_pose.joints[indx_hips - 1].position;
+        Vector3 bone_mid = global_pose.joints[indx_mid - 1].position;
+        Vector3 bone_end = global_pose.joints[indx_end - 1].position;
+        Vector3 target = contact_position_clamp + (global_pose.joints[indx_end - 1].position - global_pose.joints[indx_toe - 1].position);
+        Vector3 fwd = Quat.quat_mul_vec(global_pose.joints[indx_mid - 1].rotation, new Vector3(0.0f, 1.0f, 0.0f));
+        Vector4 bone_root_gr = global_pose.joints[indx_hips - 1].rotation;
+        Vector4 bone_mid_gr = global_pose.joints[indx_mid - 1].rotation;
+        Vector4 bone_par_gr = global_pose.joints[indx_root - 1].rotation;
+
+        float max_extension = length(bone_root - bone_mid) + length(bone_mid - bone_end) - max_length_buffer;
+        Vector3 target_clamp = target;
+
+        if (length(target - bone_root) > max_extension)
+        {
+            target_clamp = bone_root + max_extension * Quat.vec_normalize(target - bone_root);
         }
 
-        contact_state = input_contact_state;
+        Vector3 axis_dwn = Quat.vec_normalize(bone_end - bone_root);
+        Vector3 axis_rot = Quat.vec_normalize(Quat._cross(axis_dwn, fwd));
+
+        Vector3 a = bone_root;
+        Vector3 b = bone_mid;
+        Vector3 c = bone_end;
+        Vector3 t = target_clamp;
+
+        float lab = length(b - a);
+        float lcb = length(b - c);
+        float lat = length(t - a);
+
+        float ac_ab_0 = Mathf.Acos(clampf(Quat.vec_dot(Quat.vec_normalize(c - a), Quat.vec_normalize(b - a)), -1.0f, 1.0f));
+        float ba_bc_0 = Mathf.Acos(clampf(Quat.vec_dot(Quat.vec_normalize(a - b), Quat.vec_normalize(c - b)), -1.0f, 1.0f));
+
+        float ac_ab_1 = Mathf.Acos(clampf((lab * lab + lat * lat - lcb * lcb) / (2.0f * lab * lat), -1.0f, 1.0f));
+        float ba_bc_1 = Mathf.Acos(clampf((lab * lab + lcb * lcb - lat * lat) / (2.0f * lab * lcb), -1.0f, 1.0f));
+
+        Vector4 r0 = Quat.quat_from_angle_axis(ac_ab_1 - ac_ab_0, axis_rot);
+        Vector4 r1 = Quat.quat_from_angle_axis(ba_bc_1 - ba_bc_0, axis_rot);
+
+        Vector3 c_a = Quat.vec_normalize(bone_end - bone_root);
+        Vector3 t_a = Quat.vec_normalize(target_clamp - bone_root);
+
+        Vector4 r2 = Quat.quat_from_angle_axis(Mathf.Acos(clampf(Quat.vec_dot(c_a, t_a), -1.0f, 1.0f)), Quat.vec_normalize(Quat._cross(c_a, t_a)));
+
+        adjusted_bones_pose.joints[indx_hips - 1].rotation = Quat.quat_inv_mul(bone_par_gr, Quat.quat_mul(r2, Quat.quat_mul(r0, bone_root_gr)));
+        adjusted_bones_pose.joints[indx_mid - 1].rotation = Quat.quat_inv_mul(bone_root_gr, Quat.quat_mul(r1, bone_mid_gr));
     }
     #endregion
     private void deform_character_mesh()
@@ -1077,6 +1200,7 @@ public class MotionMatcher : MonoBehaviour
             //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
         }
     }
+
     private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
     private float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
@@ -1084,18 +1208,19 @@ public class MotionMatcher : MonoBehaviour
     private float squaref(float x) { return x * x; }
     private void OnDestroy()
     {
-        if(stepper_inference != null)
+        if (stepper_inference != null)
             stepper_inference.Dispose();
-        if(decompressor_inference != null)
+        if (decompressor_inference != null)
             decompressor_inference.Dispose();
-        if(projector_inference != null)
+        if (projector_inference != null)
             projector_inference.Dispose();
     }
     private void OnDrawGizmosSelected()
     {
-        for(int i=0; i<trajectory_positions.Length; i++)
-        {
-            Gizmos.DrawSphere(trajectory_positions[i], .2f);
-        }
+        if(gizmos)
+            for (int i = 0; i < trajectory_positions.Length; i++)
+            {
+                Gizmos.DrawSphere(trajectory_positions[i], .2f);
+            }
     }
 }

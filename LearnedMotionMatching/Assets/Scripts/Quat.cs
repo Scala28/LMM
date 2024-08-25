@@ -244,6 +244,24 @@ public static class Quat
         }
         return ris;
     }
+    public static Vector4 quat_nlerp(Vector4 q, Vector4 p, float alpha)
+    {
+        return quat_normalize(new Vector4(
+            lerpf(q.x, p.x, alpha),
+            lerpf(q.y, p.y, alpha),
+            lerpf(q.z, p.z, alpha),
+            lerpf(q.w, p.w, alpha)));
+    }
+    public static Vector4 quat_between(Vector3 p, Vector3 q)
+    {
+        Vector3 c = _cross(p, q);
+
+        return quat_normalize(new Vector4(
+            Mathf.Sqrt(vec_dot(p, p) * vec_dot(q, q)) + vec_dot(p, q),
+            c.x,
+            c.y,
+            c.z));
+    }
     public static Vector3 convert_ToEuler(Vector4 q, string order = "xyz")
     {
         float q0 = q.x;
@@ -278,10 +296,22 @@ public static class Quat
 
         return new Vector3(x, y, z);
     }
+
+    public static float vec_dot(Vector3 a, Vector3 b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+    public static float quat_dot(Vector4 a, Vector4 b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+    }
+
+    private static float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private static float clampf(float x, float min, float max)
     {
         return x > max ? max : x < min ? min : x;
     }
+    private static float squaref(float x) { return x * x; }
     private static int index(int bone, int vector, int component, int subcomponent, TensorShape shape)
     {
         return bone * shape.height * shape.width * shape.channels +
