@@ -252,6 +252,45 @@ public static class Quat
             lerpf(q.z, p.z, alpha),
             lerpf(q.w, p.w, alpha)));
     }
+    public static Vector4 quat_nlerp_shortest(Vector4 q, Vector4 p, float alpha)
+    {
+        if(quat_dot(q, p) < 0.0f)
+        {
+            p = -p;
+        }
+        return quat_nlerp(q, p, alpha);
+    }
+    public static Vector4 quat_slerp_shortest(Vector4 q, Vector4 p, float alpha, float eps = 1e-5f)
+    {
+        if(quat_dot(q, p) < 0.0f)
+        {
+            p = -p;
+        }
+        float dot = quat_dot(q, p);
+        float theta = Mathf.Acos(clampf(dot, -1.0f, 1.0f));
+
+        if(theta < eps)
+        {
+            return quat_nlerp(q, p, alpha);
+        }
+        Vector4 r = quat_normalize(p - q * dot);
+        return q * Mathf.Cos(theta * alpha) + r * Mathf.Sin(theta * alpha);
+    }
+    public static Vector4 quat_slerp_shortest_approx(Vector4 q, Vector4 p, float alpha)
+    {
+        float ca = quat_dot(q, p);
+        if(ca < 0.0f)
+        {
+            p = -p;
+        }
+        float d = Mathf.Abs(ca);
+        float a = 1.0904f + d * (-3.2452f + d * (3.55645f - d * 1.43519f));
+        float b = 0.848013f + d * (-1.06021f + d * 0.215638f);
+        float k = a * (alpha - 0.5f) * (alpha - 0.5f) + b;
+        float oalpha = alpha + alpha * (alpha - 0.5f) * (alpha - 1) * k;
+
+        return quat_nlerp(q, p, oalpha);
+    }
     public static Vector4 quat_between(Vector3 p, Vector3 q)
     {
         Vector3 c = _cross(p, q);

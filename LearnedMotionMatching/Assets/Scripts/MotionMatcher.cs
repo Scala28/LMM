@@ -158,9 +158,15 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] contact_targets;
     private Vector3[] contact_offset_positions;
     private Vector3[] contact_offset_velocities;
+    #endregion
 
-    private Vector3[] adjusted_bone_positions;
-    private Vector4[] adjusted_bone_rotations;
+    #region Adjustments
+    public bool adjustment_enabled = true;
+    private bool adjustment_by_velocity = true;
+    private float adjustment_position_halflife = 0.1f;
+    private float adjustment_rotation_halflife = 0.2f;
+    private float adjustment_position_max_ratio = 0.5f;
+    private float adjustment_rotation_max_ratio = 0.5f;
     #endregion
 
     public bool gizmos = false;
@@ -172,14 +178,19 @@ public class MotionMatcher : MonoBehaviour
     private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
 
+    public bool rigged = false;
+
     // Start is called before the first frame update
     void Start()
     {
         input_handler = GetComponent<InputHandler>();
         db = DataManager.load_database("Assets/Resources/database.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
-        mesh = DataManager.gen_mesh_from_character(ch);
-        transform.GetComponent<MeshFilter>().mesh = mesh;
+        if (!rigged)
+        {
+            mesh = DataManager.gen_mesh_from_character(ch);
+            transform.GetComponent<MeshFilter>().mesh = mesh;
+        }
 
         Debug.Assert(db.nbones() == ch.nbones());
 
@@ -187,7 +198,9 @@ public class MotionMatcher : MonoBehaviour
 
         frame_index = db.range_starts[0];
 
-        //initialize_skeleton(this.transform);
+        if(rigged)
+            initialize_skeleton(this.transform);
+
         initialize_pose();
 
         inertialize_pose_reset();
@@ -377,15 +390,37 @@ public class MotionMatcher : MonoBehaviour
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 
-        Debug.Log(current_pose.contact_states[0]);
-        Debug.Log(current_pose.contact_states[1]);
-
         inertialize_pose_update(current_pose, dt);
 
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
             desired_velocity, simulation_velocity_halflife, dt);
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
             desired_rotation, simulation_rotation_halflife, dt);
+
+        //Adjustment
+        if (adjustment_enabled)
+        {
+            Vector3 adjusted_position = pose.root_position;
+            Vector4 adjusted_rotation = pose.root_rotation;
+
+            if (adjustment_by_velocity)
+            {
+                adjusted_position = adjust_character_position_by_velocity(
+                    pose.root_position,
+                    pose.root_velocity,
+                    simulation_position,
+                    adjustment_position_halflife,
+                    dt);
+                adjusted_rotation = adjust_character_rotation_by_velocity(
+
+                    pose.root_rotation,
+                    pose.root_angular_velocity,
+                    simulation_rotation,
+                    adjustment_rotation_halflife,
+                    dt);
+            }
+            inertialize_root_adjust(adjusted_position, adjusted_rotation);
+        }
 
         adjusted_bones_pose = pose.DeepClone();
         if (ik_enabled)
@@ -396,7 +431,10 @@ public class MotionMatcher : MonoBehaviour
         forward_kinamatic_full();
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
-        deform_character_mesh();
+        if(!rigged)
+            deform_character_mesh();
+        else
+            display_frame_pose();
     }
     #region NN inferences
     private void evaluate_stepper()
@@ -612,6 +650,28 @@ public class MotionMatcher : MonoBehaviour
                 inertialize_blending_halflife,
                 _dt);
         }
+    }
+    private void inertialize_root_adjust(Vector3 input_position, Vector4 input_rotation)
+    {
+        // Find the position difference and add it to the state and transition location
+        Vector3 position_difference = input_position - pose.root_position;
+        pose.root_position += position_difference;
+        transition_dst_position += position_difference;
+
+        // Find the point at which we want to now transition from in the src data
+        transition_src_position = transition_src_position + Quat.quat_mul_vec(transition_src_rotation,
+            Quat.quat_inv_mul_vec(transition_dst_rotation, pose.root_position - bone_offset_positions[0] - transition_dst_position));
+
+        transition_dst_position = pose.root_position;
+        bone_offset_positions[0] = new Vector3();
+
+        // Find the rotation difference. We need to normalize here or some error can accumulate 
+        // over time during adjustment.
+        Vector4 rotation_difference = Quat.quat_normalize(Quat.quat_mul_inv(input_rotation, pose.root_rotation));
+
+        // Apply the rotation difference to the current rotation and transition location
+        pose.root_rotation = Quat.quat_mul(rotation_difference, pose.root_rotation);
+        transition_dst_rotation = Quat.quat_mul(rotation_difference, transition_dst_rotation);
     }
     #endregion
 
@@ -1168,6 +1228,46 @@ public class MotionMatcher : MonoBehaviour
         adjusted_bones_pose.joints[indx_mid - 1].rotation = Quat.quat_inv_mul(bone_root_gr, Quat.quat_mul(r1, bone_mid_gr));
     }
     #endregion
+
+    #region adjustments
+    private Vector3 adjust_character_position_by_velocity(Vector3 character_pos, Vector3 character_vel, Vector3 simulation_pos,
+        float halflife, float dt)
+    {
+        Vector3 adjustment_position = Spring.damp_adjustment_exact(
+            simulation_pos - character_pos,
+            halflife,
+            dt);
+        // If the length of the adjustment is greater than the character velocity 
+        // multiplied by the ratio then we need to clamp it to that length
+        float max_length = adjustment_position_max_ratio * length(character_vel) * dt;
+
+        if(length(adjustment_position) > max_length)
+        {
+            adjustment_position = max_length * Quat.vec_normalize(adjustment_position);
+        }
+
+        return adjustment_position + character_pos;
+    }
+    private Vector3 adjust_character_rotation_by_velocity(Vector4 character_rot, Vector3 character_angular_vel, Vector4 simulation_rot,
+        float halflife, float dt)
+    {
+        Vector4 adjustment_rotation = Spring.damp_adjustment_exact(
+            Quat.quat_abs(Quat.quat_normalize(Quat.quat_mul_inv(
+                simulation_rot, character_rot))),
+            halflife,
+            dt);
+
+        float max_length = adjustment_rotation_max_ratio * length(character_angular_vel) * dt;
+
+        if(length(Quat.quat_to_scaled_angle_axis(adjustment_rotation)) > max_length)
+        {
+            adjustment_rotation = Quat.quat_from_scaled_angle_axis(max_length *
+                Quat.vec_normalize(Quat.quat_to_scaled_angle_axis(adjustment_rotation)));
+        }
+
+        return Quat.quat_mul(adjustment_rotation, character_rot);
+    }
+    #endregion
     private void deform_character_mesh()
     {
         Vector3[] mesh_vertices = new Vector3[mesh.vertices.Length];
@@ -1185,16 +1285,16 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        transform.position = new Vector3(current_pose.root_position.x, current_pose.root_position.y, -current_pose.root_position.z);
-        Quaternion q = Quaternion.Euler(0f, 180f, 0f);
-        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(current_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
+        transform.position = new Vector3(adjusted_bones_pose.root_position.x, adjusted_bones_pose.root_position.y, adjusted_bones_pose.root_position.z);
+        Quaternion q = Quaternion.Euler(0f, 0f, 0f);
+        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(adjusted_bones_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
         Vector3 root_angle = new Vector3(ang.x, ang.y, ang.z) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0f, 0f, -root_angle.z) *
-                    Quaternion.Euler(0f, -root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
+                    Quaternion.Euler(0f, root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
-            JointMotionData jdata = current_pose.joints[i - 1];
+            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
 
             ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
 

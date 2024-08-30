@@ -115,6 +115,14 @@ public static class Spring
         x = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(eydt * (j0 + j1 * dt)), x_goal);
         v = eydt * (v - j1 * y * dt);
     }
+    public static Vector3 damp_adjustment_exact(Vector3 g, float halflife, float dt, float eps = 1e-5f)
+    {
+        return g * (1.0f - fast_negexpf((LN2f * dt) / (halflife + eps)));
+    }
+    public static Vector4 damp_adjustment_exact(Vector4 g, float halflife, float dt, float eps = 1e-5f)
+    {
+        return Quat.quat_slerp_shortest_approx(new Vector4(), g, 1.0f - fast_negexpf((LN2f * dt)) / (halflife + eps));
+    }
     public static float halflife_to_damping(float halflife, float eps = 1e-5f)
     {
         return (4.0f * LN2f) / (halflife + eps);

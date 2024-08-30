@@ -224,16 +224,18 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 919132148757540217}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3578941490adc442a0ca4bb2beb881f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   stepper: {fileID: 5022602860645237092, guid: b668ac9814796254dbff6049815dd25f, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: 4501058462cc416468d167d2f2cefddb, type: 3}
-  projector: {fileID: 0}
+  projector: {fileID: 5022602860645237092, guid: 14cb0b4e110bb9b4aa95f328346c2096, type: 3}
   search_time: 0.1
   ik_enabled: 1
+  gizmos: 0
+  rigged: 1
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -387,6 +389,8 @@ MonoBehaviour:
   projector: {fileID: 5022602860645237092, guid: 14cb0b4e110bb9b4aa95f328346c2096, type: 3}
   search_time: 0.1
   ik_enabled: 1
+  gizmos: 0
+  rigged: 0
 --- !u!23 &1013524421
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -767,7 +771,7 @@ Transform:
   m_GameObject: {fileID: 919132148757540217}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -3.9197686, y: 0, z: -1.693544}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -945,13 +949,128 @@ GameObject:
   m_Component:
   - component: {fileID: 543450653031528387}
   - component: {fileID: 714407554}
+  - component: {fileID: 919132148757540219}
+  - component: {fileID: 919132148757540218}
   m_Layer: 0
-  m_Name: 'model_skeleton '
-  m_TagString: Untagged
+  m_Name: 'freak dave '
+  m_TagString: joint
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
+--- !u!114 &919132148757540218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132148757540217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7e035fd779fd448815cc8ee7e46ceb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RawMoveInput: {x: 0, y: 0}
+  MoveInput: {x: 0, y: 0, z: 0}
+  RawLookInput: {x: 0, y: 0}
+  LookInput: {x: 0, y: 0, z: 0}
+  GaitInput: 0
+  StrafeInput: 1
+  deadzone: 0.2
+--- !u!114 &919132148757540219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132148757540217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Actions: {fileID: -944628639613478452, guid: 765b27f0727a1234ca4cfbc78fa0dea9, type: 3}
+  m_NotificationBehavior: 2
+  m_UIInputModule: {fileID: 0}
+  m_DeviceLostEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_DeviceRegainedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ControlsChangedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ActionEvents:
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 919132148757540218}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnMoveInput
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: dd4baf79-d8a9-45ae-b3ee-35381f93dca3
+    m_ActionName: locomotion/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 919132148757540218}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnLookInput
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: eb692c17-2629-44ba-a61f-186e50a3fd8c
+    m_ActionName: locomotion/look[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 919132148757540218}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnGaitInput
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 8212ff5f-a672-4e16-875b-674a8c4f8a25
+    m_ActionName: locomotion/gait[/Keyboard/shift]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 919132148757540218}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnStrafeInput
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
+    m_ActionName: locomotion/strafe[/Keyboard/leftAlt]
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: keyboard
+  m_DefaultActionMap: locomotion
+  m_SplitScreenIndex: -1
+  m_Camera: {fileID: 0}
 --- !u!1 &978003875860146022
 GameObject:
   m_ObjectHideFlags: 0
