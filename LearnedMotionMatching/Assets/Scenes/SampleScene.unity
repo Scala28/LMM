@@ -235,6 +235,7 @@ MonoBehaviour:
   search_time: 0.1
   ik_enabled: 1
   adjustment_enabled: 1
+  clamping_enabled: 1
   gizmos: 0
   rigged: 1
 --- !u!1 &963194225
@@ -391,7 +392,8 @@ MonoBehaviour:
   search_time: 0.1
   ik_enabled: 1
   adjustment_enabled: 1
-  gizmos: 0
+  clamping_enabled: 1
+  gizmos: 1
   rigged: 0
 --- !u!23 &1013524421
 MeshRenderer:

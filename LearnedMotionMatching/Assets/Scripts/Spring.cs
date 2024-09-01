@@ -121,7 +121,7 @@ public static class Spring
     }
     public static Vector4 damp_adjustment_exact(Vector4 g, float halflife, float dt, float eps = 1e-5f)
     {
-        return Quat.quat_slerp_shortest_approx(new Vector4(), g, 1.0f - fast_negexpf((LN2f * dt)) / (halflife + eps));
+        return Quat.quat_slerp_shortest_approx(new Vector4(), g, 1.0f - fast_negexpf((LN2f * dt) / (halflife + eps)));
     }
     public static float halflife_to_damping(float halflife, float eps = 1e-5f)
     {

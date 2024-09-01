@@ -223,6 +223,21 @@ public static class Quat
         float s = Mathf.Sin(angle / 2.0f);
         return new Vector4(c, s * axis.x, s * axis.y, s * axis.z);
     }
+    public static void quat_to_angle_axis(Vector4 q, out float angle, out Vector3 axis, float eps = 1e-8f)
+    {
+        float length = Mathf.Sqrt(q.y*q.y + q.z*q.z + q.w*q.w);
+
+        if(length < eps)
+        {
+            angle = 0.0f;
+            axis = new Vector3(1.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            angle = 2.0f * Mathf.Acos(clampf(q.x, -1.0f, 1.0f));
+            axis = new Vector3(q.y, q.z, q.w) / length;
+        }
+    }
     private static Tensor quat_toEuler(Tensor quat, string order = "xyz")
     {
         Tensor ris = new Tensor(quat.batch, 3, 1, 1);
@@ -300,6 +315,11 @@ public static class Quat
             c.x,
             c.y,
             c.z));
+    }
+    public static float quat_angle_between(Vector4 q, Vector4 p)
+    {
+        Vector4 diff = quat_abs(quat_mul_inv(q, p));
+        return 2.0f * Mathf.Acos(clampf(diff.x, -1.0f, 1.0f));
     }
     public static Vector3 convert_ToEuler(Vector4 q, string order = "xyz")
     {

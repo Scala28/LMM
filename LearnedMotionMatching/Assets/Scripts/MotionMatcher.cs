@@ -169,6 +169,12 @@ public class MotionMatcher : MonoBehaviour
     private float adjustment_rotation_max_ratio = 0.5f;
     #endregion
 
+    #region Clamping
+    public bool clamping_enabled = true;
+    private float clamping_max_distance = .15f;
+    private float clamping_max_angle = .5f * Mathf.PI;
+    #endregion
+
     public bool gizmos = false;
 
     private int frame_index;
@@ -412,13 +418,30 @@ public class MotionMatcher : MonoBehaviour
                     adjustment_position_halflife,
                     dt);
                 adjusted_rotation = adjust_character_rotation_by_velocity(
-
                     pose.root_rotation,
                     pose.root_angular_velocity,
                     simulation_rotation,
                     adjustment_rotation_halflife,
                     dt);
             }
+            inertialize_root_adjust(adjusted_position, adjusted_rotation);
+        }
+
+        //Clamping
+        if (clamping_enabled)
+        {
+            Vector3 adjusted_position = pose.root_position;
+            Vector4 adjusted_rotation = pose.root_rotation;
+
+            adjusted_position = clamp_character_position(
+                adjusted_position,
+                simulation_position,
+                clamping_max_distance);
+            adjusted_rotation = clamp_character_rotation(
+                adjusted_rotation,
+                simulation_rotation,
+                clamping_max_angle);
+
             inertialize_root_adjust(adjusted_position, adjusted_rotation);
         }
 
@@ -1266,6 +1289,38 @@ public class MotionMatcher : MonoBehaviour
         }
 
         return Quat.quat_mul(adjustment_rotation, character_rot);
+    }
+    #endregion
+
+    #region clamping
+    private Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
+    {
+        if(length(character_position - simulation_position) > max_distance)
+        {
+            return max_distance * Quat.vec_normalize(character_position - simulation_position) + simulation_position;
+        }
+        else
+        {
+            return character_position;
+        }
+    }
+    private Vector4 clamp_character_rotation(Vector4 character_rotation, Vector4 simulation_rotation, float max_angle)
+    {
+        if(Quat.quat_angle_between(character_rotation, simulation_rotation) > max_angle)
+        {
+            Vector4 diff = Quat.quat_abs(Quat.quat_mul_inv(character_rotation, simulation_rotation));
+            float diff_angle; Vector3 diff_axis;
+            Quat.quat_to_angle_axis(diff, out diff_angle, out diff_axis);
+
+            diff_angle = clampf(diff_angle, -max_angle, max_angle);
+
+            return Quat.quat_mul(
+                Quat.quat_from_angle_axis(diff_angle, diff_axis), simulation_rotation);
+        }
+        else
+        {
+            return character_rotation;
+        }
     }
     #endregion
     private void deform_character_mesh()
