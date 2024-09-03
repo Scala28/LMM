@@ -134,11 +134,8 @@ venv.bak/
 runs/
 train_ris/
 
-# BVHs
-anim.bvh
-decompr.bvh
-projector.bvh
-stepper.bvh
+# Animations
+animations/
 
 # Spyder project settings
 .spyderproject

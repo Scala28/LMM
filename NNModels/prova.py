@@ -7,13 +7,13 @@ from train_common import load_database, load_features, load_latent
 import my_modules.quat_functions as quat
 import bvh
 
-database = load_database('./data/database.bin')
+database = load_database('data/locomotion_db.bin')
 
 parents = database['bone_parents']
 contacts = database['contact_states']
 range_starts = database['range_starts']
 range_stops = database['range_stops']
-X = load_features('./data/features.bin')['features'].astype(np.float32)
+X = load_features('data/locomotion_features.bin')['features'].astype(np.float32)
 Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].astype(np.float32)
 
 start = database['range_starts'][2]
@@ -149,7 +149,7 @@ with torch.no_grad():
     Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
 
     try:
-        bvh.save('projector.bvh', {
+        bvh.save('train_ris/prova/projector.bvh', {
             'rotations': np.degrees(quat.to_euler(Ytil_rot)),
             'positions': 100.0 * Ytil_pos,
             'offsets': 100.0 * Ytil_pos[0],

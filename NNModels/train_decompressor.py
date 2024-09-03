@@ -16,14 +16,14 @@ from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
     # Load data
-    database = load_database('./data/database.bin')
+    database = load_database('data/locomotion_db.bin')
 
     parents = database['bone_parents']
     contacts = database['contact_states']
     range_starts = database['range_starts']
     range_stops = database['range_stops']
 
-    X = load_features('./data/features.bin')['features'].astype(np.float32)
+    X = load_features('data/locomotion_features.bin')['features'].astype(np.float32)
     Ypos = database['bone_positions'].astype(np.float32)
     Yrot = database['bone_rotations'].astype(np.float32)
     Yvel = database['bone_velocities'].astype(np.float32)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     torch.set_num_threads(1)
 
     # Compute global space
-    Gpos, Grot, Gvel, Gang = quat.fk(Ypos, Yrot, Yvel, Yang, parents)
+    Gpos, Grot, Gvel, Gang = quat.fk_vel(Ypos, Yrot, Yvel, Yang, parents)
 
     # Compute character space
     Qpos = quat.inv_mul_vec(Grot[:, 0:1], Gpos - Gpos[:, 0:1])

@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-def fk(lpos, lrot, lvel, lang, parents):
+def fk_vel(lpos, lrot, lvel, lang, parents):
     gpos, grot, gvel, gang = [lpos[..., :1, :]], [lrot[..., :1, :]], [lvel[..., :1, :]], [lang[..., :1, :]]
     for i in range(1, len(parents)):
         gpos.append(mul_vec(grot[parents[i]], lpos[..., i:i + 1, :]) + gpos[parents[i]])
@@ -17,6 +17,27 @@ def fk(lpos, lrot, lvel, lang, parents):
         torch.cat(grot, dim=-2),
         torch.cat(gvel, dim=-2),
         torch.cat(gang, dim=-2)
+    )
+
+
+def fk(lpos, lrot, parents):
+    gp, gr = [lpos[..., :1, :]], [lrot[..., :1, :]]
+    for i in range(1, len(parents)):
+        gp.append(mul_vec(gr[parents[i]], lpos[..., i:i+1, :]) + gp[parents[i]])
+        gr.append(mul(gr[parents[i]], lrot[..., i:i+1, :]))
+    return np.concatenate(gp, axis=-2), np.concatenate(gr, axis=-2)
+
+
+def ik(gpos, grot, parents):
+    return (
+        np.concatenate([
+            grot[..., :1, :],
+            mul(_inv(grot[..., parents[1:], :]), grot[..., 1:, :])
+        ], axis=-2),
+        np.concatenate([
+            gpos[..., :1, :],
+            mul_vec(_inv(grot[..., parents[1:], :]), gpos[..., 1:, :] - gpos[..., parents[1:], :])
+        ], axis=-2)
     )
 
 
@@ -136,6 +157,12 @@ def from_xfm_xy(x):
     return from_xform(xfm)
 
 
+def from_angle_axis(angle, axis):
+    c = torch.cos(angle / 2.0)[..., None]
+    s = torch.sin(angle / 2.0)[..., None]
+    q = torch.cat([c, s*axis], dim=-1)
+    return q
+
 def from_scaled_axis_angle(x, eps=1e-5):
     return _exp(x / 2.0, eps)
 
@@ -169,3 +196,24 @@ def to_euler(x, order='xyz'):
 
     else:
         raise NotImplementedError('Cannot convert from ordering %s' % order)
+
+
+def from_euler(e, order='zyx'):
+    axis = {
+        'x': torch.as_tensor([1, 0, 0], dtype=torch.float32),
+        'y': torch.as_tensor([0, 1, 0], dtype=torch.float32),
+        'z': torch.as_tensor([0, 0, 1], dtype=torch.float32)
+    }
+    q0 = from_angle_axis(e[..., 0], axis[order[0]])
+    q1 = from_angle_axis(e[..., 1], axis[order[1]])
+    q2 = from_angle_axis(e[..., 2], axis[order[2]])
+
+    return mul(q0, mul(q1, q2))
+
+def unroll(x):
+    y = x.copy()
+    for i in range(1, len(x)):
+        d0 = np.sum(y[i] * y[i - 1], axis=-1)
+        d1 = np.sum(-y[i] * y[i - 1], axis=-1)
+        y[i][d0 < d1] = -y[i][d0 < d1]
+    return y
