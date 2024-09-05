@@ -236,7 +236,7 @@ MonoBehaviour:
   ik_enabled: 1
   adjustment_enabled: 1
   clamping_enabled: 1
-  gizmos: 0
+  gizmos: 1
   rigged: 1
 --- !u!1 &963194225
 GameObject:
@@ -454,7 +454,7 @@ MonoBehaviour:
   RawLookInput: {x: 0, y: 0}
   LookInput: {x: 0, y: 0, z: 0}
   GaitInput: 0
-  StrafeInput: 1
+  StrafeInput: 0
   deadzone: 0.2
 --- !u!114 &1013524423
 MonoBehaviour:
@@ -979,7 +979,7 @@ MonoBehaviour:
   RawLookInput: {x: 0, y: 0}
   LookInput: {x: 0, y: 0, z: 0}
   GaitInput: 0
-  StrafeInput: 1
+  StrafeInput: 0
   deadzone: 0.2
 --- !u!114 &919132148757540219
 MonoBehaviour:

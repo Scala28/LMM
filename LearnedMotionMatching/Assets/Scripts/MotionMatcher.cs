@@ -196,16 +196,14 @@ public class MotionMatcher : MonoBehaviour
         {
             mesh = DataManager.gen_mesh_from_character(ch);
             transform.GetComponent<MeshFilter>().mesh = mesh;
-        }
+        }else
+            initialize_skeleton(this.transform);
 
         Debug.Assert(db.nbones() == ch.nbones());
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
         frame_index = db.range_starts[0];
-
-        if(rigged)
-            initialize_skeleton(this.transform);
 
         initialize_pose();
 
@@ -216,8 +214,8 @@ public class MotionMatcher : MonoBehaviour
         search_timer = search_time;
         force_search_timer = search_time;
 
-        contact_bones[0] = (int)character.Bone_RightToe;
-        contact_bones[1] = (int)character.Bone_LeftToe;
+        contact_bones[0] = (int)character.Bone_LeftToe;
+        contact_bones[1] = (int)character.Bone_RightToe;
         
         contact_states = new bool[contact_bones.Length];
         contact_locks = new bool[contact_bones.Length];
@@ -395,6 +393,9 @@ public class MotionMatcher : MonoBehaviour
         evaluate_stepper();
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
+
+        Debug.Log(current_pose.contact_states[0]);
+        Debug.Log(current_pose.contact_states[1]);
 
         inertialize_pose_update(current_pose, dt);
 
@@ -1340,22 +1341,18 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        transform.position = new Vector3(adjusted_bones_pose.root_position.x, adjusted_bones_pose.root_position.y, adjusted_bones_pose.root_position.z);
-        Quaternion q = Quaternion.Euler(0f, 0f, 0f);
-        Vector3 ang = Quat.convert_ToEuler(Quat.quat_mul(adjusted_bones_pose.root_rotation, new Vector4(q.w, q.x, q.y, q.z)));
-        Vector3 root_angle = new Vector3(ang.x, ang.y, ang.z) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, -root_angle.z) *
-                    Quaternion.Euler(0f, root_angle.y, 0f) * Quaternion.Euler(root_angle.x, 0f, 0f);
+        transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+        Vector3 ang = Quat.convert_ToEuler(global_pose.root_rotation) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
-            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
+            JointMotionData jdata = global_pose.joints[i - 1];
 
             ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
 
-            joint.localRotation = Quaternion.Euler(0f, 0f, -ang.z) *
-                    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
-            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(ang.x, 0f, 0f) * Quaternion.Euler(0f, ang.y, 0f);
+            joint.rotation = Quaternion.Euler(0f, 0f, -ang.z) *
+                Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         }
     }
 

@@ -32,11 +32,11 @@ def ik(gpos, grot, parents):
     return (
         np.concatenate([
             grot[..., :1, :],
-            mul(_inv(grot[..., parents[1:], :]), grot[..., 1:, :])
+            mul(inv(grot[..., parents[1:], :]), grot[..., 1:, :])
         ], axis=-2),
         np.concatenate([
             gpos[..., :1, :],
-            mul_vec(_inv(grot[..., parents[1:], :]), gpos[..., 1:, :] - gpos[..., parents[1:], :])
+            mul_vec(inv(grot[..., parents[1:], :]), gpos[..., 1:, :] - gpos[..., parents[1:], :])
         ], axis=-2)
     )
 
@@ -68,20 +68,24 @@ def _cross(a, b):
     ], dim=-1)
 
 
-def _inv(q):
+def inv(q):
     return torch.tensor([1, -1, -1, -1], dtype=torch.float) * q
 
 
+def abs(x):
+    return torch.where(x[..., 0:1] > 0.0, x, -x)
+
+
 def inv_mul(a, b):
-    return mul(_inv(a), b)
+    return mul(inv(a), b)
 
 
 def mul_inv(a, b):
-    return mul(a, _inv(b))
+    return mul(a, inv(b))
 
 
 def inv_mul_vec(q, x):
-    return mul_vec(_inv(q), x)
+    return mul_vec(inv(q), x)
 
 
 def to_xform(q):
@@ -101,12 +105,12 @@ def _length(x):
     return torch.sqrt(torch.sum(x * x, dim=-1))
 
 
-def _normalize(x, eps=1e-8):
+def normalize(x, eps=1e-8):
     return x / (_length(x)[..., np.newaxis] + eps)
 
 
 def from_xform(ts):
-    return _normalize(
+    return normalize(
         torch.where((ts[..., 2, 2] < 0.0)[..., np.newaxis],
                     torch.where((ts[..., 0, 0] > ts[..., 1, 1])[..., np.newaxis],
                                 torch.cat([
@@ -167,11 +171,21 @@ def from_scaled_axis_angle(x, eps=1e-5):
     return _exp(x / 2.0, eps)
 
 
+def to_scaled_angle_axis(x, eps=1e-5):
+    return 2.0 * _log(x, eps)
+
+
 def _exp(x, eps=1e-5):
     halfangle = torch.sqrt(torch.sum(torch.square(x), dim=-1))[..., np.newaxis]
     c = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.cos(halfangle))
     s = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.sinc(halfangle / torch.pi))
     return torch.cat([c, s*x], dim=-1)
+
+
+def _log(x, eps=1e-5):
+    length = torch.sqrt(torch.sum(torch.square(x[..., 1:]), dim=-1))[..., None]
+    halfangle = torch.where(length < eps, torch.ones_like(length), torch.arctan2(length, x[..., 0:1]) / length)
+    return halfangle * x[..., 1:]
 
 
 def to_euler(x, order='xyz'):
@@ -210,10 +224,17 @@ def from_euler(e, order='zyx'):
 
     return mul(q0, mul(q1, q2))
 
-def unroll(x):
-    y = x.copy()
-    for i in range(1, len(x)):
-        d0 = np.sum(y[i] * y[i - 1], axis=-1)
-        d1 = np.sum(-y[i] * y[i - 1], axis=-1)
+
+def unroll(y):
+    for i in range(1, len(y)):
+        d0 = torch.sum(y[i] * y[i - 1], dim=-1)
+        d1 = torch.sum(-y[i] * y[i - 1], dim=-1)
         y[i][d0 < d1] = -y[i][d0 < d1]
     return y
+
+
+def between(x, y):
+    return torch.concatenate([
+        torch.sqrt(torch.sum(torch.square(x), dim=-1) * torch.sum(torch.square(y), dim=-1))[...,None] +
+        torch.sum(x * y, dim=-1)[...,None],
+        _cross(x, y)], dim=-1)
