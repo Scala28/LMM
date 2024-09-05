@@ -124,7 +124,7 @@ public static class DataManager
             db.features[i][offset + 3] = t3_pos.y;
         }
 
-        normalize_features(db.features, db.features_offset, db.features_scale, offset, 6, weight);
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 4, weight);
 
         offset += 4;
     }
