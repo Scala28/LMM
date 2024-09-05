@@ -13,16 +13,14 @@ using UnityEngine.Assertions;
 
 public static class DataManager
 {
-    private const int BOUND_SM_SIZE = 16;
-    private const int BOUND_LR_SIZE = 64;
-
     // Maximum value of a float, from bit pattern 01111111011111111111111111111111
     private const float FLT_MAX = 340282346638528859811704183484516925440.0f;
 
-
-    // Read .bin file from Resources folder
-
     #region Build Matching features
+
+    private const int BOUND_SM_SIZE = 16;
+    private const int BOUND_LR_SIZE = 64;
+
     private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales, 
         int offset, int size, float weight = 1.0f)
     {
@@ -234,6 +232,40 @@ public static class DataManager
         Debug.Assert(offset == nfeatures);
 
         database_build_bounds(ref db);
+    }
+    public static void database_save_matching_features(database db, String filename)
+    {
+        try
+        {
+            using (FileStream fs = new FileStream(filename, FileMode.CreateNew, FileAccess.Write))
+            using (BinaryWriter bw = new BinaryWriter(fs))
+            {
+                bw.Write(db.features.Length);
+                bw.Write(db.features[0].Length);
+                foreach (float[] features in db.features)
+                {
+                    foreach(float feature in features)
+                    {
+                        bw.Write(feature);
+                    }
+                }
+
+                bw.Write(db.features_offset.Length);
+                foreach (float offset in db.features_offset)
+                {
+                    bw.Write(offset);
+                }
+
+                bw.Write(db.features_scale.Length);
+                foreach (float scale in db.features_scale)
+                {
+                    bw.Write(scale);
+                }
+            }
+        }catch(IOException e)
+        {
+            Debug.LogException(e);
+        }
     }
     #endregion
 
