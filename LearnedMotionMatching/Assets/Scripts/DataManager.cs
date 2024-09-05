@@ -86,6 +86,48 @@ public static class DataManager
 
         offset += 3;
     }
+    private static void compute_bone_height_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
+    {
+        for (int i = 0; i < db.nframes(); i++)
+        {
+            int t1 = db.database_trajectory_index_clamp(i, 15);
+            int t2 = db.database_trajectory_index_clamp(i, 30);
+            int t3 = db.database_trajectory_index_clamp(i, 45);
+
+            Vector3 t0_pos;
+            Vector4 t0_rot;
+
+            forward_kinematics(out t0_pos, out t0_rot,
+                db.bone_positions[i], db.bone_rotations[i], db.bone_parents, bone);
+
+            Vector3 t1_pos;
+            Vector4 t1_rot;
+
+            forward_kinematics(out t1_pos, out t1_rot,
+                db.bone_positions[t1], db.bone_rotations[t1], db.bone_parents, bone);
+
+            Vector3 t2_pos;
+            Vector4 t2_rot;
+
+            forward_kinematics(out t2_pos, out t2_rot,
+                db.bone_positions[t2], db.bone_rotations[t2], db.bone_parents, bone);
+
+            Vector3 t3_pos;
+            Vector4 t3_rot;
+
+            forward_kinematics(out t3_pos, out t3_rot,
+                db.bone_positions[t3], db.bone_rotations[t3], db.bone_parents, bone);
+
+            db.features[i][offset + 0] = t0_pos.y;
+            db.features[i][offset + 1] = t1_pos.y;
+            db.features[i][offset + 2] = t2_pos.y;
+            db.features[i][offset + 3] = t3_pos.y;
+        }
+
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 6, weight);
+
+        offset += 4;
+    }
     private static void compute_bone_velocity_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
     {
         for(int i=0; i<db.nframes();i++)
@@ -208,9 +250,9 @@ public static class DataManager
         }
     }
     public static void database_build_matching_features(ref database db, float weight_foot_position, float weight_foot_veloity, 
-        float weight_hip_velocity, float weight_trajectory_position, float weight_trajectory_direction)
+        float weight_hip_velocity, float weight_trajectory_position, float weight_trajectory_direction, float weight_trajectory_toe_height)
     {
-        int nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6;
+        int nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 4 + 4;
 
         db.features = new float[db.nframes()][];
         for(int i=0; i<db.features.Length; i++)
@@ -228,6 +270,8 @@ public static class DataManager
         compute_bone_velocity_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_Hips, weight_hip_velocity);
         compute_trajectory_position_feature(ref db, ref offset, weight_trajectory_position);
         compute_trajectory_direction_feature(ref db, ref offset, weight_trajectory_direction);
+        compute_bone_height_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_LeftToe, weight_trajectory_toe_height);
+        compute_bone_height_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_RightToe, weight_trajectory_toe_height);
 
         Debug.Assert(offset == nfeatures);
 

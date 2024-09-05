@@ -33,6 +33,12 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_curr;
     private float[] latent_proj;
 
+    private float feature_weight_foot_position = 0.75f;
+    private float feature_weight_foot_velocity = 1.0f;
+    private float feature_weight_hip_velocity = 1.0f;
+    private float feature_weight_trajectory_positions = 1.0f;
+    private float feature_weight_trajectory_directions = 1.5f;
+    private float feature_weight_trajectory_toe_height = 1.0f;
     #endregion
     public enum character
     {
