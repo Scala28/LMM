@@ -8,6 +8,7 @@ from scipy.interpolate import griddata
 from scipy import signal
 import scipy.ndimage as ndimage
 
+
 files = [
     # We just use a small section of this clip for the standing idle
     ('pushAndStumble1_subject5.bvh', 194,  351),

@@ -33,10 +33,8 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_curr;
     private float[] latent_proj;
 
-    // Maximum value of a float, from bit pattern 01111111011111111111111111111111
-    private const float FLT_MAX = 340282346638528859811704183484516925440.0f;
     #endregion
-    private enum character
+    public enum character
     {
         Bone_Entity = 0,
         Bone_Hips = 1,

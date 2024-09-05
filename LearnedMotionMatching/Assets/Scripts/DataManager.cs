@@ -7,77 +7,237 @@ using System;
 using UnityEngine.Scripting;
 using Unity.Barracuda;
 using System.Linq;
+using UnityEditor.PackageManager;
+using UnityEngine.Assertions;
 
 
 public static class DataManager
 {
+    private const int BOUND_SM_SIZE = 16;
+    private const int BOUND_LR_SIZE = 64;
+
+    // Maximum value of a float, from bit pattern 01111111011111111111111111111111
+    private const float FLT_MAX = 340282346638528859811704183484516925440.0f;
+
+
     // Read .bin file from Resources folder
-    public static (int, int, float[]) Load_database_fromResources(string filename)
+
+    #region Build Matching features
+    private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales, 
+        int offset, int size, float weight = 1.0f)
     {
-        TextAsset binAsset = Resources.Load(filename) as TextAsset; 
-        if(binAsset == null)
+        for(int j=0; j<size; j++)
         {
-            Debug.Log("Failed to load .bin file " + filename);
-            return (0, 0, null);
+            feature_offsets[offset + j] = 0.0f;
+        }
+        for(int i=0; i<features.Length; i++)
+        {
+            for(int j=0; j<size; j++)
+            {
+                feature_offsets[offset + j] += features[i][offset + j] / features.Length;
+            }
         }
 
-        using (MemoryStream memStream = new MemoryStream(binAsset.bytes))
-        using (BinaryReader reader = new BinaryReader(memStream))
-        {
-            int nframes = reader.ReadInt32();
-            int ndata = reader.ReadInt32();
-            float[] data = new float[nframes * ndata];
-            for (int i = 0; i < data.Length; i++)
+        float[] vars = new float[size];
+
+        for(int i=0; i<features.Length; i++) { 
+            for(int j=0; j<vars.Length; j++)
             {
-                data[i] = reader.ReadSingle();
+                vars[j] += squaref(features[i][offset + j] - feature_offsets[offset + j]) / features.Length;
             }
-            return (nframes, ndata, data);
+        }
+
+        float std = 0.0f;
+        for(int j=0; j<size; j++)
+        {
+            std += Mathf.Sqrt(vars[j]) / size;
+        }
+
+        Debug.Assert(std > 0.0f);
+
+        for(int j=0; j < size; j++)
+        {
+            feature_scales[offset + j] = std / weight;
+        }
+
+        for(int i=0; i<features.Length; i++)
+        {
+            for(int j=0; j<size; j++)
+            {
+                features[i][offset+j] = (features[i][offset+j] - feature_offsets[offset + j]) / feature_scales[offset + j];
+            }
         }
     }
-    public static Model Load_net_fromParameters(string filename)
+    private static void compute_bone_position_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
     {
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using (BinaryReader reader = new BinaryReader(fs))
+        for(int i=0; i<db.nframes();  i++)
         {
-            int meanInLen = reader.ReadInt32();
-            float[] meanIn = readFloat_toArray(reader, meanInLen);
+            Vector3 bone_position;
+            Vector4 bone_rotation;
 
-            int stdInLen = reader.ReadInt32();
-            float[] stdIn = readFloat_toArray(reader, stdInLen);
+            forward_kinematics(out bone_position, out bone_rotation,
+                db.bone_positions[i], db.bone_rotations[i], db.bone_parents, bone);
 
-            int meanOutLen = reader.ReadInt32();
-            float[] meanOut = readFloat_toArray(reader, meanOutLen);
+            bone_position = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]), bone_position - db.bone_positions[i][0]);
 
-            int stdOutLen = reader.ReadInt32();
-            float[] stdOut = readFloat_toArray(reader, stdOutLen);
-
-            Model model = new Model(meanIn, meanOut, stdIn, stdOut);
-
-            int numLayers = reader.ReadInt32();
-
-            for(int i = 0; i < numLayers; i++)
-            {
-                int weightCols = reader.ReadInt32();
-                int weightRows = reader.ReadInt32();
-                float[] weightData = readFloat_toArray(reader, weightRows * weightCols);
-                float[][] weights = new float[weightRows][];
-
-                int biasLen = reader.ReadInt32();
-                float[] biasData = readFloat_toArray(reader, biasLen);
-
-                for (int row = 0; row < weightRows; row++)
-                {
-                    weights[row] = new float[weightCols];
-                    for (int col = 0; col < weightCols; col++)
-                    {
-                        weights[row][col] = weightData[col * weightRows + row];
-                    }
-                }
-                model.AddLayer(weightRows, weightCols, weights, biasData);
-            }
-            return model;
+            db.features[i][offset + 0] = bone_position.x;
+            db.features[i][offset + 1] = bone_position.y;
+            db.features[i][offset + 2] = bone_position.z;
         }
-    }   
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 3, weight);
+
+        offset += 3;
+    }
+    private static void compute_bone_velocity_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
+    {
+        for(int i=0; i<db.nframes();i++)
+        {
+            Vector3 bone_position;
+            Vector4 bone_rotation;
+            Vector3 bone_velocity;
+            Vector3 bone_angular_velocity;
+
+            forward_kinematics_velocity(out bone_position, out bone_rotation, out bone_velocity, out bone_angular_velocity,
+                db.bone_positions[i], db.bone_rotations[i], db.bone_velocities[i], db.bone_angular_velocities[i], db.bone_parents, bone);
+
+            bone_velocity = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]), bone_velocity);
+
+            db.features[i][offset + 0] = bone_velocity.x;
+            db.features[i][offset + 1] = bone_velocity.y;
+            db.features[i][offset + 2] = bone_velocity.z;
+        }
+
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 3, weight);
+
+        offset += 3;
+    }
+    private static void compute_trajectory_position_feature(ref database db, ref int offset, float weight = 1.0f)
+    {
+        for(int i=0; i<db.nframes(); i++)
+        {
+            int t0 = db.database_trajectory_index_clamp(i, 20);
+            int t1 = db.database_trajectory_index_clamp(i, 40);
+            int t2 = db.database_trajectory_index_clamp(i, 60);
+
+            Vector3 trajectory_pos0 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                db.bone_positions[t0][0] - db.bone_positions[i][0]);
+            Vector3 trajectory_pos1 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                db.bone_positions[t1][0] - db.bone_positions[i][0]);
+            Vector3 trajectory_pos2 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                db.bone_positions[t2][0] - db.bone_positions[i][0]);
+
+            db.features[i][offset + 0] = trajectory_pos0.x;
+            db.features[i][offset + 1] = trajectory_pos0.z;
+            db.features[i][offset + 2] = trajectory_pos1.x;
+            db.features[i][offset + 3] = trajectory_pos1.z;
+            db.features[i][offset + 4] = trajectory_pos2.x;
+            db.features[i][offset + 5] = trajectory_pos2.z;
+        }
+
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 6, weight);
+
+        offset += 6;
+    }
+    private static void compute_trajectory_direction_feature(ref database db, ref int offset, float weight = 1.0f)
+    {
+        for(int i=0; i<db.nframes(); i++)
+        {
+            int t0 = db.database_trajectory_index_clamp(i, 20);
+            int t1 = db.database_trajectory_index_clamp(i, 40);
+            int t2 = db.database_trajectory_index_clamp(i, 60);
+
+            Vector3 trajectory_dir0 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                Quat.quat_mul_vec(db.bone_rotations[t0][0], new Vector3(0f, 0f, 1f)));
+            Vector3 trajectory_dir1 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                Quat.quat_mul_vec(db.bone_rotations[t1][0], new Vector3(0f, 0f, 1f)));
+            Vector3 trajectory_dir2 = Quat.quat_mul_vec(Quat.quat_inv(db.bone_rotations[i][0]),
+                Quat.quat_mul_vec(db.bone_rotations[t2][0], new Vector3(0f, 0f, 1f)));
+
+            db.features[i][offset + 0] = trajectory_dir0.x;
+            db.features[i][offset + 1] = trajectory_dir0.z;
+            db.features[i][offset + 2] = trajectory_dir1.x;
+            db.features[i][offset + 3] = trajectory_dir1.z;
+            db.features[i][offset + 4] = trajectory_dir2.x;
+            db.features[i][offset + 5] = trajectory_dir2.z;
+        }
+
+        normalize_features(db.features, db.features_offset, db.features_scale, offset, 6, weight);
+
+        offset += 6;
+    }
+    private static void database_build_bounds(ref database db)
+    {
+        int nbound_sm = ((db.nframes() + BOUND_SM_SIZE - 1) / BOUND_SM_SIZE);
+        int nbound_lr = ((db.nframes() + BOUND_LR_SIZE - 1) / BOUND_LR_SIZE);
+
+        db.bound_sm_min = new float[nbound_sm][];
+        db.bound_sm_max = new float[nbound_sm][];
+        for (int i = 0; i< nbound_sm; i++)
+        {
+            db.bound_sm_min[i] = new float[db.nfeatures()];
+            db.bound_sm_max[i] = new float[db.nfeatures()];
+            for(int j=0; j<db.nfeatures(); j++)
+            {
+                db.bound_sm_min[i][j] = FLT_MAX;
+                db.bound_sm_max[i][j] = -FLT_MAX;
+            }
+        }
+        db.bound_lr_min = new float[nbound_lr][];
+        db.bound_lr_max = new float[nbound_lr][];
+        for (int i = 0; i < nbound_lr; i++)
+        {
+            db.bound_lr_min[i] = new float[db.nfeatures()];
+            db.bound_lr_max[i] = new float[db.nfeatures()];
+            for(int j=0; j < db.nfeatures(); j++)
+            {
+                db.bound_lr_min[i][j] = FLT_MAX;
+                db.bound_lr_max[i][j] = -FLT_MAX;
+            }
+        }
+
+        for(int i=0; i<db.nframes(); i++)
+        {
+            int i_sm = i / BOUND_SM_SIZE;
+            int i_lr = i / BOUND_LR_SIZE;
+
+            for(int j=0; j<db.nfeatures(); j++)
+            {
+                db.bound_sm_min[i_sm][j] = Mathf.Min(db.bound_sm_min[i_sm][j], db.features[i][j]);
+                db.bound_sm_max[i_sm][j] = Mathf.Max(db.bound_sm_max[i_sm][j], db.features[i][j]);
+                db.bound_lr_min[i_lr][j] = Mathf.Min(db.bound_lr_min[i_lr][j], db.features[i][j]);
+                db.bound_lr_max[i_lr][j] = Mathf.Max(db.bound_lr_max[i_lr][j], db.features[i][j]);
+            }
+        }
+    }
+    public static void database_build_matching_features(ref database db, float weight_foot_position, float weight_foot_veloity, 
+        float weight_hip_velocity, float weight_trajectory_position, float weight_trajectory_direction)
+    {
+        int nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6;
+
+        db.features = new float[db.nframes()][];
+        for(int i=0; i<db.features.Length; i++)
+        {
+            db.features[i]=new float[nfeatures];
+        }
+        db.features_offset = new float[nfeatures];
+        db.features_scale = new float[nfeatures];
+
+        int offset = 0;
+        compute_bone_position_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_LeftFoot, weight_foot_position);
+        compute_bone_position_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_RightFoot, weight_foot_position);
+        compute_bone_velocity_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_LeftFoot, weight_foot_veloity);
+        compute_bone_velocity_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_RightFoot, weight_foot_veloity);
+        compute_bone_velocity_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_Hips, weight_hip_velocity);
+        compute_trajectory_position_feature(ref db, ref offset, weight_trajectory_position);
+        compute_trajectory_direction_feature(ref db, ref offset, weight_trajectory_direction);
+
+        Debug.Assert(offset == nfeatures);
+
+        database_build_bounds(ref db);
+    }
+    #endregion
+
+    #region Readers
     private static float[] readFloat_toArray(BinaryReader reader, int count)
     {
         byte[] buffer = reader.ReadBytes(count * sizeof(float));
@@ -215,6 +375,75 @@ public static class DataManager
         }
         return array2d;
     }
+    #endregion
+
+    #region Loaders
+    public static (int, int, float[]) Load_database_fromResources(string filename)
+    {
+        TextAsset binAsset = Resources.Load(filename) as TextAsset; 
+        if(binAsset == null)
+        {
+            Debug.Log("Failed to load .bin file " + filename);
+            return (0, 0, null);
+        }
+
+        using (MemoryStream memStream = new MemoryStream(binAsset.bytes))
+        using (BinaryReader reader = new BinaryReader(memStream))
+        {
+            int nframes = reader.ReadInt32();
+            int ndata = reader.ReadInt32();
+            float[] data = new float[nframes * ndata];
+            for (int i = 0; i < data.Length; i++)
+            {
+                data[i] = reader.ReadSingle();
+            }
+            return (nframes, ndata, data);
+        }
+    }
+    public static Model Load_net_fromParameters(string filename)
+    {
+        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
+        {
+            int meanInLen = reader.ReadInt32();
+            float[] meanIn = readFloat_toArray(reader, meanInLen);
+
+            int stdInLen = reader.ReadInt32();
+            float[] stdIn = readFloat_toArray(reader, stdInLen);
+
+            int meanOutLen = reader.ReadInt32();
+            float[] meanOut = readFloat_toArray(reader, meanOutLen);
+
+            int stdOutLen = reader.ReadInt32();
+            float[] stdOut = readFloat_toArray(reader, stdOutLen);
+
+            Model model = new Model(meanIn, meanOut, stdIn, stdOut);
+
+            int numLayers = reader.ReadInt32();
+
+            for(int i = 0; i < numLayers; i++)
+            {
+                int weightCols = reader.ReadInt32();
+                int weightRows = reader.ReadInt32();
+                float[] weightData = readFloat_toArray(reader, weightRows * weightCols);
+                float[][] weights = new float[weightRows][];
+
+                int biasLen = reader.ReadInt32();
+                float[] biasData = readFloat_toArray(reader, biasLen);
+
+                for (int row = 0; row < weightRows; row++)
+                {
+                    weights[row] = new float[weightCols];
+                    for (int col = 0; col < weightCols; col++)
+                    {
+                        weights[row][col] = weightData[col * weightRows + row];
+                    }
+                }
+                model.AddLayer(weightRows, weightCols, weights, biasData);
+            }
+            return model;
+        }
+    }
     public static database load_database(string filename)
     {
         database db = new database();
@@ -331,6 +560,9 @@ public static class DataManager
 
         return mesh;
     }
+    #endregion
+
+    #region Structs
     public struct database
     {
         public Vector3[][] bone_positions;
@@ -349,10 +581,10 @@ public static class DataManager
 
         public bool[][] contact_states;
 
-        float[][] bound_sm_min;
-        float[][] bound_sm_max;
-        float[][] bound_lr_min;
-        float[][] bound_lr_max;
+        public float[][] bound_sm_min;
+        public float[][] bound_sm_max;
+        public float[][] bound_lr_min;
+        public float[][] bound_lr_max;
 
         public int nframes() { return bone_positions.Length; }
         public int nbones() { return bone_positions[0].Length; }
@@ -374,6 +606,8 @@ public static class DataManager
 
             return -1;
         }
+
+
     }
     public struct character
     {
@@ -438,6 +672,57 @@ public static class DataManager
                 anim_normals[i] = Quat.vec_normalize(anim_normals[i]);
         }
     }
+    #endregion
+
+    #region FKs
+    private static void forward_kinematics(out Vector3 bone_pos, out Vector4 bone_rot,
+        Vector3[] bone_positions, Vector4[] bone_rotations, int[] bone_parents, int bone)
+    {
+        if (bone_parents[bone] != -1)
+        {
+            Vector3 parent_pos;
+            Vector4 parent_rot;
+
+            forward_kinematics(out parent_pos, out parent_rot,
+                bone_positions, bone_rotations, bone_parents, bone_parents[bone]);
+
+            bone_pos = Quat.quat_mul_vec(parent_rot, bone_positions[bone]) + parent_pos;
+            bone_rot = Quat.quat_mul(parent_rot, bone_rotations[bone]);
+        }
+        else
+        {
+            bone_pos = bone_positions[bone];
+            bone_rot = bone_rotations[bone];
+        }
+    }
+    private static void forward_kinematics_velocity(out Vector3 bone_pos, out Vector4 bone_rot, out Vector3 bone_vel, out Vector3 bone_angular_vel,
+        Vector3[] positions, Vector4[] rotations, Vector3[] velocities, Vector3[] angular_velocities, int[] bone_parents, int bone)
+    {
+        if (bone_parents[bone] != -1)
+        {
+            Vector3 parent_pos;
+            Vector3 parent_vel;
+            Vector4 parent_rot;
+            Vector3 parent_ang_vel;
+
+            forward_kinematics_velocity(out parent_pos, out parent_rot, out parent_vel, out parent_ang_vel,
+                positions, rotations, velocities, angular_velocities, bone_parents, bone_parents[bone]);
+
+            bone_pos = Quat.quat_mul_vec(parent_rot, positions[bone]) + parent_pos;
+            bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, velocities[bone]) +
+                Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, positions[bone]));
+            bone_rot = Quat.quat_mul(parent_rot, rotations[bone]);
+                bone_angular_vel = Quat.quat_mul_vec(parent_rot, angular_velocities[bone]) + parent_ang_vel;
+            }
+        else
+        {
+            bone_pos = positions[bone];
+            bone_rot = rotations[bone];
+            bone_vel = velocities[bone];
+            bone_angular_vel = angular_velocities[bone];
+        }
+    }
+    #endregion
     private static int clamp(int x, int min, int max)
     {
         return x > max ? max : x < min ? min : x;
@@ -449,4 +734,5 @@ public static class DataManager
                component * shape.channels +
                subcomponent;
     }
+    private static float squaref(float x) { return x * x; }
 }
