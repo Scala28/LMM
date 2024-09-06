@@ -20,6 +20,28 @@ def fk_vel(lpos, lrot, lvel, lang, parents):
     )
 
 
+def forward_kinematics_velocity(bone_positions, bone_rotations, bone_velocities, bone_angular_velocities,
+                                parents, bone):
+    if parents[bone] != -1:
+        parent_pos, parent_rot, parent_vel, parent_ang_vel = forward_kinematics_velocity(
+            bone_positions,
+            bone_rotations,
+            bone_velocities, bone_angular_velocities,
+            parents,
+            parents[bone]
+        )
+        bone_pos = mul_vec(parent_rot, bone_positions[..., bone, :]) + parent_pos
+        bone_vel = (parent_vel + mul_vec(parent_rot, bone_velocities[..., bone, :]) +
+                    _cross(parent_ang_vel, mul_vec(parent_rot, bone_positions[..., bone, :])))
+        bone_rot = mul(parent_rot, bone_rotations[..., bone, :])
+        bone_ang_vel = mul_vec(parent_rot, bone_angular_velocities[..., bone, :]) + parent_ang_vel
+
+        return bone_pos, bone_rot, bone_vel, bone_ang_vel
+    else:
+        return (bone_positions[..., 0, :], bone_rotations[..., 0, :],
+                bone_velocities[..., 0, :], bone_angular_velocities[..., 0, :])
+
+
 def fk(lpos, lrot, parents):
     gp, gr = [lpos[..., :1, :]], [lrot[..., :1, :]]
     for i in range(1, len(parents)):

@@ -137,6 +137,9 @@ train_ris/
 # Animations
 animations/
 
+# Data
+data/
+
 # Spyder project settings
 .spyderproject
 .spyproject

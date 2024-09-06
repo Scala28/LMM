@@ -13,26 +13,53 @@ from train_common import load_database, load_features, save_network, save_networ
 
 from torch.utils.tensorboard import SummaryWriter
 
+from sklearn.neighbors import KNeighborsRegressor
 
 if __name__ == '__main__':
     # Load data
-    database = load_database('data/locomotion_db.bin')
+    database = load_database('data/terrain_db.bin')
+
+    character_dict = {
+        "Bone_Entity": 0,
+        "Bone_Hips": 1,
+        "Bone_LeftUpLeg": 2,
+        "Bone_LeftLeg": 3,
+        "Bone_LeftFoot": 4,
+        "Bone_LeftToe": 5,
+        "Bone_RightUpLeg": 6,
+        "Bone_RightLeg": 7,
+        "Bone_RightFoot": 8,
+        "Bone_RightToe": 9,
+        "Bone_Spine": 10,
+        "Bone_Spine1": 11,
+        "Bone_Spine2": 12,
+        "Bone_Neck": 13,
+        "Bone_Head": 14,
+        "Bone_LeftShoulder": 15,
+        "Bone_LeftArm": 16,
+        "Bone_LeftForeArm": 17,
+        "Bone_LeftHand": 18,
+        "Bone_RightShoulder": 19,
+        "Bone_RightArm": 20,
+        "Bone_RightForeArm": 21,
+        "Bone_RightHand": 22
+    }
 
     parents = database['bone_parents']
     contacts = database['contact_states']
     range_starts = database['range_starts']
     range_stops = database['range_stops']
 
-    X = load_features('data/locomotion_features.bin')['features'].astype(np.float32)
+    X = load_features('data/terrain_features.bin')['features'].astype(np.float32)
     Ypos = database['bone_positions'].astype(np.float32)
     Yrot = database['bone_rotations'].astype(np.float32)
     Yvel = database['bone_velocities'].astype(np.float32)
     Yang = database['bone_angular_velocities'].astype(np.float32)
 
     # As pyTorch tensors
-    X = torch.as_tensor(X) # (nframes, nfeatures)
+    X = torch.as_tensor(X)  # (nframes, nfeatures)
 
-    Ypos = torch.as_tensor(Ypos) # (nframes, nbones, 3/4)
+    Ypos = torch.as_tensor(Ypos)  # (nframes, nbones, 3/4)
     Yrot = torch.as_tensor(Yrot)
     Yvel = torch.as_tensor(Yvel)
     Yang = torch.as_tensor(Yang)
@@ -79,6 +106,39 @@ if __name__ == '__main__':
 
     # Compute extra outputs
     Yextra = torch.as_tensor(contacts.astype(np.float32))
+
+    contacts = Yextra > 0.5
+
+    # (nframes, 2, 3)
+    toe_positions = torch.cat([Gpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                               Gpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                              dim=-2)
+    # (N, 3) where N is the number of True values in contacts
+    contact_positions = toe_positions[contacts]
+
+    positions_xz = []
+    heights_y = []
+
+    for i in range(contact_positions.shape[0]):
+        x = contact_positions[i, 0].item()
+        z = contact_positions[i, 2].item()
+        positions_xz.append((x, z))
+        heights_y.append(contact_positions[i, 1].item())
+
+    print(contact_positions[60893])
+    print(contact_positions[68922])
+    print(contact_positions[73889])
+    print(contact_positions[50889])
+
+    knn_regressor = KNeighborsRegressor(n_neighbors=5)
+
+    knn_regressor.fit(positions_xz, heights_y)
+
+    new_pos = [(-0.2931, 2.3543), (-1.1132, 5.4404), (-3.1466, -1.8121), (1.9524, -1.8816)]
+
+    print(knn_regressor.predict(new_pos))
+
+    exit()
 
     # Compute mean/stds
     Ypos_scale = Ypos[:, 1:].std()

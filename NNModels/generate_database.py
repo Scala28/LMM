@@ -14,6 +14,8 @@ files = [
     ('pushAndStumble1_subject5.bvh', 194,  351),
     ('run1_subject5.bvh', 90, 7086),
     ('walk1_subject5.bvh', 80, 7791),
+    ('obstacles1_subject5.bvh', 100, 4500),
+    ('obstacles2_subject5.bvh', 140, 7150)
 ]
 
 
@@ -163,7 +165,7 @@ for filename, start, stop in files:
         ])] ** 2, dim=-1))  # ** 2 => exponential ^2
 
         contacts = contact_velocity < contact_velocity_threshold
-        print(contacts.shape)
+
         for ci in range(contacts.shape[1]):
             contacts[:, ci] = torch.as_tensor(ndimage.median_filter(
                 contacts[:, ci],
@@ -200,7 +202,7 @@ contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
 
 print("Writing Database...")
 
-with open('data/database2.bin', 'wb') as f:
+with open('data/terrain_db.bin', 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
