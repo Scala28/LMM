@@ -118,10 +118,13 @@ public static class DataManager
             forward_kinematics(out t3_pos, out t3_rot,
                 db.bone_positions[t3], db.bone_rotations[t3], db.bone_parents, bone);
 
-            db.features[i][offset + 0] = t0_pos.y;
-            db.features[i][offset + 1] = t1_pos.y;
-            db.features[i][offset + 2] = t2_pos.y;
-            db.features[i][offset + 3] = t3_pos.y;
+            // This height is recorded relative to the
+            // current height of the character’s hips
+
+            db.features[i][offset + 0] = t0_pos.y - db.bone_positions[i][1].y;
+            db.features[i][offset + 1] = t1_pos.y - db.bone_positions[i][1].y;
+            db.features[i][offset + 2] = t2_pos.y - db.bone_positions[i][1].y;
+            db.features[i][offset + 3] = t3_pos.y - db.bone_positions[i][1].y;
         }
 
         normalize_features(db.features, db.features_offset, db.features_scale, offset, 4, weight);
