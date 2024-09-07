@@ -107,6 +107,7 @@ if __name__ == '__main__':
     # Compute extra outputs
     Yextra = torch.as_tensor(contacts.astype(np.float32))
 
+    # Fit the nearest neighbor regression for terrain height
     contacts = Yextra > 0.5
 
     # (nframes, 2, 3)
@@ -125,20 +126,9 @@ if __name__ == '__main__':
         positions_xz.append((x, z))
         heights_y.append(contact_positions[i, 1].item())
 
-    print(contact_positions[60893])
-    print(contact_positions[68922])
-    print(contact_positions[73889])
-    print(contact_positions[50889])
-
     knn_regressor = KNeighborsRegressor(n_neighbors=5)
 
     knn_regressor.fit(positions_xz, heights_y)
-
-    new_pos = [(-0.2931, 2.3543), (-1.1132, 5.4404), (-3.1466, -1.8121), (1.9524, -1.8816)]
-
-    print(knn_regressor.predict(new_pos))
-
-    exit()
 
     # Compute mean/stds
     Ypos_scale = Ypos[:, 1:].std()
@@ -156,6 +146,12 @@ if __name__ == '__main__':
 
     Yextra_scale = Yextra.std()
 
+    # Toe positions 15, 30, 45 frames ahead
+    # (nframes, 2, 3)
+    Ytoe_pos = torch.cat([Ypos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                          Ypos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                         dim=-2)
+
     decompressor_mean_out = torch.cat((
         torch.ravel(Ypos[:, 1:].mean(dim=0)),
         torch.ravel(Ytxy[:, 1:].mean(dim=0)),
@@ -163,7 +159,10 @@ if __name__ == '__main__':
         torch.ravel(Yang[:, 1:].mean(dim=0)),
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
-        torch.ravel(Yextra.mean(dim=0))
+        torch.ravel(Yextra.mean(dim=0)),
+        torch.ravel(Ytoe_pos.mean(dim=0)),
+        torch.ravel(Ytoe_pos.mean(dim=0)),
+        torch.ravel(Ytoe_pos.mean(dim=0))
     ))
     decompressor_std_out = torch.cat((
         torch.ravel(Ypos[:, 1:].std(dim=0)),
@@ -172,7 +171,10 @@ if __name__ == '__main__':
         torch.ravel(Yang[:, 1:].std(dim=0)),
         torch.ravel(Yrvel.std(dim=0)),
         torch.ravel(Yrang.std(dim=0)),
-        torch.ravel(Yextra.std(dim=0))
+        torch.ravel(Yextra.std(dim=0)),
+        torch.ravel(Ytoe_pos.std(dim=0)),
+        torch.ravel(Ytoe_pos.std(dim=0)),
+        torch.ravel(Ytoe_pos.std(dim=0))
     ))
 
     decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
@@ -355,7 +357,7 @@ if __name__ == '__main__':
 
     # Build batches respecting window size
     indices = []
-    for i in range(nframes - window + 1):
+    for i in range(nframes - window - 45 + 1):
         indices.append(np.arange(i, i + window))
     indices = torch.as_tensor(np.array(indices), dtype=torch.long)
 
@@ -400,6 +402,10 @@ if __name__ == '__main__':
 
         Ygnd_extra = Yextra[batch]
 
+        Qgnd_toe_pos = torch.cat([Qgnd_pos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                                  Qgnd_pos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1,
+                                  :]], dim=-2)
+
         # Encode
         Zgnd = compressor((torch.cat([
             Ygnd_pos[:, :, 1:].reshape([batchsize, window, -1]),  # (batchsize, window, (bones-1)*3)
@@ -428,6 +434,9 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
+        Ytil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
+            [batchsize, window, 3, 2, 3]
+        )
 
         # Add root bone
         Ytil_pos = torch.cat([Ygnd_pos[:, :, 0:1], Ytil_pos], dim=2)
