@@ -72,6 +72,7 @@ if __name__ == '__main__':
 
     # Parameters
 
+    foot_height = 0.02
     seed = 1234
     batchsize = 32
     lr = 0.001
@@ -116,7 +117,7 @@ if __name__ == '__main__':
                               dim=-2)
     # (N, 3) where N is the number of True values in contacts
     contact_positions = toe_positions[contacts]
-
+    contact_positions[:, 1] -= foot_height
     positions_xz = []
     heights_y = []
 
@@ -151,6 +152,9 @@ if __name__ == '__main__':
     Ytoe_pos = torch.cat([Ypos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
                           Ypos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
                          dim=-2)
+    Gtoe_pos = torch.cat([Gpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                          Gpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                         dim=-2)
 
     decompressor_mean_out = torch.cat((
         torch.ravel(Ypos[:, 1:].mean(dim=0)),
@@ -160,9 +164,9 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
         torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Ytoe_pos.mean(dim=0)),
-        torch.ravel(Ytoe_pos.mean(dim=0)),
-        torch.ravel(Ytoe_pos.mean(dim=0))
+        torch.ravel(Gtoe_pos.mean(dim=0)),
+        torch.ravel(Gtoe_pos.mean(dim=0)),
+        torch.ravel(Gtoe_pos.mean(dim=0))
     ))
     decompressor_std_out = torch.cat((
         torch.ravel(Ypos[:, 1:].std(dim=0)),
@@ -172,9 +176,9 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.std(dim=0)),
         torch.ravel(Yrang.std(dim=0)),
         torch.ravel(Yextra.std(dim=0)),
-        torch.ravel(Ytoe_pos.std(dim=0)),
-        torch.ravel(Ytoe_pos.std(dim=0)),
-        torch.ravel(Ytoe_pos.std(dim=0))
+        torch.ravel(Gtoe_pos.std(dim=0)),
+        torch.ravel(Gtoe_pos.std(dim=0)),
+        torch.ravel(Gtoe_pos.std(dim=0))
     ))
 
     decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
@@ -228,14 +232,14 @@ if __name__ == '__main__':
                 Yextra.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('train_ris/decompressor/latent.bin', 'wb') as f:
+            with open('train_ris/terrain/terrain_latent.bin', 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
     def _generate_anim():
         with torch.no_grad():
-            start = range_starts[2]
-            stop = min(start + 1000, range_stops[2])
+            start = range_starts[8]
+            stop = min(start + 1000, range_stops[8])
 
             Ygnd_pos = Ypos[start:stop][np.newaxis]  # (1, stop-start, nbones, 3)
             Ygnd_rot = Yrot[start: stop][np.newaxis]  # (1, stop- start, nbones, 4)
@@ -304,7 +308,7 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('train_ris/decompressor/decompressor_Ygnd.bvh', {
+                bvh.save('train_ris/terrain/decompressor_Ygnd.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -312,7 +316,7 @@ if __name__ == '__main__':
                     'names': ['joint_%i' % i for i in range(nbones)],
                     'order': 'zyx'
                 })
-                bvh.save('train_ris/decompressor/decompressor_Ytil.bvh', {
+                bvh.save('train_ris/terrain/decompressor_Ytil.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
@@ -333,7 +337,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor/decompressor_X.png')
+                plt.savefig('train_ris/terrain/decompressor_X.png')
             except IOError as e:
                 print(e)
             plt.close()
@@ -348,7 +352,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor/decompressor_Z.png')
+                plt.savefig('train_ris/terrain/decompressor_Z.png')
             except IOError as e:
                 print(e)
 
@@ -357,9 +361,19 @@ if __name__ == '__main__':
 
     # Build batches respecting window size
     indices = []
+    indx_15s = []
+    indx_30s = []
+    indx_45s = []
     for i in range(nframes - window - 45 + 1):
         indices.append(np.arange(i, i + window))
+        # indices 15, 30, 45 frames ahead for terrain
+        indx_15s.append(np.arange(i + 15, i + 15 + window))
+        indx_30s.append(np.arange(i + 30, i + 30 + window))
+        indx_45s.append(np.arange(i + 45, i + 45 + window))
     indices = torch.as_tensor(np.array(indices), dtype=torch.long)
+    indx_15s = torch.as_tensor(np.array(indx_15s), dtype=torch.long)
+    indx_30s = torch.as_tensor(np.array(indx_30s), dtype=torch.long)
+    indx_45s = torch.as_tensor(np.array(indx_45s), dtype=torch.long)
 
     # Train
     writer = SummaryWriter()
@@ -382,7 +396,11 @@ if __name__ == '__main__':
         optimizer.zero_grad()
 
         # Extract batch
-        batch = indices[torch.randint(0, len(indices), size=[batchsize])]  # (batchsize, window)
+        batch_indxs = torch.randint(0, len(indices), size=[batchsize])
+        batch = indices[batch_indxs]  # (batchsize, window)
+        batch_15s = indx_15s[batch_indxs]
+        batch_30s = indx_30s[batch_indxs]
+        batch_45s = indx_45s[batch_indxs]
 
         Xgnd = X[batch]  # (batchsize, window, nfeatures)
 
@@ -402,9 +420,13 @@ if __name__ == '__main__':
 
         Ygnd_extra = Yextra[batch]
 
-        Qgnd_toe_pos = torch.cat([Qgnd_pos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
-                                  Qgnd_pos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1,
-                                  :]], dim=-2)
+        # Toe positions at 15, 30, 45 frames ahead for terrain : (batchsize, window, 3, 2, 3)
+        Ygnd_toe_pos = torch.cat([Ytoe_pos[batch_15s][:, :, None, ...],
+                                  Ytoe_pos[batch_30s][:, :, None, ...],
+                                  Ytoe_pos[batch_45s][:, :, None, ...]], dim=2)
+        Ggnd_toe_pos = torch.cat([Gtoe_pos[batch_15s][:, :, None, ...],
+                                  Gtoe_pos[batch_30s][:, :, None, ...],
+                                  Gtoe_pos[batch_45s][:, :, None, ...]], dim=2)
 
         # Encode
         Zgnd = compressor((torch.cat([
@@ -434,9 +456,8 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
-        Ytil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
-            [batchsize, window, 3, 2, 3]
-        )
+        Gtil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3*2*3].reshape(
+            [batchsize, window, 3, 2, 3])
 
         # Add root bone
         Ytil_pos = torch.cat([Ygnd_pos[:, :, 0:1], Ytil_pos], dim=2)
@@ -495,6 +516,27 @@ if __name__ == '__main__':
         loss_lreg = torch.mean(0.1 * torch.square(Zgnd))
         loss_vreg = torch.mean(0.01 * torch.abs(dZgnd))
 
+        '''
+        # Predicting heights from neighbor regression
+        Gtoe_heights = torch.empty([batchsize, window, 3, 2])
+        for b in range(batchsize):
+            for w in range(window):
+                for f in range(Gtoe_heights.shape[2]):
+                    y_left = knn_regressor.predict([[Ggnd_toe_pos[b, w, f, 0, 0].item(),
+                                                    Ggnd_toe_pos[b, w, f, 0, 2].item()]])
+                    y_right = knn_regressor.predict([[Ggnd_toe_pos[b, w, f, 1, 0].item(),
+                                                     Ggnd_toe_pos[b, w, f, 1, 2].item()]])
+                    Gtoe_heights[b, w, f, 0] = y_left[0]
+                    Gtoe_heights[b, w, f, 1] = y_right[0]
+
+        Ggnd_toe_pos = torch.cat([Ggnd_toe_pos[..., 0:1], Gtoe_heights[..., None], Ggnd_toe_pos[..., 2:3]], dim=-1)
+        '''
+
+        # Terrain losses
+        loss_gtoe_pos_15 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 0] - Gtil_toe_pos[:, :, 0]))
+        loss_gtoe_pos_30 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 1] - Gtil_toe_pos[:, :, 1]))
+        loss_gtoe_pos_45 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 2] - Gtil_toe_pos[:, :, 2]))
+
         loss = (
                 loss_lpos +
                 loss_ltxy +
@@ -513,7 +555,10 @@ if __name__ == '__main__':
                 loss_cvel_xfm +
                 loss_sreg +
                 loss_lreg +
-                loss_vreg
+                loss_vreg +
+                loss_gtoe_pos_15 +
+                loss_gtoe_pos_30 +
+                loss_gtoe_pos_45
         )
 
         # Backpropagation
@@ -562,7 +607,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('train_ris/decompressor/decompressor.bin', [
+            save_network('train_ris/terrain/terrain_decompressor.bin', [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
@@ -572,8 +617,8 @@ if __name__ == '__main__':
                          )
             save_network_onnx(decompressor,
                               decompressor_mean_in,
-                              'train_ris/decompressor/decompressor.onnx')
-            torch.save(decompressor, 'train_ris/decompressor/decompressor.pth')
+                              'train_ris/terrain/decompressor.onnx')
+            torch.save(decompressor, 'train_ris/terrain/decompressor.pth')
 
         if i % 1000 == 0:
             # c_scheduler.step()

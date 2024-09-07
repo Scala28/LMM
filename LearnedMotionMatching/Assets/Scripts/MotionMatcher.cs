@@ -206,13 +206,6 @@ public class MotionMatcher : MonoBehaviour
 
         Debug.Assert(db.nbones() == ch.nbones());
 
-        DataManager.database terrain_db = DataManager.load_database("Assets/Resources/terrain_db.bin");
-
-        DataManager.database_build_matching_features(ref terrain_db, feature_weight_foot_position, feature_weight_foot_velocity, feature_weight_hip_velocity,
-            feature_weight_trajectory_positions, feature_weight_trajectory_directions, feature_weight_trajectory_toe_height, ik_foot_height);
-
-        DataManager.database_save_matching_features(terrain_db, "Assets/Resources/terrain_features.bin");
-
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
         frame_index = db.range_starts[0];
