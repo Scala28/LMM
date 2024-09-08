@@ -117,7 +117,7 @@ if __name__ == '__main__':
                               dim=-2)
     # (N, 3) where N is the number of True values in contacts
     contact_positions = toe_positions[contacts]
-    contact_positions[:, 1] -= foot_height
+    contact_positions[..., 1] -= foot_height
     positions_xz = []
     heights_y = []
 
@@ -427,6 +427,13 @@ if __name__ == '__main__':
         Ggnd_toe_pos = torch.cat([Gtoe_pos[batch_15s][:, :, None, ...],
                                   Gtoe_pos[batch_30s][:, :, None, ...],
                                   Gtoe_pos[batch_45s][:, :, None, ...]], dim=2)
+        Gnd_contact_states = torch.cat([Ggnd_toe_pos[..., 0:1],
+                                        torch.as_tensor(knn_regressor.predict(torch.cat([Ggnd_toe_pos[..., 0:1],
+                                                                                         Ggnd_toe_pos[..., 2:3]],
+                                                                                        dim=-1).
+                                                                              reshape(batchsize * window * 3 * 2, 2))).
+                                       reshape(batchsize, window, 3, 2, 1),
+                                        Ggnd_toe_pos[..., 2:3]], dim=-1)
 
         # Encode
         Zgnd = compressor((torch.cat([
@@ -456,7 +463,7 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
-        Gtil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3*2*3].reshape(
+        Gtil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
             [batchsize, window, 3, 2, 3])
 
         # Add root bone
@@ -516,26 +523,10 @@ if __name__ == '__main__':
         loss_lreg = torch.mean(0.1 * torch.square(Zgnd))
         loss_vreg = torch.mean(0.01 * torch.abs(dZgnd))
 
-        '''
-        # Predicting heights from neighbor regression
-        Gtoe_heights = torch.empty([batchsize, window, 3, 2])
-        for b in range(batchsize):
-            for w in range(window):
-                for f in range(Gtoe_heights.shape[2]):
-                    y_left = knn_regressor.predict([[Ggnd_toe_pos[b, w, f, 0, 0].item(),
-                                                    Ggnd_toe_pos[b, w, f, 0, 2].item()]])
-                    y_right = knn_regressor.predict([[Ggnd_toe_pos[b, w, f, 1, 0].item(),
-                                                     Ggnd_toe_pos[b, w, f, 1, 2].item()]])
-                    Gtoe_heights[b, w, f, 0] = y_left[0]
-                    Gtoe_heights[b, w, f, 1] = y_right[0]
-
-        Ggnd_toe_pos = torch.cat([Ggnd_toe_pos[..., 0:1], Gtoe_heights[..., None], Ggnd_toe_pos[..., 2:3]], dim=-1)
-        '''
-
-        # Terrain losses
-        loss_gtoe_pos_15 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 0] - Gtil_toe_pos[:, :, 0]))
-        loss_gtoe_pos_30 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 1] - Gtil_toe_pos[:, :, 1]))
-        loss_gtoe_pos_45 = torch.mean(7.5 * torch.abs(Ggnd_toe_pos[:, :, 2] - Gtil_toe_pos[:, :, 2]))
+        # Terrain loss
+        Til_contact_states = Gtil_toe_pos
+        Til_contact_states[..., 1] -= foot_height
+        loss_terrain = torch.mean(2.5 * torch.abs(Gnd_contact_states - Til_contact_states))
 
         loss = (
                 loss_lpos +
@@ -556,9 +547,7 @@ if __name__ == '__main__':
                 loss_sreg +
                 loss_lreg +
                 loss_vreg +
-                loss_gtoe_pos_15 +
-                loss_gtoe_pos_30 +
-                loss_gtoe_pos_45
+                loss_terrain
         )
 
         # Backpropagation
@@ -588,7 +577,8 @@ if __name__ == '__main__':
             'cvel_rot': loss_cvel_xfm.item(),
             'sreg': loss_sreg.item(),
             'lreg': loss_lreg.item(),
-            'vreg': loss_vreg.item()
+            'vreg': loss_vreg.item(),
+            'terrain': loss_terrain.item()
         }, i)
         writer.add_scalars('decompressor/latent', {
             'mean': Zgnd.mean().item(),
