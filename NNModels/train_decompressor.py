@@ -111,12 +111,22 @@ if __name__ == '__main__':
     # Fit the nearest neighbor regression for terrain height
     contacts = Yextra > 0.5
 
+    # Toe positions 15, 30, 45 frames ahead
     # (nframes, 2, 3)
-    toe_positions = torch.cat([Gpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
-                               Gpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
-                              dim=-2)
+    Ytoe_pos = torch.cat([Ypos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                          Ypos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                         dim=-2)
+    Gtoe_pos = torch.cat([Gpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                          Gpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                         dim=-2)
+
+    # (nframes, 2, 3)
+    Qtoe_pos = torch.cat([Qpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
+                          Qpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
+                         dim=-2)
+
     # (N, 3) where N is the number of True values in contacts
-    contact_positions = toe_positions[contacts]
+    contact_positions = Gtoe_pos[contacts]
     contact_positions[..., 1] -= foot_height
     positions_xz = []
     heights_y = []
@@ -147,15 +157,6 @@ if __name__ == '__main__':
 
     Yextra_scale = Yextra.std()
 
-    # Toe positions 15, 30, 45 frames ahead
-    # (nframes, 2, 3)
-    Ytoe_pos = torch.cat([Ypos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
-                          Ypos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
-                         dim=-2)
-    Gtoe_pos = torch.cat([Gpos[..., character_dict["Bone_LeftToe"]:character_dict["Bone_LeftToe"] + 1, :],
-                          Gpos[..., character_dict["Bone_RightToe"]:character_dict["Bone_RightToe"] + 1, :]],
-                         dim=-2)
-
     decompressor_mean_out = torch.cat((
         torch.ravel(Ypos[:, 1:].mean(dim=0)),
         torch.ravel(Ytxy[:, 1:].mean(dim=0)),
@@ -164,9 +165,9 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
         torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Gtoe_pos.mean(dim=0)),
-        torch.ravel(Gtoe_pos.mean(dim=0)),
-        torch.ravel(Gtoe_pos.mean(dim=0))
+        torch.ravel(Qtoe_pos.mean(dim=0)),
+        torch.ravel(Qtoe_pos.mean(dim=0)),
+        torch.ravel(Qtoe_pos.mean(dim=0))
     ))
     decompressor_std_out = torch.cat((
         torch.ravel(Ypos[:, 1:].std(dim=0)),
@@ -176,9 +177,9 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.std(dim=0)),
         torch.ravel(Yrang.std(dim=0)),
         torch.ravel(Yextra.std(dim=0)),
-        torch.ravel(Gtoe_pos.std(dim=0)),
-        torch.ravel(Gtoe_pos.std(dim=0)),
-        torch.ravel(Gtoe_pos.std(dim=0))
+        torch.ravel(Qtoe_pos.std(dim=0)),
+        torch.ravel(Qtoe_pos.std(dim=0)),
+        torch.ravel(Qtoe_pos.std(dim=0))
     ))
 
     decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
@@ -427,6 +428,9 @@ if __name__ == '__main__':
         Ggnd_toe_pos = torch.cat([Gtoe_pos[batch_15s][:, :, None, ...],
                                   Gtoe_pos[batch_30s][:, :, None, ...],
                                   Gtoe_pos[batch_45s][:, :, None, ...]], dim=2)
+        Qgnd_toe_pos = torch.cat([Qtoe_pos[batch_15s][:, :, None, ...],
+                                  Qtoe_pos[batch_30s][:, :, None, ...],
+                                  Qtoe_pos[batch_45s][:, :, None, ...]], dim=2)
         Gnd_contact_states = torch.cat([Ggnd_toe_pos[..., 0:1],
                                         torch.as_tensor(knn_regressor.predict(torch.cat([Ggnd_toe_pos[..., 0:1],
                                                                                          Ggnd_toe_pos[..., 2:3]],
@@ -463,7 +467,7 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
-        Gtil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
+        Qtil_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
             [batchsize, window, 3, 2, 3])
 
         # Add root bone
@@ -478,6 +482,7 @@ if __name__ == '__main__':
         Gtil_pos, Gtil_xfm, Gtil_vel, Gtil_ang = xform.fk(
             Ytil_pos, Ytil_xfm, Ytil_vel, Ytil_ang, parents
         )
+        Gtil_toe_pos = xform.mul_vec(Gtil_xfm[:, :, 0:1].unsqueeze(2), Qtil_toe_pos + Gtil_pos[:, :, 0:1].unsqueeze(2))
 
         # Compute character space
         Qtil_pos = xform.inv_mul_vec(Gtil_xfm[:, :, 0:1], Gtil_pos - Gtil_pos[:, :, 0:1])
@@ -526,6 +531,7 @@ if __name__ == '__main__':
         # Terrain loss
         Til_contact_states = Gtil_toe_pos
         Til_contact_states[..., 1] -= foot_height
+
         loss_terrain = torch.mean(2.5 * torch.abs(Gnd_contact_states - Til_contact_states))
 
         loss = (
