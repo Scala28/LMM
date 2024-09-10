@@ -177,10 +177,11 @@ if __name__ == '__main__':
                 Qang[:, 1:].reshape([1, nframes, -1]),
                 Yrvel.reshape([1, nframes, -1]),
                 Yrang.reshape([1, nframes, -1]),
-                Yextra.reshape([1, nframes, -1])
+                Yextra.reshape([1, nframes, -1]),
+                Qterrain_pos.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('train_ris/terrain/terrain_latent.bin', 'wb') as f:
+            with open('train_ris/decompressor/terrain_latent.bin', 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -206,6 +207,8 @@ if __name__ == '__main__':
 
             Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
 
+            Qgnd_terrain = Qterrain_pos[start:stop][np.newaxis]
+
             Zgnd = compressor((torch.cat([
                 Ygnd_pos[:, :, 1:].reshape([1, stop - start, -1]),  # (1, stop-start, (nbones-1)*3)
                 Ygnd_txy[:, :, 1:].reshape([1, stop - start, -1]),
@@ -217,7 +220,8 @@ if __name__ == '__main__':
                 Qgnd_ang[:, :, 1:].reshape([1, stop - start, -1]),
                 Ygnd_rvel.reshape([1, stop - start, -1]),
                 Ygnd_rang.reshape([1, stop - start, -1]),
-                Ygnd_extra.reshape([1, stop - start, -1])
+                Ygnd_extra.reshape([1, stop - start, -1]),
+                Qgnd_terrain.reshape([1, stop - start, -1])
             ], dim=-1) - compressor_mean_in) / compressor_std_in)
 
             Ytil = (decompressor(torch.cat([Xgnd, Zgnd], dim=-1))
@@ -256,7 +260,7 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('train_ris/terrain/decompressor_Ygnd.bvh', {
+                bvh.save('train_ris/decompressor/decompressor_Ygnd.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -264,7 +268,7 @@ if __name__ == '__main__':
                     'names': ['joint_%i' % i for i in range(nbones)],
                     'order': 'zyx'
                 })
-                bvh.save('train_ris/terrain/decompressor_Ytil.bvh', {
+                bvh.save('train_ris/decompressor/decompressor_Ytil.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
@@ -285,7 +289,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/terrain/decompressor_X.png')
+                plt.savefig('train_ris/decompressor/decompressor_X.png')
             except IOError as e:
                 print(e)
             plt.close()
@@ -300,7 +304,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/terrain/decompressor_Z.png')
+                plt.savefig('train_ris/decompressor/decompressor_Z.png')
             except IOError as e:
                 print(e)
 
@@ -535,7 +539,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('train_ris/terrain/terrain_decompressor.bin', [
+            save_network('train_ris/decompressor/terrain_decompressor.bin', [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
@@ -545,8 +549,8 @@ if __name__ == '__main__':
                          )
             save_network_onnx(decompressor,
                               decompressor_mean_in,
-                              'train_ris/terrain/decompressor.onnx')
-            torch.save(decompressor, 'train_ris/terrain/decompressor.pth')
+                              'train_ris/decompressor/decompressor.onnx')
+            torch.save(decompressor, 'train_ris/decompressor/decompressor.pth')
 
         if i % 1000 == 0:
             # c_scheduler.step()

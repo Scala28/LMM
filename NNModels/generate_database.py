@@ -39,7 +39,7 @@ def database_trajectory_index_clamp(frame, offset):
 
 files = [
     # We just use a small section of this clip for the standing idle
-    ('animations/pushAndStumble1_subject5.bvh', 194, 351),
+    # ('animations/pushAndStumble1_subject5.bvh', 194, 351),
     # Running
     ('animations/run1_subject5.bvh', 90, 7086),
     # Walking
@@ -120,7 +120,6 @@ for filename, start, stop in files:
         # Position comes from spine joint
 
         sim_position = global_positions[:, sim_rotation_joint:sim_rotation_joint + 1]
-            # np.array([1.0, 0.0, 1.0]) * global_positions[:, sim_position_joint:sim_position_joint + 1] + np.array([0.0, 1.0, 0.0]) * global_positions[:, sim_rotation_joint:sim_rotation_joint + 1]
         sim_position = signal.savgol_filter(sim_position, 31, 3, axis=0, mode='interp')
 
         # Direction comes from projected hip forward direction
@@ -201,14 +200,12 @@ for filename, start, stop in files:
         leftFoot_xz = []
         rightFoot_xz = []
 
-        is_first_left = False
-        is_last_left = False
-        is_first_right = False
-        is_last_right = False
+        is_first_left = True
+        is_first_right = True
 
         for i in range(len(global_positions)):
 
-            if contacts[i][0] and i != (len(global_positions) -1):
+            if contacts[i][0] and i != (len(global_positions) - 1):
                 if is_first_left or contacts[i + 1][0] == False:
                     contacts_xz.append((global_positions[i][bone_names.index("LeftToe")][0],
                                         global_positions[i][bone_names.index("LeftToe")][2]))
@@ -217,7 +214,7 @@ for filename, start, stop in files:
             else:
                 is_first_left = True
 
-            if contacts[i][1] and i != (len(global_positions) -1):
+            if contacts[i][1] and i != (len(global_positions) - 1):
                 if is_first_right or contacts[i + 1][1] == False:
                     contacts_xz.append((global_positions[i][bone_names.index("RightToe")][0],
                                         global_positions[i][bone_names.index("RightToe")][2]))
@@ -248,28 +245,42 @@ for filename, start, stop in files:
         terrain = np.zeros((len(global_positions), 18))
 
         for i in range(len(global_positions) - 45):
-
             index_15 = database_trajectory_index_clamp(i, 15)
             index_30 = database_trajectory_index_clamp(i, 30)
             index_45 = database_trajectory_index_clamp(i, 45)
 
-            left_ground_15_global = np.array([global_positions[index_15][bone_names.index("LeftToe")][0],leftFoot_y[index_15], global_positions[index_15][bone_names.index("LeftToe")][2]])
+            left_ground_15_global = np.array(
+                [global_positions[index_15][bone_names.index("LeftToe")][0], leftFoot_y[index_15],
+                 global_positions[index_15][bone_names.index("LeftToe")][2]])
             left_ground_15_local = quat.mul_vec(global_rotations[i][0], left_ground_15_global) + global_positions[i][0]
 
-            left_ground_30_global = np.array([global_positions[index_30][bone_names.index("LeftToe")][0],leftFoot_y[index_30], global_positions[index_30][bone_names.index("LeftToe")][2]])
+            left_ground_30_global = np.array(
+                [global_positions[index_30][bone_names.index("LeftToe")][0], leftFoot_y[index_30],
+                 global_positions[index_30][bone_names.index("LeftToe")][2]])
             left_ground_30_local = quat.mul_vec(global_rotations[i][0], left_ground_30_global) + global_positions[i][0]
 
-            left_ground_45_global = np.array([global_positions[index_45][bone_names.index("LeftToe")][0],leftFoot_y[index_45], global_positions[index_45][bone_names.index("LeftToe")][2]])
+            left_ground_45_global = np.array(
+                [global_positions[index_45][bone_names.index("LeftToe")][0], leftFoot_y[index_45],
+                 global_positions[index_45][bone_names.index("LeftToe")][2]])
             left_ground_45_local = quat.mul_vec(global_rotations[i][0], left_ground_45_global) + global_positions[i][0]
 
-            right_ground_15_global = np.array([global_positions[index_15][bone_names.index("RightToe")][0],rightFoot_y[index_15], global_positions[index_15][bone_names.index("RightToe")][2]])
-            right_ground_15_local = quat.mul_vec(global_rotations[i][0], right_ground_15_global) + global_positions[i][0]
+            right_ground_15_global = np.array(
+                [global_positions[index_15][bone_names.index("RightToe")][0], rightFoot_y[index_15],
+                 global_positions[index_15][bone_names.index("RightToe")][2]])
+            right_ground_15_local = quat.mul_vec(global_rotations[i][0], right_ground_15_global) + global_positions[i][
+                0]
 
-            right_ground_30_global = np.array([global_positions[index_30][bone_names.index("RightToe")][0],rightFoot_y[index_30], global_positions[index_30][bone_names.index("RightToe")][2]])
-            right_ground_30_local = quat.mul_vec(global_rotations[i][0], right_ground_30_global) + global_positions[i][0]
+            right_ground_30_global = np.array(
+                [global_positions[index_30][bone_names.index("RightToe")][0], rightFoot_y[index_30],
+                 global_positions[index_30][bone_names.index("RightToe")][2]])
+            right_ground_30_local = quat.mul_vec(global_rotations[i][0], right_ground_30_global) + global_positions[i][
+                0]
 
-            right_ground_45_global = np.array([global_positions[index_45][bone_names.index("RightToe")][0],rightFoot_y[index_45], global_positions[index_45][bone_names.index("RightToe")][2]])
-            right_ground_45_local = quat.mul_vec(global_rotations[i][0], right_ground_45_global) + global_positions[i][0]
+            right_ground_45_global = np.array(
+                [global_positions[index_45][bone_names.index("RightToe")][0], rightFoot_y[index_45],
+                 global_positions[index_45][bone_names.index("RightToe")][2]])
+            right_ground_45_local = quat.mul_vec(global_rotations[i][0], right_ground_45_global) + global_positions[i][
+                0]
 
             frame_terrain = []
             frame_terrain.append(left_ground_15_local)
@@ -325,12 +336,11 @@ with open('data/terrain_db.bin', 'wb') as f:
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
     f.write(struct.pack('II', nframes, 18) + terrain_positions.ravel().tobytes())
 
-
-bvh.save('data/db.bvh', {
-                    'rotations': np.degrees(quat.to_euler(bone_rotations)),
-                    'positions': 100.0 * bone_positions,
-                    'offsets': 100.0 * bone_positions[0],
-                    'parents': bone_parents,
-                    'names': ['joint_%i' % i for i in range(nbones)],
-                    'order': 'zyx'
-                })
+bvh.save('data/terrain_db.bvh', {
+    'rotations': np.degrees(quat.to_euler(bone_rotations)),
+    'positions': 100.0 * bone_positions,
+    'offsets': 100.0 * bone_positions[0],
+    'parents': bone_parents,
+    'names': ['joint_%i' % i for i in range(nbones)],
+    'order': 'zyx'
+})

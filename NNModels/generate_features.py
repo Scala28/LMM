@@ -289,7 +289,7 @@ Bone_RightArm = 20
 Bone_RightForeArm = 21
 Bone_RightHand = 22
 
-database = load_database('data/database.bin')
+database = load_database('data/terrain_db.bin')
 bone_positions = database['bone_positions']
 bone_rotations = database['bone_rotations']
 bone_velocities = database['bone_velocities']
