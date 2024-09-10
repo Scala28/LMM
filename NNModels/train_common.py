@@ -33,6 +33,10 @@ def load_database(filename):
         contact_states = np.frombuffer(f.read(nframes * ncontacts), dtype=np.int8, count=nframes * ncontacts).reshape(
             [nframes, ncontacts])
 
+        nframes, nterrain = struct.unpack('II', f.read(8))
+        terrain_positions = np.frombuffer(f.read(nframes * nterrain * 4), dtype=np.float32,
+                                          count=nframes * nterrain).reshape([nframes, nterrain])
+
         return {
             'bone_positions': bone_positions,
             'bone_rotations': bone_rotations,
@@ -42,6 +46,7 @@ def load_database(filename):
             'range_starts': range_starts,
             'range_stops': range_stops,
             'contact_states': contact_states,
+            'terrain_positions': terrain_positions,
         }
 
 

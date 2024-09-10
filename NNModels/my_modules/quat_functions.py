@@ -9,7 +9,7 @@ def fk_vel(lpos, lrot, lvel, lang, parents):
         gpos.append(mul_vec(grot[parents[i]], lpos[..., i:i + 1, :]) + gpos[parents[i]])
         grot.append(mul(grot[parents[i]], lrot[..., i:i + 1, :]))
         gvel.append(gvel[parents[i]] + mul_vec(grot[parents[i]], lvel[..., i:i + 1, :]) +
-                    _cross(gang[parents[i]], mul_vec(grot[parents[i]], lpos[..., i:i + 1, :])))
+                    cross(gang[parents[i]], mul_vec(grot[parents[i]], lpos[..., i:i + 1, :])))
         gang.append(mul_vec(grot[parents[i]], lang[..., i:i + 1, :]) + gang[parents[i]])
 
     return (
@@ -32,7 +32,7 @@ def forward_kinematics_velocity(bone_positions, bone_rotations, bone_velocities,
         )
         bone_pos = mul_vec(parent_rot, bone_positions[..., bone, :]) + parent_pos
         bone_vel = (parent_vel + mul_vec(parent_rot, bone_velocities[..., bone, :]) +
-                    _cross(parent_ang_vel, mul_vec(parent_rot, bone_positions[..., bone, :])))
+                    cross(parent_ang_vel, mul_vec(parent_rot, bone_positions[..., bone, :])))
         bone_rot = mul(parent_rot, bone_rotations[..., bone, :])
         bone_ang_vel = mul_vec(parent_rot, bone_angular_velocities[..., bone, :]) + parent_ang_vel
 
@@ -45,21 +45,21 @@ def forward_kinematics_velocity(bone_positions, bone_rotations, bone_velocities,
 def fk(lpos, lrot, parents):
     gp, gr = [lpos[..., :1, :]], [lrot[..., :1, :]]
     for i in range(1, len(parents)):
-        gp.append(mul_vec(gr[parents[i]], lpos[..., i:i+1, :]) + gp[parents[i]])
-        gr.append(mul(gr[parents[i]], lrot[..., i:i+1, :]))
-    return np.concatenate(gp, axis=-2), np.concatenate(gr, axis=-2)
+        gp.append(mul_vec(gr[parents[i]], lpos[..., i:i + 1, :]) + gp[parents[i]])
+        gr.append(mul(gr[parents[i]], lrot[..., i:i + 1, :]))
+    return torch.cat(gp, dim=-2), torch.cat(gr, dim=-2)
 
 
 def ik(gpos, grot, parents):
     return (
-        np.concatenate([
-            grot[..., :1, :],
-            mul(inv(grot[..., parents[1:], :]), grot[..., 1:, :])
-        ], axis=-2),
-        np.concatenate([
+        torch.cat([
             gpos[..., :1, :],
             mul_vec(inv(grot[..., parents[1:], :]), gpos[..., 1:, :] - gpos[..., parents[1:], :])
-        ], axis=-2)
+        ], dim=-2),
+        torch.cat([
+            grot[..., :1, :],
+            mul(inv(grot[..., parents[1:], :]), grot[..., 1:, :])
+        ], dim=-2)
     )
 
 
@@ -67,7 +67,7 @@ def mul_vec(q, x):
     q_scalar = q[..., 0][..., np.newaxis]
     q_vector = q[..., 1:]
 
-    return x + q_scalar * 2.0 * _cross(q_vector, x) + _cross(q_vector, 2.0 * _cross(q_vector, x))
+    return x + q_scalar * 2.0 * cross(q_vector, x) + cross(q_vector, 2.0 * cross(q_vector, x))
 
 
 def mul(a, b):
@@ -82,7 +82,7 @@ def mul(a, b):
     ], dim=-1)
 
 
-def _cross(a, b):
+def cross(a, b):
     return torch.cat([
         a[..., 1:2] * b[..., 2:3] - a[..., 2:3] * b[..., 1:2],
         a[..., 2:3] * b[..., 0:1] - a[..., 0:1] * b[..., 2:3],
@@ -169,9 +169,9 @@ def to_xform_xy(q):
 
 
 def from_xfm_xy(x):
-    c2 = _cross(x[..., 0], x[..., 1])
+    c2 = cross(x[..., 0], x[..., 1])
     c2 = c2 / torch.sqrt(torch.sum(torch.square(c2), dim=-1))[..., np.newaxis]
-    c1 = _cross(c2, x[..., 0])
+    c1 = cross(c2, x[..., 0])
     c1 = c1 / torch.sqrt(torch.sum(torch.square(c1), dim=-1))[..., np.newaxis]
     c0 = x[..., 0]
 
@@ -184,10 +184,11 @@ def from_xfm_xy(x):
 
 
 def from_angle_axis(angle, axis):
-    c = torch.cos(angle / 2.0)[..., None]
-    s = torch.sin(angle / 2.0)[..., None]
-    q = torch.cat([c, s*axis], dim=-1)
+    c = np.cos(angle / 2.0)[..., None]
+    s = np.sin(angle / 2.0)[..., None]
+    q = np.concatenate([c, s * axis], axis=-1)
     return q
+
 
 def from_scaled_axis_angle(x, eps=1e-5):
     return _exp(x / 2.0, eps)
@@ -201,7 +202,7 @@ def _exp(x, eps=1e-5):
     halfangle = torch.sqrt(torch.sum(torch.square(x), dim=-1))[..., np.newaxis]
     c = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.cos(halfangle))
     s = torch.where(halfangle < eps, torch.ones_like(halfangle), torch.sinc(halfangle / torch.pi))
-    return torch.cat([c, s*x], dim=-1)
+    return torch.cat([c, s * x], dim=-1)
 
 
 def _log(x, eps=1e-5):
@@ -236,13 +237,13 @@ def to_euler(x, order='xyz'):
 
 def from_euler(e, order='zyx'):
     axis = {
-        'x': torch.as_tensor([1, 0, 0], dtype=torch.float32),
-        'y': torch.as_tensor([0, 1, 0], dtype=torch.float32),
-        'z': torch.as_tensor([0, 0, 1], dtype=torch.float32)
+        'x': np.asarray([1, 0, 0], dtype=np.float32),
+        'y': np.asarray([0, 1, 0], dtype=np.float32),
+        'z': np.asarray([0, 0, 1], dtype=np.float32)
     }
-    q0 = from_angle_axis(e[..., 0], axis[order[0]])
-    q1 = from_angle_axis(e[..., 1], axis[order[1]])
-    q2 = from_angle_axis(e[..., 2], axis[order[2]])
+    q0 = torch.as_tensor(from_angle_axis(e[..., 0], axis[order[0]]))
+    q1 = torch.as_tensor(from_angle_axis(e[..., 1], axis[order[1]]))
+    q2 = torch.as_tensor(from_angle_axis(e[..., 2], axis[order[2]]))
 
     return mul(q0, mul(q1, q2))
 
@@ -257,6 +258,6 @@ def unroll(y):
 
 def between(x, y):
     return torch.concatenate([
-        torch.sqrt(torch.sum(torch.square(x), dim=-1) * torch.sum(torch.square(y), dim=-1))[...,None] +
-        torch.sum(x * y, dim=-1)[...,None],
-        _cross(x, y)], dim=-1)
+        torch.sqrt(torch.sum(torch.square(x), dim=-1) * torch.sum(torch.square(y), dim=-1))[..., None] +
+        torch.sum(x * y, dim=-1)[..., None],
+        cross(x, y)], dim=-1)

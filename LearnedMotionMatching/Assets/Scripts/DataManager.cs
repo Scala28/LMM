@@ -118,15 +118,13 @@ public static class DataManager
             forward_kinematics(out t3_pos, out t3_rot,
                 db.bone_positions[t3], db.bone_rotations[t3], db.bone_parents, bone);
 
-            Vector3 hips_global_position = Quat.quat_mul_vec(db.bone_rotations[i][0], db.bone_positions[i][1]) + db.bone_positions[i][0];
-
             // This height is recorded relative to the
-            // current height of the character’s hips
+            // current height of the character’s root
 
-            db.features[i][offset + 0] = t0_pos.y - foot_height - hips_global_position.y;
-            db.features[i][offset + 1] = t1_pos.y - foot_height - hips_global_position.y;
-            db.features[i][offset + 2] = t2_pos.y - foot_height - hips_global_position.y;
-            db.features[i][offset + 3] = t3_pos.y - foot_height - hips_global_position.y;
+            db.features[i][offset + 0] = t0_pos.y - foot_height - db.bone_positions[i][0].y;
+            db.features[i][offset + 1] = t1_pos.y - foot_height - db.bone_positions[i][0].y;
+            db.features[i][offset + 2] = t2_pos.y - foot_height - db.bone_positions[i][0].y;
+            db.features[i][offset + 3] = t3_pos.y - foot_height - db.bone_positions[i][0].y;
         }
 
         normalize_features(db.features, db.features_offset, db.features_scale, offset, 4, weight);
