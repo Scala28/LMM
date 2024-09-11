@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('data/locomotion_db.bin')
+    database = load_database('data/terrain_db.bin')
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('data/locomotion_features.bin')['features'].copy().astype(np.float32)
+    X = load_features('data/terrain_features.bin')['features'].copy().astype(np.float32)
     Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
         if i % 10000 == 0:
             generate_predictions()
-            save_network('train_ris/projector/projector_1.bin', [
+            save_network('train_ris/projector/projector.bin', [
                 projector.layer1,
                 projector.layer2,
                 projector.layer3,
@@ -205,7 +205,7 @@ if __name__ == '__main__':
                          projector_std_out)
             save_network_onnx(projector,
                               projector_mean_in,
-                              'train_ris/projector/projector_1.onnx')
+                              'train_ris/projector/projector.onnx')
 
         if i % 1000 == 0:
             scheduler.step()

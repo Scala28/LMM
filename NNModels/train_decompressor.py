@@ -181,7 +181,7 @@ if __name__ == '__main__':
                 Qterrain_pos.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('train_ris/decompressor/terrain_latent.bin', 'wb') as f:
+            with open('train_ris/decompressor/latent.bin', 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -539,7 +539,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('train_ris/decompressor/terrain_decompressor.bin', [
+            save_network('train_ris/decompressor/decompressor.bin', [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
