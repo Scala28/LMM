@@ -16,12 +16,12 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('data/locomotion_db.bin')
+    database = load_database('data/terrain_db.bin')
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('data/locomotion_features.bin')['features'].copy().astype(np.float32)
+    X = load_features('data/terrain_features.bin')['features'].copy().astype(np.float32)
     Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]

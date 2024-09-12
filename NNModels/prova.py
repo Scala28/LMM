@@ -16,8 +16,8 @@ range_stops = database['range_stops']
 X = load_features('data/locomotion_features.bin')['features'].astype(np.float32)
 Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].astype(np.float32)
 
-start = database['range_starts'][2]
-stop = min(database['range_stops'][2], start + 1000)
+start = database['range_starts'][6]
+stop = min(database['range_stops'][6], start + 1000)
 
 Ypos = database['bone_positions'].astype(np.float32)
 Yrot = database['bone_rotations'].astype(np.float32)
@@ -51,54 +51,7 @@ mean_in3, std_in3, mean_out3, std_out3, layers3 = load_network('train_ris/projec
 projector = NNModels.Projector.load(mean_in3, std_in3, mean_out3, std_out3, layers3)
 
 with torch.no_grad():
-    '''
-    input = torch.cat([X, Z], dim=-1)
-    print(input.shape)
-    
-    Ytil = decompressor(input) * std_out + mean_out
-    print(Ytil.shape)
-    Ytil_pos = Ytil[:, 0 * (nbones - 1):3 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])
-    Ytil_txy = Ytil[:, 3 * (nbones - 1):9 * (nbones - 1)].reshape([stop - start, nbones - 1, 3, 2])
-    Ytil_rvel = Ytil[:, 15 * (nbones - 1) + 0:15 * (nbones - 1) + 3].reshape([stop - start, 3])
-    Ytil_rang = Ytil[:, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([stop - start, 3])
 
-    # Convert to quat and remove batch
-    Ytil_rot = quat.from_xfm_xy(Ytil_txy)  # (stop-start, nbones-1, 4)
-
-    # Add root
-    Ytil_rpos = [Ygnd_pos[0, 0]]  # [(3,)]
-    Ytil_rrot = [Ygnd_rot[0, 0]]  # [(4,)]
-    for i in range(1, Ygnd_pos.shape[0]):
-        Ytil_rpos.append(Ytil_rpos[-1] + quat.mul_vec(Ytil_rrot[-1], Ytil_rvel[i - 1]) * dt)
-        Ytil_rrot.append(quat.mul(Ytil_rrot[-1], quat.from_scaled_axis_angle(quat.mul_vec(
-            Ytil_rrot[-1], Ytil_rang[i - 1]) * dt)))
-
-    Ytil_rpos = torch.cat([p[np.newaxis] for p in Ytil_rpos])  # (stop-start, 3)
-    Ytil_rrot = torch.cat([r[np.newaxis] for r in Ytil_rrot])  # (stop-start, 4)
-    print(Ytil_pos.shape)
-    Ytil_pos = torch.cat([Ytil_rpos[:, np.newaxis], Ytil_pos], dim=1)  # (stop-start, nbones, 3)
-    Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
-
-    try:
-        bvh.save('anim.bvh', {
-            'rotations': np.degrees(quat.to_euler(Ygnd_rot.cpu().numpy())),
-            'positions': 100.0 * Ygnd_pos.cpu().numpy(),
-            'offsets': 100.0 * Ygnd_pos[0].cpu().numpy(),
-            'parents': parents,
-            'names': ['joint_%i' % i for i in range(nbones)],
-            'order': 'zyx'
-        })
-        bvh.save('decompr.bvh', {
-            'rotations': np.degrees(quat.to_euler(Ytil_rot)),
-            'positions': 100.0 * Ytil_pos,
-            'offsets': 100.0 * Ytil_pos[0],
-            'parents': parents,
-            'names': ['joint_%i' % i for i in range(nbones)],
-            'order': 'zyx'
-        })
-    except IOError as e:
-        print(e)
-    '''
     X = X[np.newaxis]
     Z = Z[np.newaxis]
     Xtil = X.clone()
@@ -149,7 +102,7 @@ with torch.no_grad():
     Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
 
     try:
-        bvh.save('train_ris/prova/projector.bvh', {
+        bvh.save('train_ris/prova/prova.bvh', {
             'rotations': np.degrees(quat.to_euler(Ytil_rot)),
             'positions': 100.0 * Ytil_pos,
             'offsets': 100.0 * Ytil_pos[0],
