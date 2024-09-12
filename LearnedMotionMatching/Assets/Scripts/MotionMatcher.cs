@@ -197,7 +197,7 @@ public class MotionMatcher : MonoBehaviour
     void Start()
     {
         input_handler = GetComponent<InputHandler>();
-        db = DataManager.load_database("Assets/Resources/database.bin");
+        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
         if (!rigged)
         {
@@ -208,7 +208,7 @@ public class MotionMatcher : MonoBehaviour
 
         Debug.Assert(db.nbones() == ch.nbones());
 
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
 
         frame_index = db.range_starts[0];
 
@@ -276,9 +276,9 @@ public class MotionMatcher : MonoBehaviour
         projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(projector));
 
-        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/decompressor.bin");
-        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/projector.bin");
+        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/stepper.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/decompressor.bin");
+        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
     }
     private void initialize_skeleton(Transform bone)
     {
@@ -304,6 +304,29 @@ public class MotionMatcher : MonoBehaviour
             pose.joints[i - 1].rotation = db.bone_rotations[frame_index][i];
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
+        }
+        Array.Copy(db.contact_states[frame_index], pose.contact_states, db.contact_states[frame_index].Length);
+
+        float[] terrain_data = db.terrain_positions[frame_index];
+
+        int frames = 3;
+
+        pose.terrain_positions[0] = new Vector3[frames];
+        pose.terrain_positions[1] = new Vector3[frames];
+
+        for(int i=0; i<frames; i++)
+        {
+            pose.terrain_positions[0][i] = new Vector3(
+                terrain_data[i * 3 + 0],
+                terrain_data[i * 3 + 1],
+                terrain_data[i * 3 + 2]);
+        } 
+        for(int i=0; i < frames; i++)
+        {
+            pose.terrain_positions[1][i] = new Vector3(
+                terrain_data[i * 3 + 9],
+                terrain_data[i * 3 + 10],
+                terrain_data[i * 3 + 11]);
         }
 
         current_pose = pose.DeepClone();

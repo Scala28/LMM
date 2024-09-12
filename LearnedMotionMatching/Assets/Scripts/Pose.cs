@@ -72,6 +72,8 @@ public class Pose
         }
 
         contact_states = new bool[nextra];
+
+        terrain_positions = new Vector3[2][];
     }
     public Pose() { }
     public Pose DeepClone()

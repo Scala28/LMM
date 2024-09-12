@@ -557,6 +557,10 @@ public static class DataManager
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
             db.contact_states = readBool_toArray2d(reader, rows, cols);
+
+            rows = reader.ReadInt32();
+            cols = reader.ReadInt32();
+            db.terrain_positions = readFloat_toArray2d(reader, rows, cols);
         }
         return db;
     }
@@ -659,6 +663,8 @@ public static class DataManager
         public float[] features_scale;
 
         public bool[][] contact_states;
+
+        public float[][] terrain_positions;
 
         public float[][] bound_sm_min;
         public float[][] bound_sm_max;
