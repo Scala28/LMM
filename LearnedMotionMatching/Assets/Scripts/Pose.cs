@@ -15,10 +15,13 @@ public class Pose
     public Vector4 root_rotation;
     public Vector3 root_velocity;
     public Vector3 root_angular_velocity;
+    // terrain under the toe future positions at 15, 30, 45 frames ahead
+    // [2 feet][3 frames]
+    public Vector3[][] terrain_positions;
 
     public bool[] contact_states;
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts)
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts, Vector3[][] terrain_positions)
     {
         root_position = root_pos;
         root_rotation = root_rot;
@@ -44,6 +47,16 @@ public class Pose
 
         contact_states = new bool[contacts.Length];
         Array.Copy(contacts, contact_states, contacts.Length);
+
+        this.terrain_positions = new Vector3[terrain_positions.Length][];
+        for(int i=0; i<terrain_positions.Length; i++)
+        {
+            this.terrain_positions[i] = new Vector3[terrain_positions[i].Length];
+            for(int j=0; j < terrain_positions[i].Length; j++)
+            {
+                this.terrain_positions[i][j] = terrain_positions[i][j];
+            }
+        }
     }
     public Pose(int nbones, int nextra)
     {
@@ -70,7 +83,8 @@ public class Pose
             root_velocity = this.root_velocity,
             root_angular_velocity = this.root_angular_velocity,
             joints = new JointMotionData[this.joints.Length],
-            contact_states = new bool[this.contact_states.Length]
+            contact_states = new bool[this.contact_states.Length],
+            terrain_positions = new Vector3[this.terrain_positions.Length][]
         };
         for(int i=0; i<joints.Length; i++)
         {
@@ -83,6 +97,14 @@ public class Pose
             };
         }
         Array.Copy(this.contact_states, clone.contact_states, this.contact_states.Length);
+        for(int i=0; i<terrain_positions.Length; i++)
+        {
+            clone.terrain_positions[i] = new Vector3[terrain_positions[i].Length];
+            for(int j=0; j < terrain_positions[i].Length; j++)
+            {
+                clone.terrain_positions[i][j] = terrain_positions[i][j];
+            }
+        }
         return clone;
     }
 

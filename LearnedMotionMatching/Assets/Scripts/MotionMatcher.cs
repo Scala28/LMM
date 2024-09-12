@@ -33,6 +33,8 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_curr;
     private float[] latent_proj;
 
+    private int nterrain = 18;
+
     // Theese are for generating features from database
     private float feature_weight_foot_position = 0.75f;
     private float feature_weight_foot_velocity = 1.0f;
@@ -497,7 +499,7 @@ public class MotionMatcher : MonoBehaviour
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts(), nterrain);
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();
@@ -944,9 +946,7 @@ public class MotionMatcher : MonoBehaviour
 
         Vector3 position = Quat.quat_mul_vec(rotation_azimuth, new Vector3(0, 0, camera_distance));
         Vector3 axis = Quat.vec_normalize(Quat._cross(position, new Vector3(0, 1f, 0)));
-
         Vector4 rotation_altitude = Quat.quat_from_angle_axis(camera_altitude, axis);
-
         Vector3 eye = target + Quat.quat_mul_vec(rotation_altitude, position);
 
 

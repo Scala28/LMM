@@ -12,7 +12,7 @@ using UnityEngine.UIElements;
 public static  class Parser 
 {
     private const float dt = 1 / 60f;
-    public static Pose parse_decompressor_out(Tensor decompressor_out, Pose currentPose, int nbones, int nextra)
+    public static Pose parse_decompressor_out(Tensor decompressor_out, Pose currentPose, int nbones, int nextra, int nterrain)
     {
         Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
         Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
@@ -21,6 +21,7 @@ public static  class Parser
         Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
         Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
         Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
+        Tensor terrain = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6 + nextra, 15 * (nbones - 1) + 6 + nextra + nterrain, new TensorShape(2, 3, 3, 1));
 
         //Convert to quat: (nbones-1, 4, 1, 1)
         Tensor quat = Quat.quat_from_xfm_xy(txy);
@@ -42,8 +43,21 @@ public static  class Parser
         for (int i = 0; i < nextra; i++)
             contacts[i] = extra[i] > .5f;
 
+        Vector3[][] terrain_positions = new Vector3[2][];
+        for(int i=0; i<terrain.batch; i++)
+        {
+            for(int j=0; j<terrain.height; j++)
+            {
+                Vector3 tpos = new Vector3(
+                    terrain[i, j, 0, 0],
+                    terrain[i, j, 1, 0],
+                    terrain[i, j, 2, 0]);
+                terrain_positions[i][j] = tpos;
+            }
+        }
+
         // Construct pose for next frame
-        Pose pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts);
+        Pose pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts, terrain_positions);
 
         return pose;
     }
