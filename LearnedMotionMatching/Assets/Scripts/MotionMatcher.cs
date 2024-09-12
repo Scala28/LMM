@@ -399,9 +399,6 @@ public class MotionMatcher : MonoBehaviour
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 
-        Debug.Log(current_pose.contact_states[0]);
-        Debug.Log(current_pose.contact_states[1]);
-
         inertialize_pose_update(current_pose, dt);
 
         simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
