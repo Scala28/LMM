@@ -33,8 +33,6 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_curr;
     private float[] latent_proj;
 
-    private int nterrain = 18;
-
     // Theese are for generating features from database
     private float feature_weight_foot_position = 0.75f;
     private float feature_weight_foot_velocity = 1.0f;
@@ -197,7 +195,7 @@ public class MotionMatcher : MonoBehaviour
     void Start()
     {
         input_handler = GetComponent<InputHandler>();
-        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
+        db = DataManager.load_database("Assets/Resources/database.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
         if (!rigged)
         {
@@ -208,7 +206,7 @@ public class MotionMatcher : MonoBehaviour
 
         Debug.Assert(db.nbones() == ch.nbones());
 
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
 
         frame_index = db.range_starts[0];
 
@@ -306,28 +304,6 @@ public class MotionMatcher : MonoBehaviour
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
         Array.Copy(db.contact_states[frame_index], pose.contact_states, db.contact_states[frame_index].Length);
-
-        float[] terrain_data = db.terrain_positions[frame_index];
-
-        int frames = 3;
-
-        pose.terrain_positions[0] = new Vector3[frames];
-        pose.terrain_positions[1] = new Vector3[frames];
-
-        for(int i=0; i<frames; i++)
-        {
-            pose.terrain_positions[0][i] = new Vector3(
-                terrain_data[i * 3 + 0],
-                terrain_data[i * 3 + 1],
-                terrain_data[i * 3 + 2]);
-        } 
-        for(int i=0; i < frames; i++)
-        {
-            pose.terrain_positions[1][i] = new Vector3(
-                terrain_data[i * 3 + 9],
-                terrain_data[i * 3 + 10],
-                terrain_data[i * 3 + 11]);
-        }
 
         current_pose = pose.DeepClone();
         trns_pose = pose.DeepClone();
@@ -487,6 +463,7 @@ public class MotionMatcher : MonoBehaviour
         else
             display_frame_pose();
     }
+
     #region NN inferences
     private void evaluate_stepper()
     {
@@ -522,7 +499,7 @@ public class MotionMatcher : MonoBehaviour
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts(), nterrain);
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts());
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();

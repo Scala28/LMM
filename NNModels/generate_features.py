@@ -261,7 +261,7 @@ def database_build_matching_features():
     offset = compute_future_terrain_feature(offset, Bone_LeftToe, feature_weight_foot_position)
     offset = compute_future_terrain_feature(offset, Bone_RightToe, feature_weight_foot_position)
 
-    if (nfeatures != offset):
+    if nfeatures != offset:
         print("wrong count check!")
 
 
