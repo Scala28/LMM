@@ -30,7 +30,9 @@ if __name__ == '__main__':
     Yvel = database['bone_velocities'].astype(np.float32)
     Yang = database['bone_angular_velocities'].astype(np.float32)
 
-    terrain_pos = database['terrain_positions'].astype(np.float32)
+    # Toe positions relative to the root at 15, 30, 45 frames ahead
+    # (nframes, 3, 2, 3)
+    Qtraj_toe_positions = database['trajectory_toe_positions'].astype(np.float32)
 
     # As pyTorch tensors
     X = torch.as_tensor(X)  # (nframes, nfeatures)
@@ -40,11 +42,13 @@ if __name__ == '__main__':
     Yvel = torch.as_tensor(Yvel)
     Yang = torch.as_tensor(Yang)
 
+    Qtraj_toe_positions = torch.as_tensor(Qtraj_toe_positions)
+
     nframes = Ypos.shape[0]
     nbones = Ypos.shape[1]
     nextra = contacts.shape[1]
     nfeatures = X.shape[1]
-    nlatent = 32
+    nlatent = 35
     nranges = len(range_starts)
 
     # Parameters
@@ -85,9 +89,6 @@ if __name__ == '__main__':
     # Compute extra outputs
     Yextra = torch.as_tensor(contacts.astype(np.float32))
 
-    # Future terrain under the toes positions 15, 30, 45 frames ahead
-    Qterrain_pos = torch.as_tensor(terrain_pos.astype(np.float32)).reshape([nframes, 2, 3, 3])
-
     # Compute mean/stds
     Ypos_scale = Ypos[:, 1:].std()
     Ytxy_scale = Ytxy[:, 1:].std()
@@ -104,7 +105,7 @@ if __name__ == '__main__':
 
     Yextra_scale = Yextra.std()
 
-    Qterrain_scale = Qterrain_pos.std()
+    Qtraj_toe_positions_scale = Qtraj_toe_positions.std()
 
     decompressor_mean_out = torch.cat((
         torch.ravel(Ypos[:, 1:].mean(dim=0)),
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
         torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Qterrain_pos.mean(dim=0))
+        torch.ravel(Qtraj_toe_positions.mean(dim=0))
     ))
     decompressor_std_out = torch.cat((
         torch.ravel(Ypos[:, 1:].std(dim=0)),
@@ -124,7 +125,7 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.std(dim=0)),
         torch.ravel(Yrang.std(dim=0)),
         torch.ravel(Yextra.std(dim=0)),
-        torch.ravel(Qterrain_pos.std(dim=0))
+        torch.ravel(Qtraj_toe_positions.std(dim=0))
     ))
 
     decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
@@ -142,7 +143,7 @@ if __name__ == '__main__':
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
         torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Qterrain_pos.mean(dim=0))
+        torch.ravel(Qtraj_toe_positions.mean(dim=0))
     ))
     compressor_std_in = torch.cat((
         Ypos_scale.repeat((nbones - 1) * 3),
@@ -156,7 +157,7 @@ if __name__ == '__main__':
         Yrvel_scale.repeat(3),
         Yrang_scale.repeat(3),
         Yextra_scale.repeat(nextra),
-        Qterrain_scale.repeat(2 * 3 * 3)
+        Qtraj_toe_positions_scale.repeat(3 * 2 * 3)
     ))
 
     # NN models
@@ -178,7 +179,7 @@ if __name__ == '__main__':
                 Yrvel.reshape([1, nframes, -1]),
                 Yrang.reshape([1, nframes, -1]),
                 Yextra.reshape([1, nframes, -1]),
-                Qterrain_pos.reshape([1, nframes, -1])
+                Qtraj_toe_positions.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
             with open('train_ris/decompressor/latent.bin', 'wb') as f:
@@ -205,9 +206,9 @@ if __name__ == '__main__':
             Ygnd_rang = Yrang[start:stop][np.newaxis]
             Ygnd_extra = Yextra[start:stop][np.newaxis]
 
-            Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
+            Qgnd_traj_toe_pos = Qtraj_toe_positions[start:stop][np.newaxis]
 
-            Qgnd_terrain = Qterrain_pos[start:stop][np.newaxis]
+            Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
 
             Zgnd = compressor((torch.cat([
                 Ygnd_pos[:, :, 1:].reshape([1, stop - start, -1]),  # (1, stop-start, (nbones-1)*3)
@@ -221,7 +222,7 @@ if __name__ == '__main__':
                 Ygnd_rvel.reshape([1, stop - start, -1]),
                 Ygnd_rang.reshape([1, stop - start, -1]),
                 Ygnd_extra.reshape([1, stop - start, -1]),
-                Qgnd_terrain.reshape([1, stop - start, -1])
+                Qgnd_traj_toe_pos.reshape([1, stop - start, -1])
             ], dim=-1) - compressor_mean_in) / compressor_std_in)
 
             Ytil = (decompressor(torch.cat([Xgnd, Zgnd], dim=-1))
@@ -369,7 +370,7 @@ if __name__ == '__main__':
 
         Ygnd_extra = Yextra[batch]
 
-        Qgnd_terrain = Qterrain_pos[batch]  # (batchsize, window, 2, 3, 3)
+        Qgnd_traj_toe_pos = Qtraj_toe_positions[batch]
 
         # Encode
         Zgnd = compressor((torch.cat([
@@ -384,7 +385,7 @@ if __name__ == '__main__':
             Ygnd_rvel.reshape([batchsize, window, -1]),
             Ygnd_rang.reshape([batchsize, window, -1]),
             Ygnd_extra.reshape([batchsize, window, -1]),
-            Qgnd_terrain.reshape([batchsize, window, -1])
+            Qgnd_traj_toe_pos.reshape([batchsize, window, -1])
         ], dim=-1) - compressor_mean_in) / compressor_std_in)
 
         # Decode
@@ -400,8 +401,9 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
-        Qtil_terrain = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 2 * 3 * 3].reshape(
-            [batchsize, window, 2, 3, 3]
+
+        Qtil_traj_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra:15 * (nbones - 1) + 6 + nextra + 3 * 2 * 4].reshape(
+            [batchsize, window, 3, 2, 3]
         )
 
         # Add root bone
@@ -436,8 +438,8 @@ if __name__ == '__main__':
 
         dZgnd = (Zgnd[:, 1:] - Zgnd[:, :-1]) / dt
 
-        Qgnd_dterrain = (Qgnd_terrain[:, 1:] - Qgnd_terrain[:, :-1]) / dt
-        Qtil_dterrain = (Qtil_terrain[:, 1:] - Qtil_terrain[:, :-1]) / dt
+        dQgnd_traj_toe_pos = (Qgnd_traj_toe_pos[:, 1:] - Qgnd_traj_toe_pos[:, :-1]) / dt
+        dQtil_traj_toe_pos = (Qtil_traj_toe_pos[:, 1:] - Qtil_traj_toe_pos[:, :-1]) / dt
 
         # Pose-based losses
         loss_lpos = torch.mean(75.0 * torch.abs(Ygnd_pos - Ytil_pos))
@@ -452,8 +454,7 @@ if __name__ == '__main__':
         loss_cxfm = torch.mean(5.0 * torch.abs(Qgnd_xfm - Qtil_xfm))
         loss_cvel = torch.mean(2.0 * torch.abs(Qgnd_vel - Qtil_vel))
         loss_cang = torch.mean(0.75 * torch.abs(Qgnd_ang - Qtil_ang))
-
-        loss_qterrain = torch.mean(15.0 * torch.abs(Qgnd_terrain - Qtil_terrain))
+        loss_trajected_toe_positions = torch.mean(7.5 * torch.abs(Qgnd_traj_toe_pos - Qtil_traj_toe_pos))
 
         # Velocity losses
         loss_lvel_pos = torch.mean(10.0 * torch.abs(Ygnd_dpos - Ytil_dpos))
@@ -461,7 +462,7 @@ if __name__ == '__main__':
         loss_cvel_pos = torch.mean(2.0 * torch.abs(Qgnd_dpos - Qtil_dpos))
         loss_cvel_xfm = torch.mean(0.75 * torch.abs(Qgnd_dxfm - Qtil_dxfm))
 
-        loss_qvel_terrain = torch.mean(2.0 * torch.abs(Qgnd_dterrain - Qtil_dterrain))
+        loss_cvel_trajected_toe_pos = torch.mean(1.0 * torch.abs(dQgnd_traj_toe_pos - dQtil_traj_toe_pos))
 
         # Regularization losses
         loss_sreg = torch.mean(0.1 * torch.abs(Zgnd))
@@ -487,8 +488,8 @@ if __name__ == '__main__':
                 loss_sreg +
                 loss_lreg +
                 loss_vreg +
-                loss_qterrain +
-                loss_qvel_terrain
+                loss_trajected_toe_positions +
+                loss_cvel_trajected_toe_pos
         )
 
         # Backpropagation
@@ -519,8 +520,8 @@ if __name__ == '__main__':
             'sreg': loss_sreg.item(),
             'lreg': loss_lreg.item(),
             'vreg': loss_vreg.item(),
-            'chr_terrain': loss_qterrain.item(),
-            'cvel_terrain': loss_qvel_terrain.item()
+            'traj_toe_positions': loss_trajected_toe_positions.item(),
+            'cvel_traj_toe_pos': loss_cvel_trajected_toe_pos.item()
         }, i)
         writer.add_scalars('decompressor/latent', {
             'mean': Zgnd.mean().item(),
@@ -533,7 +534,6 @@ if __name__ == '__main__':
             rolling_loss = rolling_loss * 0.99 + loss.item() * 0.01
 
         if i % 10 == 0:
-            # sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
             sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
