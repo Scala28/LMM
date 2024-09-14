@@ -17,7 +17,7 @@ X = load_features('data/terrain_features.bin')['features'].astype(np.float32)
 Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].astype(np.float32)
 
 start = database['range_starts'][6]
-stop = min(database['range_stops'][6], start + 1000)
+stop = min(database['range_stops'][6], start + 3000)
 
 Ypos = database['bone_positions'].astype(np.float32)
 Yrot = database['bone_rotations'].astype(np.float32)
@@ -43,6 +43,9 @@ Qtoe_pos = torch.cat([Qpos[:, 5:6], Qpos[:, 9:10]], dim=1)
 
 Qtraj_toe_pos = torch.as_tensor(database['trajectory_toe_positions'].astype(np.float32))[start:stop]
 
+print(start)
+Yrvel = quat.inv_mul_vec(Ygnd_rot[:, 0], Ygnd_vel[:, 0])
+print(Yrvel[2753:2800])
 nframes = Ypos.shape[0]
 nbones = Ypos.shape[1]
 nextra = contacts.shape[1]

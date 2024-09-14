@@ -262,14 +262,6 @@ for filename, start, stop in files:
         positions[:, 0, 1] = root_y
         positions[:, 1:2] = quat.inv_mul_vec(sim_rotation, global_positions[:, 1:2] - positions[:, 0:1])
 
-        # Re-compute velocities via central difference
-        velocities = np.empty_like(positions)
-        velocities[1:-1] = (
-                0.5 * (positions[2:] - positions[1:-1]) * 60.0 +
-                0.5 * (positions[1:-1] - positions[:-2]) * 60.0)
-        velocities[0] = velocities[1] - (velocities[3] - velocities[2])
-        velocities[-1] = velocities[-2] + (velocities[-2] - velocities[-3])
-
         # Compute world space positions/rotations
         global_rotations, global_positions = quat.fk(rotations, positions, bone_parents)
 
