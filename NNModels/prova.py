@@ -7,13 +7,13 @@ from train_common import load_database, load_features, load_latent
 import my_modules.quat_functions as quat
 import bvh
 
-database = load_database('data/locomotion_db.bin')
+database = load_database('data/terrain_db.bin')
 
 parents = database['bone_parents']
 contacts = database['contact_states']
 range_starts = database['range_starts']
 range_stops = database['range_stops']
-X = load_features('data/locomotion_features.bin')['features'].astype(np.float32)
+X = load_features('data/terrain_features.bin')['features'].astype(np.float32)
 Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].astype(np.float32)
 
 start = database['range_starts'][6]
@@ -31,6 +31,17 @@ Ygnd_pos = torch.as_tensor(Ypos)[start:stop]  # (nframes, nbones, 3/4)
 Ygnd_rot = torch.as_tensor(Yrot)[start:stop]
 Ygnd_vel = torch.as_tensor(Yvel)[start:stop]
 Ygnd_ang = torch.as_tensor(Yang)[start:stop]
+
+Qgnd_terrain = torch.as_tensor(database['terrain_positions'].astype(np.float32))[start:stop].reshape(
+    [stop - start, 2, 3]
+)
+# Compute global space
+Gpos, Grot, Gvel, Gang = quat.fk_vel(Ygnd_pos, Ygnd_rot, Ygnd_vel, Ygnd_ang, parents)
+# Compute character space
+Qpos = quat.inv_mul_vec(Grot[:, 0:1], Gpos - Gpos[:, 0:1])
+Qtoe_pos = torch.cat([Qpos[:, 5:6], Qpos[:, 9:10]], dim=1)
+
+Qtraj_toe_pos = torch.as_tensor(database['trajectory_toe_positions'].astype(np.float32))[start:stop]
 
 nframes = Ypos.shape[0]
 nbones = Ypos.shape[1]
@@ -54,6 +65,8 @@ with torch.no_grad():
 
     X = X[np.newaxis]
     Z = Z[np.newaxis]
+
+    '''
     Xtil = X.clone()
     Ztil = Z.clone()
 
@@ -112,3 +125,4 @@ with torch.no_grad():
         })
     except IOError as e:
         print(e)
+    '''

@@ -3,6 +3,7 @@ import struct
 import numpy as np
 import math
 from train_common import load_database
+import sys
 
 
 def forward_kinematics(out_bone_position,
@@ -77,7 +78,7 @@ def normalize_feature(offset, size, weight):
     std = 0
     for j in range(size):
         std += math.sqrt(vars[j]) / size
-    print(std)
+
     # Features with no variation can have zero std which is almost always a bug.
     assert std > 0
 
@@ -189,58 +190,37 @@ def compute_trajectory_direction_feature(offset, weight):
     return offset + 6
 
 
-def compute_future_terrain_feature(offset, bone, weight):
+def compute_future_terrain_feature(offset, weight):
     global features
 
     for i in range(nframes):
-        bone_position, bone_rotation = forward_kinematics(np.ndarray(3),
-                                                          np.ndarray(4),
-                                                          bone_positions[i],
-                                                          bone_rotations[i],
-                                                          bone_parents,
-                                                          bone)
-        bone_position = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position - bone_positions[i, 0])
-
-        features[i, offset + 0] = bone_position[1]
-
         t0 = database_trajectory_index_clamp(i, 15)
         t1 = database_trajectory_index_clamp(i, 30)
         t2 = database_trajectory_index_clamp(i, 45)
 
-        bone_position_15, bone_rotation_15 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t0],
-                                                                bone_rotations[t0],
-                                                                bone_parents,
-                                                                bone)
+        terrain_height_0_left = terrain_positions[i][0][1]
+        terrain_height_0_right = terrain_positions[i][1][1]
 
-        bone_position_15 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_15 - bone_positions[i, 0])
+        terrain_height_15_left = terrain_positions[t0][0][1]
+        terrain_height_15_right = terrain_positions[t0][1][1]
 
-        features[i, offset + 1] = bone_position_15[1]
+        terrain_height_30_left = terrain_positions[t1][0][1]
+        terrain_height_30_right = terrain_positions[t1][1][1]
 
-        bone_position_30, bone_rotation_30 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t1],
-                                                                bone_rotations[t1],
-                                                                bone_parents,
-                                                                bone)
+        terrain_height_45_left = terrain_positions[t2][0][1]
+        terrain_height_45_right = terrain_positions[t2][1][1]
 
-        bone_position_30 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_30 - bone_positions[i, 0])
+        features[i, offset + 0] = terrain_height_0_left
+        features[i, offset + 1] = terrain_height_0_right
+        features[i, offset + 2] = terrain_height_15_left
+        features[i, offset + 3] = terrain_height_15_right
+        features[i, offset + 4] = terrain_height_30_left
+        features[i, offset + 5] = terrain_height_30_right
+        features[i, offset + 6] = terrain_height_45_left
+        features[i, offset + 7] = terrain_height_45_right
 
-        features[i, offset + 2] = bone_position_30[1]
-
-        bone_position_45, bone_rotation_45 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t2],
-                                                                bone_rotations[t2],
-                                                                bone_parents,
-                                                                bone)
-
-        bone_position_45 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_45 - bone_positions[i, 0])
-
-        features[i, offset + 3] = bone_position_45[1]
-    normalize_feature(offset, 4, weight)
-    return offset + 4
+    normalize_feature(offset, 8, weight)
+    return offset + 8
 
 
 # Build all motion matching features and acceleration structure
@@ -250,19 +230,29 @@ def database_build_matching_features():
     feature_weight_hip_velocity = 1.0
     feature_weight_trajectory_positions = 1.0
     feature_weight_trajectory_directions = 1.5
+    feature_weight_terrain_position = 1.0
     offset = 0
+
     offset = compute_bone_position_feature(offset, Bone_LeftFoot, feature_weight_foot_position)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_bone_position_feature(offset, Bone_RightFoot, feature_weight_foot_position)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_bone_velocity_feature(offset, Bone_LeftFoot, feature_weight_foot_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_bone_velocity_feature(offset, Bone_RightFoot, feature_weight_foot_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_bone_velocity_feature(offset, Bone_Hips, feature_weight_hip_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_position_feature(offset, feature_weight_trajectory_positions)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_direction_feature(offset, feature_weight_trajectory_directions)
-    offset = compute_future_terrain_feature(offset, Bone_LeftToe, feature_weight_foot_position)
-    offset = compute_future_terrain_feature(offset, Bone_RightToe, feature_weight_foot_position)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_future_terrain_feature(offset, feature_weight_terrain_position)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
 
     if nfeatures != offset:
-        print("wrong count check!")
+        print("\nAssertion error!")
+        exit()
 
 
 Bone_Entity = 0
@@ -295,6 +285,7 @@ bone_rotations = database['bone_rotations']
 bone_velocities = database['bone_velocities']
 bone_angular_velocities = database['bone_angular_velocities']
 bone_parents = database['bone_parents']
+terrain_positions = database['terrain_positions']
 range_starts = database['range_starts']
 range_stops = database['range_stops']
 nranges = range_starts.shape[0]
@@ -304,6 +295,7 @@ features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)
 features_scale = np.zeros(nfeatures)
 
+print("Writing features...")
 database_build_matching_features()
 
 features_32 = np.concatenate(features, axis=0).astype(np.float32)

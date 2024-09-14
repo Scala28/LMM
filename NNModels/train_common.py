@@ -35,7 +35,11 @@ def load_database(filename):
 
         nframes, nterrain = struct.unpack('II', f.read(8))
         terrain_positions = np.frombuffer(f.read(nframes * nterrain * 4), dtype=np.float32,
-                                          count=nframes * nterrain).reshape([nframes, nterrain])
+                                          count=nframes * nterrain).reshape([nframes, 2, 3])
+
+        nframes, ntoe_trajectories = struct.unpack('II', f.read(8))
+        trajectory_toe_positions = np.frombuffer(f.read(nframes * ntoe_trajectories * 4), dtype=np.float32,
+                                                 count=nframes*ntoe_trajectories).reshape([nframes, 3, 2, 3])
 
         return {
             'bone_positions': bone_positions,
@@ -47,6 +51,7 @@ def load_database(filename):
             'range_stops': range_stops,
             'contact_states': contact_states,
             'terrain_positions': terrain_positions,
+            'trajectory_toe_positions': trajectory_toe_positions
         }
 
 

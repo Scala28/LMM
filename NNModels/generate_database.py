@@ -39,13 +39,13 @@ def database_trajectory_index_clamp(frame, offset):
 
 files = [
     # We just use a small section of this clip for the standing idle
-    # ('animations/pushAndStumble1_subject5.bvh', 194, 351),
+    ('animations/pushAndStumble1_subject5.bvh', 194, 351),
     # Running
     ('animations/run1_subject5.bvh', 90, 7086),
     # Walking
     ('animations/walk1_subject5.bvh', 80, 6000),
     # Terrain
-    ('animations/obstacles1_subject5.bvh', 120, 4500),
+    ('animations/obstacles1_subject5.bvh', 200, 4500),
     ('animations/obstacles2_subject5.bvh', 160, 5700),
     ('animations/obstacles6_subject5.bvh', 120, 6600),
 ]
@@ -56,14 +56,15 @@ bone_positions = []
 bone_velocities = []
 bone_rotations = []
 bone_angular_velocities = []
+contact_states = []
+terrain_positions = []
+trajectory_toe_positions = []
+
 bone_parents = []
 bone_names = []
-terrain_positions = []
 
 range_starts = []
 range_stops = []
-
-contact_states = []
 
 """ Loop Over Files """
 
@@ -119,7 +120,7 @@ for filename, start, stop in files:
 
         # Position comes from spine joint
 
-        sim_position = global_positions[:, sim_rotation_joint:sim_rotation_joint + 1]
+        sim_position = global_positions[:, sim_position_joint:sim_position_joint + 1]
         sim_position = signal.savgol_filter(sim_position, 31, 3, axis=0, mode='interp')
 
         # Direction comes from projected hip forward direction
@@ -194,42 +195,62 @@ for filename, start, stop in files:
         range_starts.append(offset)
         range_stops.append(offset + len(positions))
 
+        # Compute terrain heights
+        # Collect data at contact times
         contacts_xz = []
         contacts_y = []
+
+        # Collect root, left foot/right foot position 2d
         root_xz = []
         leftFoot_xz = []
         rightFoot_xz = []
 
+        n_neighbors = 20
+
         is_first_left = True
         is_first_right = True
+
+        count_left = 0
+        count_right = 0
+
+        n_contacts = 2 if filename != 'animations/pushAndStumble1_subject5.bvh' else n_neighbors + 1
 
         for i in range(len(global_positions)):
 
             if contacts[i][0] and i != (len(global_positions) - 1):
-                if is_first_left or contacts[i + 1][0] == False:
+                if is_first_left or contacts[i + 1][0] is False:
                     contacts_xz.append((global_positions[i][bone_names.index("LeftToe")][0],
                                         global_positions[i][bone_names.index("LeftToe")][2]))
                     contacts_y.append(global_positions[i][bone_names.index("LeftToe")][1] - 0.02)
-                    is_first_left = False
+                    count_left += 1
+
+                    if count_left >= n_contacts:
+                        is_first_left = False
             else:
                 is_first_left = True
+                count_left = 0
 
             if contacts[i][1] and i != (len(global_positions) - 1):
-                if is_first_right or contacts[i + 1][1] == False:
+                if is_first_right or contacts[i + 1][1] is False:
                     contacts_xz.append((global_positions[i][bone_names.index("RightToe")][0],
                                         global_positions[i][bone_names.index("RightToe")][2]))
                     contacts_y.append(global_positions[i][bone_names.index("RightToe")][1] - 0.02)
-                    is_first_right = False
+
+                    count_right += 1
+                    if count_right >= n_contacts:
+                        is_first_right = False
+                        count_right = 0
             else:
                 is_first_right = True
 
             root_xz.append((global_positions[i][0][0], global_positions[i][0][2]))
             leftFoot_xz.append((global_positions[i][bone_names.index("LeftToe")][0],
                                 global_positions[i][bone_names.index("LeftToe")][2]))
+
             rightFoot_xz.append((global_positions[i][bone_names.index("RightToe")][0],
                                  global_positions[i][bone_names.index("RightToe")][2]))
 
-        knn_regressor = KNeighborsRegressor(n_neighbors=30)
+        knn_regressor = KNeighborsRegressor(n_neighbors=n_neighbors)
         # Fit the nearest neighbor regression for terrain height
         knn_regressor.fit(contacts_xz, contacts_y)
 
@@ -237,60 +258,40 @@ for filename, start, stop in files:
         leftFoot_y = knn_regressor.predict(leftFoot_xz)
         rightFoot_y = knn_regressor.predict(rightFoot_xz)
 
+        # Updating root y and 1st joint y relative to the root
+        positions[:, 0, 1] = root_y
+        positions[:, 1:2] = quat.inv_mul_vec(sim_rotation, global_positions[:, 1:2] - positions[:, 0:1])
+        # Compute world space positions/rotations
+        global_rotations, global_positions = quat.fk(rotations, positions, bone_parents)
+
+        terrain = np.zeros((len(positions), 2, 3))
+
+        # appending terrain positions under the toes foe every frame (local to root)
         for i in range(len(positions)):
-            total_y = positions[i][0][1] + positions[i][1][1]
-            positions[i][0][1] = root_y[i]
-            positions[i][1][1] = total_y - root_y[i]
+            terrain_left = np.array([leftFoot_xz[i][0], leftFoot_y[i], leftFoot_xz[i][1]])
+            chr_terrain_left = quat.inv_mul_vec(global_rotations[i][0], terrain_left - global_positions[i][0])
 
-        terrain = np.zeros((len(global_positions), 18))
+            terrain_right = np.array([rightFoot_xz[i][0], rightFoot_y[i], rightFoot_xz[i][1]])
+            chr_terrain_right = quat.inv_mul_vec(global_rotations[i][0], terrain_right - global_positions[i][0])
 
-        for i in range(len(global_positions) - 45):
-            index_15 = database_trajectory_index_clamp(i, 15)
-            index_30 = database_trajectory_index_clamp(i, 30)
-            index_45 = database_trajectory_index_clamp(i, 45)
+            terrain[i][0] = chr_terrain_left
+            terrain[i][1] = chr_terrain_right
 
-            left_ground_15_global = np.array(
-                [global_positions[index_15][bone_names.index("LeftToe")][0], leftFoot_y[index_15],
-                 global_positions[index_15][bone_names.index("LeftToe")][2]])
-            left_ground_15_local = quat.mul_vec(global_rotations[i][0], left_ground_15_global) + global_positions[i][0]
+        # Computing future toe positions relative to root at 15, 30, 45
+        toe_positions = np.zeros((len(positions), 3, 2, 3))
+        indxs = [(0, 15), (1, 30), (2, 45)]
+        for i in range(len(positions) - 45):
+            for k, indx in indxs:
+                t = database_trajectory_index_clamp(i, indx)
 
-            left_ground_30_global = np.array(
-                [global_positions[index_30][bone_names.index("LeftToe")][0], leftFoot_y[index_30],
-                 global_positions[index_30][bone_names.index("LeftToe")][2]])
-            left_ground_30_local = quat.mul_vec(global_rotations[i][0], left_ground_30_global) + global_positions[i][0]
-
-            left_ground_45_global = np.array(
-                [global_positions[index_45][bone_names.index("LeftToe")][0], leftFoot_y[index_45],
-                 global_positions[index_45][bone_names.index("LeftToe")][2]])
-            left_ground_45_local = quat.mul_vec(global_rotations[i][0], left_ground_45_global) + global_positions[i][0]
-
-            right_ground_15_global = np.array(
-                [global_positions[index_15][bone_names.index("RightToe")][0], rightFoot_y[index_15],
-                 global_positions[index_15][bone_names.index("RightToe")][2]])
-            right_ground_15_local = quat.mul_vec(global_rotations[i][0], right_ground_15_global) + global_positions[i][
-                0]
-
-            right_ground_30_global = np.array(
-                [global_positions[index_30][bone_names.index("RightToe")][0], rightFoot_y[index_30],
-                 global_positions[index_30][bone_names.index("RightToe")][2]])
-            right_ground_30_local = quat.mul_vec(global_rotations[i][0], right_ground_30_global) + global_positions[i][
-                0]
-
-            right_ground_45_global = np.array(
-                [global_positions[index_45][bone_names.index("RightToe")][0], rightFoot_y[index_45],
-                 global_positions[index_45][bone_names.index("RightToe")][2]])
-            right_ground_45_local = quat.mul_vec(global_rotations[i][0], right_ground_45_global) + global_positions[i][
-                0]
-
-            frame_terrain = []
-            frame_terrain.append(left_ground_15_local)
-            frame_terrain.append(left_ground_30_local)
-            frame_terrain.append(left_ground_45_local)
-            frame_terrain.append(right_ground_15_local)
-            frame_terrain.append(right_ground_30_local)
-            frame_terrain.append(right_ground_45_local)
-
-            terrain[i] = np.concatenate(frame_terrain, axis=0)
+                chr_toe_left = quat.inv_mul_vec(global_rotations[t][0],
+                                                global_positions[t][bone_names.index("LeftToe")] -
+                                                global_positions[t][0])
+                chr_toe_right = quat.inv_mul_vec(global_rotations[t][0],
+                                                 global_positions[t][bone_names.index("RightToe")] -
+                                                 global_positions[t][0])
+                toe_positions[i][k][0] = chr_toe_left
+                toe_positions[i][k][1] = chr_toe_right
 
         """ Append to Database """
 
@@ -298,9 +299,9 @@ for filename, start, stop in files:
         bone_velocities.append(velocities)
         bone_rotations.append(rotations)
         bone_angular_velocities.append(angular_velocities)
-        terrain_positions.append(terrain)
-
         contact_states.append(contacts)
+        terrain_positions.append(terrain)
+        trajectory_toe_positions.append(toe_positions)
 
 """ Concatenate Data """
 
@@ -309,12 +310,14 @@ bone_velocities = np.concatenate(bone_velocities, axis=0).astype(np.float32)
 bone_rotations = np.concatenate(bone_rotations, axis=0).astype(np.float32)
 bone_angular_velocities = np.concatenate(bone_angular_velocities, axis=0).astype(np.float32)
 bone_parents = bone_parents.astype(np.int32)
+contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
+terrain_positions = np.concatenate(terrain_positions, axis=0).astype(np.float32).reshape([len(bone_positions), -1])
+trajectory_toe_positions = np.concatenate(trajectory_toe_positions, axis=0).astype(np.float32).reshape(
+    [len(bone_positions), -1])
 
 range_starts = np.array(range_starts).astype(np.int32)
 range_stops = np.array(range_stops).astype(np.int32)
 
-contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
-terrain_positions = np.concatenate(terrain_positions, axis=0).astype(np.float32)
 
 """ Write Database """
 
@@ -325,6 +328,8 @@ with open('data/terrain_db.bin', 'wb') as f:
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
     ncontacts = contact_states.shape[1]
+    nterrain = terrain_positions.shape[1]
+    ntoe_trajectory = trajectory_toe_positions.shape[1]
 
     f.write(struct.pack('II', nframes, nbones) + bone_positions.ravel().tobytes())
     f.write(struct.pack('II', nframes, nbones) + bone_velocities.ravel().tobytes())
@@ -334,7 +339,8 @@ with open('data/terrain_db.bin', 'wb') as f:
     f.write(struct.pack('I', nranges) + range_starts.ravel().tobytes())
     f.write(struct.pack('I', nranges) + range_stops.ravel().tobytes())
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
-    f.write(struct.pack('II', nframes, 18) + terrain_positions.ravel().tobytes())
+    f.write(struct.pack('II', nframes, nterrain) + terrain_positions.ravel().tobytes())
+    f.write(struct.pack('II', nframes, ntoe_trajectory) + trajectory_toe_positions.ravel().tobytes())
 
 bvh.save('data/terrain_db.bvh', {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),
