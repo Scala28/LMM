@@ -28,6 +28,7 @@ Ypos = database['bone_positions'].astype(np.float32)
 Yrot = database['bone_rotations'].astype(np.float32)
 Yvel = database['bone_velocities'].astype(np.float32)
 Yang = database['bone_angular_velocities'].astype(np.float32)
+trajectory_toe_positions = database['trajectory_toe_positions'].astype(np.float32)
 
 nbones = Ypos.shape[1]
 
@@ -41,7 +42,7 @@ Ygnd_pos = torch.as_tensor(Ypos)[start:stop]  # (nframes, nbones, 3/4)
 Ygnd_rot = torch.as_tensor(Yrot)[start:stop]
 Ygnd_vel = torch.as_tensor(Yvel)[start:stop]
 Ygnd_ang = torch.as_tensor(Yang)[start:stop]
-
+Ygnd_traj_toe_pos = torch.as_tensor(trajectory_toe_positions)[start:stop]
 Qgnd_terrain = torch.as_tensor(database['terrain_positions'].astype(np.float32))[start:stop].reshape(
     [stop - start, 2, 3]
 )
@@ -95,13 +96,16 @@ with torch.no_grad():
     Ytil_txy = Ytil[:, :, 3 * (nbones - 1):9 * (nbones - 1)].reshape([1, stop - start, nbones - 1, 3, 2])
     Ytil_rvel = Ytil[:, :, 15 * (nbones - 1) + 0:15 * (nbones - 1) + 3].reshape([1, stop - start, 3])
     Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([1, stop - start, 3])
-    Ytil_traj_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 18]
+    Ytil_traj_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 18].reshape(
+        [1, stop - start, 3, 2, 3]
+    )
 
     # Convert to quat and remove batch
     Ytil_rot = quat.from_xfm_xy(Ytil_txy[0])  # (stop-start, nbones-1, 4)
     Ytil_pos = Ytil_pos[0]
     Ytil_rvel = Ytil_rvel[0]  # (stop-start, 3)
     Ytil_rang = Ytil_rang[0]
+    Ytil_traj_toe_pos = Ytil_traj_toe_pos[0]
 
     Ytil_rpos = [Ygnd_pos[0, 0]]  # [(3,)]
     Ytil_rrot = [Ygnd_rot[0, 0]]  # [(4,)]
@@ -135,6 +139,8 @@ with torch.no_grad():
         })
     except IOError as e:
         print(e)
+    print(Ygnd_traj_toe_pos[458])
+    print(Ytil_traj_toe_pos[458])
 
 
 
