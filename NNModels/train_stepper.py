@@ -85,7 +85,7 @@ if __name__ == '__main__':
             Xtil = Xgnd.clone()
             Ztil = Zgnd.clone()
 
-            for k in range(1, start - stop):
+            for k in range(1, stop - start):
                 if (k-1) % window == 0:  # Simulating the Projector's goal
                     Xtil_prev = Xgnd[:, k-1]
                     Ztil_prev = Zgnd[:, k-1]

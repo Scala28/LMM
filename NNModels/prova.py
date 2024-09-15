@@ -16,17 +16,27 @@ range_stops = database['range_stops']
 X = load_features('data/terrain_features.bin')['features'].astype(np.float32)
 Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].astype(np.float32)
 
-start = database['range_starts'][6]
-stop = min(database['range_stops'][6], start + 3000)
+nfeatures = X.shape[1]
+nlatent = Z.shape[1]
+nextra = contacts.shape[1]
+
+clip_index = 6
+start = database['range_starts'][clip_index]
+stop = min(database['range_stops'][clip_index], start + 3000)
 
 Ypos = database['bone_positions'].astype(np.float32)
 Yrot = database['bone_rotations'].astype(np.float32)
 Yvel = database['bone_velocities'].astype(np.float32)
 Yang = database['bone_angular_velocities'].astype(np.float32)
 
+nbones = Ypos.shape[1]
+
 # As pyTorch tensors
 X = torch.as_tensor(X)[start:stop]  # (nframes, nfeatures)
 Z = torch.as_tensor(Z)[start:stop]
+print(X.shape)
+print(Z.shape)
+
 Ygnd_pos = torch.as_tensor(Ypos)[start:stop]  # (nframes, nbones, 3/4)
 Ygnd_rot = torch.as_tensor(Yrot)[start:stop]
 Ygnd_vel = torch.as_tensor(Yvel)[start:stop]
@@ -35,6 +45,7 @@ Ygnd_ang = torch.as_tensor(Yang)[start:stop]
 Qgnd_terrain = torch.as_tensor(database['terrain_positions'].astype(np.float32))[start:stop].reshape(
     [stop - start, 2, 3]
 )
+
 # Compute global space
 Gpos, Grot, Gvel, Gang = quat.fk_vel(Ygnd_pos, Ygnd_rot, Ygnd_vel, Ygnd_ang, parents)
 # Compute character space
@@ -43,67 +54,55 @@ Qtoe_pos = torch.cat([Qpos[:, 5:6], Qpos[:, 9:10]], dim=1)
 
 Qtraj_toe_pos = torch.as_tensor(database['trajectory_toe_positions'].astype(np.float32))[start:stop]
 
-print(start)
-Yrvel = quat.inv_mul_vec(Ygnd_rot[:, 0], Ygnd_vel[:, 0])
-print(Yrvel[2753:2800])
-nframes = Ypos.shape[0]
-nbones = Ypos.shape[1]
-nextra = contacts.shape[1]
-nfeatures = X.shape[1]
-nlatent = 32
+stepper_mean_in, stepper_std_in, stepper_mean_out, stepper_std_out, stepper_layers = load_network(
+    'train_ris/stepper/stepper.bin')
+stepper = NNModels.Stepper.load(stepper_mean_in, stepper_std_in, stepper_mean_out, stepper_std_out, stepper_layers)
 
-dt = 1.0 / 60.0
-window = 20
+decompressor_mean_in, decompressor_std_in, decompressor_mean_out, decompressor_std_out, decompressor_layers = (
+    load_network('train_ris/decompressor/decompressor.bin'))
+decompressor = NNModels.Decompressor.load(decompressor_mean_in, decompressor_std_in, decompressor_mean_out,
+                                          decompressor_std_out, decompressor_layers)
 
-mean_in, std_in, mean_out, std_out, layers = load_network('train_ris/decompressor/decompressor.bin')
-decompressor = NNModels.Decompressor.load(mean_in, std_in, mean_out, std_out, layers)
-
-mean_in2, std_in2, mean_out2, std_out2, layers2 = load_network('train_ris/stepper/stepper.bin')
-stepper = NNModels.Stepper.load(mean_in2, std_in2, mean_out2, std_out2, layers2)
-
-mean_in3, std_in3, mean_out3, std_out3, layers3 = load_network('train_ris/projector/projector.bin')
-projector = NNModels.Projector.load(mean_in3, std_in3, mean_out3, std_out3, layers3)
+dt = 1.0 / 60
 
 with torch.no_grad():
+    Xgnd = X[np.newaxis]
+    Zgnd = Z[np.newaxis]
 
-    X = X[np.newaxis]
-    Z = Z[np.newaxis]
+    Xtil = Xgnd.clone()
+    Ztil = Zgnd.clone()
 
-    '''
-    Xtil = X.clone()
-    Ztil = Z.clone()
+    Ytil = torch.zeros([1, Xgnd.shape[1], decompressor_mean_out.shape[0]])
 
     for k in range(1, stop - start):
-        if (k - 1) % window == 0:  # Simulating the Projector's goal
-            # Xtil_prev = X[:, k - 1]
-            # Ztil_prev = Z[:, k - 1]
-            proj_in = X[:, k-1+5]
-            proj_out = (projector((proj_in - mean_in3) / std_in3) * std_out3 + mean_out3)
-            Xtil_prev = proj_out[..., :X.shape[2]]
-            Ztil_prev = proj_out[..., X.shape[2]:]
+        if (k - 1) % 20 == 0:
+            Xtil_prev = Xgnd[:, k - 1]
+            Ztil_prev = Zgnd[:, k - 1]
         else:
             Xtil_prev = Xtil[:, k - 1]
             Ztil_prev = Ztil[:, k - 1]
-
         delta = (stepper((torch.cat([Xtil_prev, Ztil_prev], dim=-1) -
-                          mean_in2) / std_in2) *
-                 std_out2 + mean_out2)
+                          stepper_mean_in) / stepper_std_in) *
+                 stepper_std_out + stepper_mean_out)
         Xtil[:, k] = Xtil_prev + dt * delta[:, :nfeatures]
         Ztil[:, k] = Ztil_prev + dt * delta[:, nfeatures:]
 
-    input = torch.cat([Xtil, Ztil], dim=-1)[0]
-    print(input.shape)
-    Ytil = decompressor(input) * std_out + mean_out
-    print(Ytil.shape)
-    Ytil_pos = Ytil[:, 0 * (nbones - 1):3 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])
-    Ytil_txy = Ytil[:, 3 * (nbones - 1):9 * (nbones - 1)].reshape([stop - start, nbones - 1, 3, 2])
-    Ytil_rvel = Ytil[:, 15 * (nbones - 1) + 0:15 * (nbones - 1) + 3].reshape([stop - start, 3])
-    Ytil_rang = Ytil[:, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([stop - start, 3])
+        Ytil[:, k] = decompressor(
+            torch.cat([Xtil_prev, Ztil_prev], dim=-1)
+        ) * decompressor_std_out + decompressor_mean_out
+
+    Ytil_pos = Ytil[:, :, 0 * (nbones - 1):3 * (nbones - 1)].reshape([1, stop - start, nbones - 1, 3])
+    Ytil_txy = Ytil[:, :, 3 * (nbones - 1):9 * (nbones - 1)].reshape([1, stop - start, nbones - 1, 3, 2])
+    Ytil_rvel = Ytil[:, :, 15 * (nbones - 1) + 0:15 * (nbones - 1) + 3].reshape([1, stop - start, 3])
+    Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([1, stop - start, 3])
+    Ytil_traj_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra: 15 * (nbones - 1) + 6 + nextra + 18]
 
     # Convert to quat and remove batch
-    Ytil_rot = quat.from_xfm_xy(Ytil_txy)  # (stop-start, nbones-1, 4)
+    Ytil_rot = quat.from_xfm_xy(Ytil_txy[0])  # (stop-start, nbones-1, 4)
+    Ytil_pos = Ytil_pos[0]
+    Ytil_rvel = Ytil_rvel[0]  # (stop-start, 3)
+    Ytil_rang = Ytil_rang[0]
 
-    # Add root
     Ytil_rpos = [Ygnd_pos[0, 0]]  # [(3,)]
     Ytil_rrot = [Ygnd_rot[0, 0]]  # [(4,)]
     for i in range(1, Ygnd_pos.shape[0]):
@@ -118,14 +117,24 @@ with torch.no_grad():
     Ytil_rot = torch.cat([Ytil_rrot[:, np.newaxis], Ytil_rot], dim=1)  # (stop-start, nbones, 4)
 
     try:
-        bvh.save('train_ris/prova/prova.bvh', {
+        bvh.save('train_ris/prova/stepper_terrain_%2i_gnd.bvh' % clip_index, {
+            'rotations': np.degrees(quat.to_euler(Ygnd_rot.cpu().numpy())),
+            'positions': 100.0 * Ygnd_pos.cpu().numpy(),
+            'offsets': 100.0 * Ygnd_pos[0].cpu().numpy(),
+            'parents': parents,
+            'names': ['joint_%i' % i for i in range(nbones)],
+            'order': 'zyx'
+        })
+        bvh.save('train_ris/prova/stepper_terrain_%2i_til.bvh' % clip_index, {
             'rotations': np.degrees(quat.to_euler(Ytil_rot)),
             'positions': 100.0 * Ytil_pos,
-            'offsets': 100.0 * Ytil_pos[0],
+            'offsets': 100.0 * Ytil_pos[1],
             'parents': parents,
             'names': ['joint_%i' % i for i in range(nbones)],
             'order': 'zyx'
         })
     except IOError as e:
         print(e)
-    '''
+
+
+
