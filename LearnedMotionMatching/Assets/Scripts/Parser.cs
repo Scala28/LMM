@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -21,6 +22,8 @@ public static  class Parser
         Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
         Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
         Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
+        Tensor traj_toe_pos = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6 + nextra, 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3, 
+            new TensorShape(3, 2, 3, 1));
 
         //Convert to quat: (nbones-1, 4, 1, 1)
         Tensor quat = Quat.quat_from_xfm_xy(txy);
@@ -42,8 +45,22 @@ public static  class Parser
         for (int i = 0; i < nextra; i++)
             contacts[i] = extra[i] > .5f;
 
+        // Trajected toe position at 15, 30, 45 frames ahead
+        Vector3[][] trajected_toe_pos = new Vector3[3][];
+        for(int i=0; i<trajected_toe_pos.Length; i++)
+        {
+            trajected_toe_pos[i] = new Vector3[contacts.Length];
+            for(int j=0; j < contacts.Length; j++)
+            {
+                trajected_toe_pos[i][j] = new Vector3(
+                    traj_toe_pos[i, j, 0, 0],
+                    traj_toe_pos[i, j, 1, 0],
+                    traj_toe_pos[i, j, 2, 0]);
+            }
+        }
+
         // Construct pose for next frame
-        Pose pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts);
+        Pose pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts, trajected_toe_pos);
 
         return pose;
     }

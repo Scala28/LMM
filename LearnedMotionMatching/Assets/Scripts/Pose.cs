@@ -15,10 +15,13 @@ public class Pose
     public Vector4 root_rotation;
     public Vector3 root_velocity;
     public Vector3 root_angular_velocity;
+    // Trajected toe position at 15, 30, 45 frames ahead
+    public Vector3[][] traj_toe_position;
 
     public bool[] contact_states;
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts)
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts,
+        Vector3[][] traj_toe_pos)
     {
         root_position = root_pos;
         root_rotation = root_rot;
@@ -45,6 +48,11 @@ public class Pose
         contact_states = new bool[contacts.Length];
         Array.Copy(contacts, contact_states, contacts.Length);
 
+        traj_toe_position = new Vector3[3][];
+        for (int i = 0; i < traj_toe_pos.Length; i++)
+        {
+            traj_toe_position[i] = traj_toe_pos[i];
+        }
     }
     public Pose(int nbones, int nextra)
     {
@@ -61,6 +69,9 @@ public class Pose
 
         contact_states = new bool[nextra];
 
+        traj_toe_position = new Vector3[3][];
+        for (int i = 0; i < traj_toe_position.Length; i++)
+            traj_toe_position[i] = new Vector3[nextra];
     }
     public Pose() { }
     public Pose DeepClone()
@@ -72,7 +83,8 @@ public class Pose
             root_velocity = this.root_velocity,
             root_angular_velocity = this.root_angular_velocity,
             joints = new JointMotionData[this.joints.Length],
-            contact_states = new bool[this.contact_states.Length]
+            contact_states = new bool[this.contact_states.Length],
+            traj_toe_position = new Vector3[3][]
         };
         for(int i=0; i<joints.Length; i++)
         {
@@ -85,6 +97,11 @@ public class Pose
             };
         }
         Array.Copy(this.contact_states, clone.contact_states, this.contact_states.Length);
+        for(int i=0; i<traj_toe_position.Length; i++)
+        {
+            clone.traj_toe_position[i] = new Vector3[contact_states.Length];
+            Array.Copy(this.traj_toe_position[i], clone.traj_toe_position[i], traj_toe_position[i].Length);
+        }
 
         return clone;
     }

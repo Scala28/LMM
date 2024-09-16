@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Barracuda;
 using System;
 using UnityEditor;
+using Cinemachine;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -68,9 +69,13 @@ public class MotionMatcher : MonoBehaviour
         Bone_RightHand = 22
     };
 
+    [Header("Camera")]
+    public CinemachineVirtualCamera vcam;
+
     private float camera_azimuth = 0.0f;
     private float camera_altitude = .4f;
     private float camera_distance = 4.0f;
+
 
     private DataManager.database db;
     private DataManager.character ch;
@@ -195,7 +200,7 @@ public class MotionMatcher : MonoBehaviour
     void Start()
     {
         input_handler = GetComponent<InputHandler>();
-        db = DataManager.load_database("Assets/Resources/database.bin");
+        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
         ch = DataManager.load_character("Assets/Resources/character.bin");
         if (!rigged)
         {
@@ -206,9 +211,9 @@ public class MotionMatcher : MonoBehaviour
 
         Debug.Assert(db.nbones() == ch.nbones());
 
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/features.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
 
-        frame_index = db.range_starts[0];
+        frame_index = db.range_starts[6];
 
         initialize_pose();
 
@@ -260,8 +265,8 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(db.features[frame_index], feature_curr, db.nfeatures());
         Array.Copy(db.features[frame_index], feature_proj, db.nfeatures());
 
-        latent_curr = new float[32];
-        latent_proj = new float[32];
+        latent_curr = new float[35];
+        latent_proj = new float[35];
     }
     #region Initialize
     private void initialize_models()
@@ -274,8 +279,8 @@ public class MotionMatcher : MonoBehaviour
         projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(projector));
 
-        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/decompressor.bin");
+        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
         projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
     }
     private void initialize_skeleton(Transform bone)
