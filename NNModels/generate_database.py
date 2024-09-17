@@ -270,13 +270,11 @@ for filename, start, stop in files:
         # appending terrain positions under the toes foe every frame (local to root)
         for i in range(len(positions)):
             terrain_left = np.array([leftFoot_xz[i][0], leftFoot_y[i], leftFoot_xz[i][1]])
-            chr_terrain_left = quat.inv_mul_vec(global_rotations[i][0], terrain_left - global_positions[i][0])
 
             terrain_right = np.array([rightFoot_xz[i][0], rightFoot_y[i], rightFoot_xz[i][1]])
-            chr_terrain_right = quat.inv_mul_vec(global_rotations[i][0], terrain_right - global_positions[i][0])
 
-            terrain[i][0] = chr_terrain_left
-            terrain[i][1] = chr_terrain_right
+            terrain[i][0] = terrain_left
+            terrain[i][1] = terrain_right
 
         # Computing future toe positions relative to root at 15, 30, 45
         toe_positions = np.zeros((len(positions), 3, 2, 3))

@@ -558,6 +558,10 @@ public static class DataManager
             cols = reader.ReadInt32();
             db.contact_states = readBool_toArray2d(reader, rows, cols);
 
+            rows = reader.ReadInt32();
+            cols = reader.ReadInt32();
+            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols);
+
         }
         return db;
     }
@@ -581,6 +585,20 @@ public static class DataManager
         }
 
         return (features, features_offset, features_scale);
+    }
+    public static float[][] load_latent(string filename)
+    {
+        float[][] latets;
+        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
+        {
+            int rows = reader.ReadInt32();
+            int cols = reader.ReadInt32();
+            latets = readFloat_toArray2d(reader, rows, cols);
+
+        }
+
+        return latets;
     }
     public static character load_character(string filename)
     {
@@ -660,6 +678,8 @@ public static class DataManager
         public float[] features_scale;
 
         public bool[][] contact_states;
+
+        public Vector3[][] traj_toe_positions;
 
         public float[][] bound_sm_min;
         public float[][] bound_sm_max;

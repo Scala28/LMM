@@ -80,6 +80,8 @@ public class MotionMatcher : MonoBehaviour
     private DataManager.database db;
     private DataManager.character ch;
 
+    private float[][] latents;
+
     private float inertialize_blending_halflife = .1f;
     private Pose pose;
     private Pose current_pose;
@@ -147,6 +149,11 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] trajectory_accelerations = new Vector3[4];
     private Vector4[] trajectory_rotations = new Vector4[4];
     private Vector3[] trajectory_angular_velocities = new Vector3[4];
+
+    private Vector2[][] trajectory_toe_position = new Vector2[3][];
+    private Vector3[] terrain_root_positions;
+    private Vector4[] terrain_root_rotations;
+    
     #endregion
 
     #region Contact states and foot locking
@@ -213,8 +220,9 @@ public class MotionMatcher : MonoBehaviour
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
 
-        frame_index = db.range_starts[6];
+        latents = DataManager.load_latent("Assets/Resources/latent.bin");
 
+        frame_index = db.range_starts[0];
         initialize_pose();
 
         inertialize_pose_reset();
@@ -280,7 +288,7 @@ public class MotionMatcher : MonoBehaviour
             ModelLoader.Load(projector));
 
         stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/decompressor.bin");
         projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
     }
     private void initialize_skeleton(Transform bone)
@@ -396,7 +404,6 @@ public class MotionMatcher : MonoBehaviour
                 Array.Copy(feature_proj, feature_curr, db.nfeatures());
                 Array.Copy(latent_proj, latent_curr, latent_curr.Length);
             }
-
             search_timer = search_time;
         }
         search_timer -= dt;
@@ -855,6 +862,76 @@ public class MotionMatcher : MonoBehaviour
                 dt);
         }
     }
+    private void compute_trajectory_toe_position()
+    {
+        trajectory_toe_position[0] = new Vector2[2];
+        trajectory_toe_position[1] = new Vector2[2];
+        trajectory_toe_position[2] = new Vector2[2];
+
+        // Find root position and direction at 15, 30, 45
+
+        float mag = (trajectory_positions[1] - trajectory_positions[0]).magnitude;
+        Vector3 root_pos_15 = (trajectory_positions[1] - trajectory_positions[0]).normalized * mag * .75f + trajectory_positions[0];
+
+        mag = (trajectory_positions[2] - trajectory_positions[1]).magnitude;
+        Vector3 root_pos_30 = (trajectory_positions[1] - trajectory_positions[0]).normalized * mag * .5f + trajectory_positions[1];
+
+        mag = (trajectory_positions[3] - trajectory_positions[2]).magnitude;
+        Vector3 root_pos_45 = (trajectory_positions[1] - trajectory_positions[0]).normalized * mag * .25f + trajectory_positions[2];
+
+        terrain_root_positions = new Vector3[] { root_pos_15, root_pos_30, root_pos_45 };
+
+        Vector4 root_rot_15 = Quat.quat_nlerp(trajectory_rotations[0], trajectory_rotations[1], .75f);
+        Vector4 root_rot_30 = Quat.quat_nlerp(trajectory_rotations[1], trajectory_rotations[2], .5f);
+        Vector4 root_rot_45 = Quat.quat_nlerp(trajectory_rotations[2], trajectory_rotations[3], .25f);
+
+        terrain_root_rotations = new Vector4[] { root_rot_15, root_rot_30, root_rot_45 };
+
+        // Compute global toe positions at 15, 30, 45
+
+        for(int i=0; i<trajectory_toe_position.Length; i++)
+        {
+            Vector3 left_pos = Quat.quat_mul_vec(terrain_root_rotations[i], current_pose.traj_toe_position[i][0]) + terrain_root_positions[i];
+            Vector3 right_pos = Quat.quat_mul_vec(terrain_root_rotations[i], current_pose.traj_toe_position[i][1]) + terrain_root_positions[i];
+
+            trajectory_toe_position[i][0] = new Vector2(left_pos.x, left_pos.z);
+            trajectory_toe_position[i][1] = new Vector2(right_pos.x, right_pos.z);
+        }
+    }
+    private float[][] cast_terrain_height()
+    {
+        float[][] hit_y = new float[trajectory_toe_position.Length][];
+
+        for(int i=0; i < trajectory_toe_position.Length; i++)
+        {
+            hit_y[i] = new float[2];
+            RaycastHit root_hit;
+            Ray root_ray = new Ray(new Vector3(
+                terrain_root_positions[i].x,
+                100f,
+                terrain_root_positions[i].z), -Vector3.up);
+            Debug.Assert(Physics.Raycast(root_ray, out root_hit));
+
+            terrain_root_positions[i].y = root_hit.point.y;
+            // Record terrain height at 15, 30, 45 local to root now
+            for(int j=0; j < trajectory_toe_position[0].Length; j++)
+            {
+            
+                RaycastHit hit_point;
+                Ray ray = new Ray(new Vector3(
+                    trajectory_toe_position[i][j].x,
+                    100f,
+                    trajectory_toe_position[i][j].y), -Vector3.up);
+                Debug.Assert(Physics.Raycast(ray, out hit_point));
+
+                Vector3 chr_hit_point = Quat.quat_inv_mul_vec(global_pose.root_rotation, 
+                    hit_point.point - global_pose.root_position);
+                
+                hit_y[i][j] = chr_hit_point.y;
+            }
+        }
+        return hit_y;
+    }
     private (float[], int) compute_query_vector()
     {
         float[] query = new float[db.nfeatures()];
@@ -923,6 +1000,35 @@ public class MotionMatcher : MonoBehaviour
         query[offset + 5] = dir2.z;
 
         offset += 6;
+
+        // terrain heights at 0, 15, 30, 45 local to root now
+
+        Vector3 terrain_height_0_left = global_pose.joints[(int)character.Bone_LeftToe - 1].position;
+        terrain_height_0_left.y -= ik_foot_height;
+
+        Vector3 terrain_height_0_right = global_pose.joints[(int)character.Bone_RightToe - 1].position;
+        terrain_height_0_right.y -= ik_foot_height;
+
+        terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            terrain_height_0_left - global_pose.root_position);
+
+        terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            terrain_height_0_right - global_pose.root_position);
+
+        compute_trajectory_toe_position();
+
+        float[][] terrain_heights = cast_terrain_height();
+
+        query[offset + 0] = terrain_height_0_left.y;
+        query[offset + 1] = terrain_height_0_right.y;
+        query[offset + 2] = terrain_heights[0][0];
+        query[offset + 3] = terrain_heights[0][1];
+        query[offset + 4] = terrain_heights[1][0];
+        query[offset + 5] = terrain_heights[1][1];
+        query[offset + 6] = terrain_heights[2][0];
+        query[offset + 7] = terrain_heights[2][1];
+
+        offset += 8;
 
         return (query, offset);
     }
@@ -1379,10 +1485,35 @@ public class MotionMatcher : MonoBehaviour
     }
     private void OnDrawGizmosSelected()
     {
-        if(gizmos)
+        if (gizmos) { 
             for (int i = 0; i < trajectory_positions.Length; i++)
             {
                 Gizmos.DrawSphere(trajectory_positions[i], .2f);
             }
+            try
+            {
+                //foreach (Vector3 vec in db.traj_toe_positions[frame_index])
+                //{
+                //    Vector3 g_pos = Quat.quat_mul_vec(global_pose.root_rotation, vec) + global_pose.root_position;
+                //    Ray ray = new Ray(g_pos, -Vector3.up);
+                //    RaycastHit hit;
+                //    Physics.Raycast(ray, out hit);
+
+                //    Gizmos.DrawCube(hit.point, new Vector3(.2f, .2f, .2f));
+                //}
+                //foreach (Vector3[] vec in current_pose.traj_toe_position)
+                //{
+                //    foreach(Vector3 v in vec)
+                //    {
+                //        Vector3 g_pos = Quat.quat_mul_vec(global_pose.root_rotation, v) + global_pose.root_position;
+                //        Ray ray = new Ray(g_pos, -Vector3.up);
+                //        RaycastHit hit;
+                //        Physics.Raycast(ray, out hit);
+
+                //        Gizmos.DrawCube(hit.point, new Vector3(.2f, .2f, .2f));
+                //    }
+                //}
+            }catch(Exception e) { }
+        }
     }
 }

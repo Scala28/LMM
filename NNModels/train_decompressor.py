@@ -454,7 +454,7 @@ if __name__ == '__main__':
         loss_cxfm = torch.mean(5.0 * torch.abs(Qgnd_xfm - Qtil_xfm))
         loss_cvel = torch.mean(2.0 * torch.abs(Qgnd_vel - Qtil_vel))
         loss_cang = torch.mean(0.75 * torch.abs(Qgnd_ang - Qtil_ang))
-        loss_trajected_toe_positions = torch.mean(7.5 * torch.abs(Qgnd_traj_toe_pos - Qtil_traj_toe_pos))
+        loss_trajected_toe_positions = torch.mean(15.0 * torch.abs(Qgnd_traj_toe_pos - Qtil_traj_toe_pos))
 
         # Velocity losses
         loss_lvel_pos = torch.mean(10.0 * torch.abs(Ygnd_dpos - Ytil_dpos))
@@ -462,7 +462,7 @@ if __name__ == '__main__':
         loss_cvel_pos = torch.mean(2.0 * torch.abs(Qgnd_dpos - Qtil_dpos))
         loss_cvel_xfm = torch.mean(0.75 * torch.abs(Qgnd_dxfm - Qtil_dxfm))
 
-        loss_cvel_trajected_toe_pos = torch.mean(1.0 * torch.abs(dQgnd_traj_toe_pos - dQtil_traj_toe_pos))
+        loss_cvel_trajected_toe_pos = torch.mean(2.0 * torch.abs(dQgnd_traj_toe_pos - dQtil_traj_toe_pos))
 
         # Regularization losses
         loss_sreg = torch.mean(0.1 * torch.abs(Zgnd))

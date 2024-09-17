@@ -198,26 +198,26 @@ def compute_future_terrain_feature(offset, weight):
         t1 = database_trajectory_index_clamp(i, 30)
         t2 = database_trajectory_index_clamp(i, 45)
 
-        terrain_height_0_left = terrain_positions[i][0][1]
-        terrain_height_0_right = terrain_positions[i][1][1]
+        terrain_height_0_left = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[i][0] - bone_positions[i][0])
+        terrain_height_0_right = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[i][1] - bone_positions[i][0])
 
-        terrain_height_15_left = terrain_positions[t0][0][1]
-        terrain_height_15_right = terrain_positions[t0][1][1]
+        terrain_height_15_left = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t0][0] - bone_positions[i][0])
+        terrain_height_15_right = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t0][1] - bone_positions[i][0])
 
-        terrain_height_30_left = terrain_positions[t1][0][1]
-        terrain_height_30_right = terrain_positions[t1][1][1]
+        terrain_height_30_left = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t1][0] - bone_positions[i][0])
+        terrain_height_30_right = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t1][1] - bone_positions[i][0])
 
-        terrain_height_45_left = terrain_positions[t2][0][1]
-        terrain_height_45_right = terrain_positions[t2][1][1]
+        terrain_height_45_left = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t2][0] - bone_positions[i][0])
+        terrain_height_45_right = quat.inv_mul_vec(bone_rotations[i][0], terrain_positions[t2][1] - bone_positions[i][0])
 
-        features[i, offset + 0] = terrain_height_0_left
-        features[i, offset + 1] = terrain_height_0_right
-        features[i, offset + 2] = terrain_height_15_left
-        features[i, offset + 3] = terrain_height_15_right
-        features[i, offset + 4] = terrain_height_30_left
-        features[i, offset + 5] = terrain_height_30_right
-        features[i, offset + 6] = terrain_height_45_left
-        features[i, offset + 7] = terrain_height_45_right
+        features[i, offset + 0] = terrain_height_0_left[1]
+        features[i, offset + 1] = terrain_height_0_right[1]
+        features[i, offset + 2] = terrain_height_15_left[1]
+        features[i, offset + 3] = terrain_height_15_right[1]
+        features[i, offset + 4] = terrain_height_30_left[1]
+        features[i, offset + 5] = terrain_height_30_right[1]
+        features[i, offset + 6] = terrain_height_45_left[1]
+        features[i, offset + 7] = terrain_height_45_right[1]
 
     normalize_feature(offset, 8, weight)
     return offset + 8
