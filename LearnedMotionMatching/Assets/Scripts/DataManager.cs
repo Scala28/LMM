@@ -560,7 +560,11 @@ public static class DataManager
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
-            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols);
+            db.terrain_positions = readVec3_toArray2d(reader, rows, cols/3);
+
+            rows = reader.ReadInt32();
+            cols = reader.ReadInt32();
+            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols/3);
 
         }
         return db;
@@ -678,6 +682,8 @@ public static class DataManager
         public float[] features_scale;
 
         public bool[][] contact_states;
+
+        public Vector3[][] terrain_positions;
 
         public Vector3[][] traj_toe_positions;
 

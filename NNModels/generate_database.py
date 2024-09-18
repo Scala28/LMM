@@ -340,7 +340,7 @@ with open('data/terrain_db.bin', 'wb') as f:
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
     f.write(struct.pack('II', nframes, nterrain) + terrain_positions.ravel().tobytes())
     f.write(struct.pack('II', nframes, ntoe_trajectory) + trajectory_toe_positions.ravel().tobytes())
-
+'''
 bvh.save('data/terrain_db.bvh', {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),
     'positions': 100.0 * bone_positions,
@@ -349,3 +349,4 @@ bvh.save('data/terrain_db.bvh', {
     'names': ['joint_%i' % i for i in range(nbones)],
     'order': 'zyx'
 })
+'''

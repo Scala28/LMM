@@ -280,16 +280,16 @@ public class MotionMatcher : MonoBehaviour
     private void initialize_models()
     {
 
-        stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
-            ModelLoader.Load(stepper));
+        //stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+        //    ModelLoader.Load(stepper));
         decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(decompressor));
-        projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
-            ModelLoader.Load(projector));
+        //projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+        //    ModelLoader.Load(projector));
 
-        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/decompressor.bin");
-        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
+        //stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
+        //projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
     }
     private void initialize_skeleton(Transform bone)
     {
@@ -335,145 +335,160 @@ public class MotionMatcher : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 gamepad_stickleft = input_handler.MoveInput;
-        Vector3 gamepad_stickright = input_handler.LookInput;
+        //Vector3 gamepad_stickleft = input_handler.MoveInput;
+        //Vector3 gamepad_stickright = input_handler.LookInput;
 
-        bool desired_strafe = input_handler.StrafeInput;
+        //bool desired_strafe = input_handler.StrafeInput;
 
-        // Get the desired gait (walk / run)
-        desired_gait_update();
+        //// Get the desired gait (walk / run)
+        //desired_gait_update();
 
-        // Get the desired simulation speeds based on the gait
-        float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait);
-        float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait);
-        float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait);
+        //// Get the desired simulation speeds based on the gait
+        //float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait);
+        //float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait);
+        //float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait);
 
-        // Get the desired velocity
-        Vector3 desired_velocity_curr =
-            desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation,
-            simulation_fwrd_speed, simulation_side_speed, simulation_back_speed);
+        //// Get the desired velocity
+        //Vector3 desired_velocity_curr =
+        //    desired_velocity_update(gamepad_stickleft, camera_azimuth, simulation_rotation,
+        //    simulation_fwrd_speed, simulation_side_speed, simulation_back_speed);
 
 
-        // Get the desired rotation/direction
-        Vector4 desired_rotation_curr =
-            desired_rotation_update(desired_rotation, gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, desired_velocity_curr);
+        //// Get the desired rotation/direction
+        //Vector4 desired_rotation_curr =
+        //    desired_rotation_update(desired_rotation, gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, desired_velocity_curr);
 
-        desired_velocity_change_prev = desired_velocity_change_curr;
-        desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
-        desired_velocity = desired_velocity_curr;
+        //desired_velocity_change_prev = desired_velocity_change_curr;
+        //desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
+        //desired_velocity = desired_velocity_curr;
 
-        desired_rotation_change_prev = desired_rotation_change_curr;
-        desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
-        desired_rotation = desired_rotation_curr;
+        //desired_rotation_change_prev = desired_rotation_change_curr;
+        //desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
+        //desired_rotation = desired_rotation_curr;
 
-        bool force_search = false;
+        //bool force_search = false;
 
-        if (force_search_timer <= 0.0f && (
-            (length(desired_velocity_change_prev) >= desired_velocity_change_threshold &&
-            length(desired_velocity_change_curr) < desired_velocity_change_threshold) ||
-            (length(desired_rotation_change_prev) >= desired_rotation_change_threshold &&
-            length(desired_rotation_change_curr) < desired_rotation_change_threshold)))
-        {
-            force_search = true;
-            force_search_timer = search_time;
-        }
-        else if (force_search_timer > 0f)
-            force_search_timer -= dt;
+        //if (force_search_timer <= 0.0f && (
+        //    (length(desired_velocity_change_prev) >= desired_velocity_change_threshold &&
+        //    length(desired_velocity_change_curr) < desired_velocity_change_threshold) ||
+        //    (length(desired_rotation_change_prev) >= desired_rotation_change_threshold &&
+        //    length(desired_rotation_change_curr) < desired_rotation_change_threshold)))
+        //{
+        //    force_search = true;
+        //    force_search_timer = search_time;
+        //}
+        //else if (force_search_timer > 0f)
+        //    force_search_timer -= dt;
 
-        trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
-        trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
+        //trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
+        //trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
 
-        trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe,
-            simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
-        trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
+        //trajectory_desired_velocities_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe,
+        //    simulation_fwrd_speed, simulation_side_speed, simulation_back_speed, 20.0f * dt);
+        //trajectory_positions_predict(simulation_velocity_halflife, 20.0f * dt);
 
-        // Do we need to search?
-        if (force_search || search_timer <= 0.0f)
-        {
-            // Compute the features of the query vector
-            (float[] query, int offset) = compute_query_vector();
+        //// Do we need to search?
+        //if (force_search || search_timer <= 0.0f)
+        //{
+        //    // Compute the features of the query vector
+        //    (float[] query, int offset) = compute_query_vector();
 
-            Debug.Assert(offset == db.nfeatures());
+        //    Debug.Assert(offset == db.nfeatures());
 
-            bool transition = compute_projection_distance(query);
-            if (transition)
-            {
-                evaluate_projector(query);
-                evaluate_decompressor(ref trns_pose, feature_proj, latent_proj);
-                inertialize_pose_transition();
-                Array.Copy(feature_proj, feature_curr, db.nfeatures());
-                Array.Copy(latent_proj, latent_curr, latent_curr.Length);
-            }
-            search_timer = search_time;
-        }
-        search_timer -= dt;
+        //    bool transition = compute_projection_distance(query);
+        //    if (transition)
+        //    {
+        //        evaluate_projector(query);
+        //        evaluate_decompressor(ref trns_pose, feature_proj, latent_proj);
+        //        inertialize_pose_transition();
+        //        Array.Copy(feature_proj, feature_curr, db.nfeatures());
+        //        Array.Copy(latent_proj, latent_curr, latent_curr.Length);
+        //    }
+        //    search_timer = search_time;
+        //}
+        //search_timer -= dt;
 
-        evaluate_stepper();
+        //evaluate_stepper();
+
+        //evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
+
+        //inertialize_pose_update(current_pose, dt);
+
+        //simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
+        //    desired_velocity, simulation_velocity_halflife, dt);
+        //simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
+        //    desired_rotation, simulation_rotation_halflife, dt);
+
+        ////Adjustment
+        //if (adjustment_enabled)
+        //{
+        //    Vector3 adjusted_position = pose.root_position;
+        //    Vector4 adjusted_rotation = pose.root_rotation;
+
+        //    if (adjustment_by_velocity)
+        //    {
+        //        adjusted_position = adjust_character_position_by_velocity(
+        //            pose.root_position,
+        //            pose.root_velocity,
+        //            simulation_position,
+        //            adjustment_position_halflife,
+        //            dt);
+        //        adjusted_rotation = adjust_character_rotation_by_velocity(
+        //            pose.root_rotation,
+        //            pose.root_angular_velocity,
+        //            simulation_rotation,
+        //            adjustment_rotation_halflife,
+        //            dt);
+        //    }
+        //    inertialize_root_adjust(adjusted_position, adjusted_rotation);
+        //}
+
+        ////Clamping
+        //if (clamping_enabled)
+        //{
+        //    Vector3 adjusted_position = pose.root_position;
+        //    Vector4 adjusted_rotation = pose.root_rotation;
+
+        //    adjusted_position = clamp_character_position(
+        //        adjusted_position,
+        //        simulation_position,
+        //        clamping_max_distance);
+        //    adjusted_rotation = clamp_character_rotation(
+        //        adjusted_rotation,
+        //        simulation_rotation,
+        //        clamping_max_angle);
+
+        //    inertialize_root_adjust(adjusted_position, adjusted_rotation);
+        //}
+
+        //adjusted_bones_pose = pose.DeepClone();
+        //if (ik_enabled)
+        //{
+        //    compute_feet_positions();
+        //}
+
+        //forward_kinamatic_full();
+        //camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+
+        //if (!rigged)
+        //    deform_character_mesh();
+        //else
+        //    display_frame_pose();
+
+
+        Array.Copy(db.features[frame_index], feature_curr, db.nfeatures());
+        Array.Copy(latents[frame_index], latent_curr, latent_curr.Length);
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 
         inertialize_pose_update(current_pose, dt);
 
-        simulation_position_update(ref simulation_position, ref simulation_velocity, ref simulation_acceleration,
-            desired_velocity, simulation_velocity_halflife, dt);
-        simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
-            desired_rotation, simulation_rotation_halflife, dt);
-
-        //Adjustment
-        if (adjustment_enabled)
-        {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            if (adjustment_by_velocity)
-            {
-                adjusted_position = adjust_character_position_by_velocity(
-                    pose.root_position,
-                    pose.root_velocity,
-                    simulation_position,
-                    adjustment_position_halflife,
-                    dt);
-                adjusted_rotation = adjust_character_rotation_by_velocity(
-                    pose.root_rotation,
-                    pose.root_angular_velocity,
-                    simulation_rotation,
-                    adjustment_rotation_halflife,
-                    dt);
-            }
-            inertialize_root_adjust(adjusted_position, adjusted_rotation);
-        }
-
-        //Clamping
-        if (clamping_enabled)
-        {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            adjusted_position = clamp_character_position(
-                adjusted_position,
-                simulation_position,
-                clamping_max_distance);
-            adjusted_rotation = clamp_character_rotation(
-                adjusted_rotation,
-                simulation_rotation,
-                clamping_max_angle);
-
-            inertialize_root_adjust(adjusted_position, adjusted_rotation);
-        }
-
         adjusted_bones_pose = pose.DeepClone();
-        if (ik_enabled)
-        {
-            compute_feet_positions();
-        }
 
         forward_kinamatic_full();
-        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
 
-        if(!rigged)
-            deform_character_mesh();
-        else
-            display_frame_pose();
+        deform_character_mesh();
+        frame_index += 1;
     }
 
     #region NN inferences
@@ -905,14 +920,6 @@ public class MotionMatcher : MonoBehaviour
         for(int i=0; i < trajectory_toe_position.Length; i++)
         {
             hit_y[i] = new float[2];
-            RaycastHit root_hit;
-            Ray root_ray = new Ray(new Vector3(
-                terrain_root_positions[i].x,
-                100f,
-                terrain_root_positions[i].z), -Vector3.up);
-            Debug.Assert(Physics.Raycast(root_ray, out root_hit));
-
-            terrain_root_positions[i].y = root_hit.point.y;
             // Record terrain height at 15, 30, 45 local to root now
             for(int j=0; j < trajectory_toe_position[0].Length; j++)
             {
@@ -1485,35 +1492,16 @@ public class MotionMatcher : MonoBehaviour
     }
     private void OnDrawGizmosSelected()
     {
-        if (gizmos) { 
-            for (int i = 0; i < trajectory_positions.Length; i++)
+        try
+        {
+            if (gizmos)
             {
-                Gizmos.DrawSphere(trajectory_positions[i], .2f);
+                for (int i = 0; i < trajectory_positions.Length; i++)
+                {
+                    Gizmos.DrawSphere(trajectory_positions[i], .2f);
+                }
             }
-            try
-            {
-                //foreach (Vector3 vec in db.traj_toe_positions[frame_index])
-                //{
-                //    Vector3 g_pos = Quat.quat_mul_vec(global_pose.root_rotation, vec) + global_pose.root_position;
-                //    Ray ray = new Ray(g_pos, -Vector3.up);
-                //    RaycastHit hit;
-                //    Physics.Raycast(ray, out hit);
-
-                //    Gizmos.DrawCube(hit.point, new Vector3(.2f, .2f, .2f));
-                //}
-                //foreach (Vector3[] vec in current_pose.traj_toe_position)
-                //{
-                //    foreach(Vector3 v in vec)
-                //    {
-                //        Vector3 g_pos = Quat.quat_mul_vec(global_pose.root_rotation, v) + global_pose.root_position;
-                //        Ray ray = new Ray(g_pos, -Vector3.up);
-                //        RaycastHit hit;
-                //        Physics.Raycast(ray, out hit);
-
-                //        Gizmos.DrawCube(hit.point, new Vector3(.2f, .2f, .2f));
-                //    }
-                //}
-            }catch(Exception e) { }
         }
+        catch (Exception e) { }
     }
 }
