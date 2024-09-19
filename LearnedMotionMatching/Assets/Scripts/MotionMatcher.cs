@@ -105,6 +105,8 @@ public class MotionMatcher : MonoBehaviour
     Vector3 transition_dst_position;
     Vector4 transition_dst_rotation;
 
+    [SerializeField] private LayerMask whatIsTerrain;
+
     [Header("Animation")]
 
     #region Trajectory & gameplay
@@ -429,7 +431,7 @@ public class MotionMatcher : MonoBehaviour
 
         // Project simulation position on terrain
         RaycastHit hit;
-        Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit));
+        Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
         simulation_position.y = hit.point.y;
 
         //Adjustment
@@ -928,7 +930,7 @@ public class MotionMatcher : MonoBehaviour
                     trajectory_toe_position[i][j].x,
                     100f,
                     trajectory_toe_position[i][j].y), -Vector3.up);
-                Debug.Assert(Physics.Raycast(ray, out hit_point));
+                Debug.Assert(Physics.Raycast(ray, out hit_point, float.MaxValue, whatIsTerrain));
 
                 Vector3 chr_hit_point = Quat.quat_inv_mul_vec(global_pose.root_rotation, 
                     hit_point.point - global_pose.root_position);
@@ -1177,9 +1179,12 @@ public class MotionMatcher : MonoBehaviour
             // Update the contact state
             contact_update(i, global_pose.joints[toe_bone - 1].position);
 
+            RaycastHit hit;
+            Debug.Assert(Physics.Raycast(new Vector3(contact_positions[i].x, 100f, contact_positions[i].z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
+
             // Ensure contact position never goes through floor
             Vector3 contact_position_clamp = contact_positions[i];
-            contact_position_clamp.y = Mathf.Max(contact_position_clamp.y, ik_foot_height);
+            contact_position_clamp.y = Mathf.Max(contact_position_clamp.y, hit.point.y + ik_foot_height);
 
             // Re-compute toe, heel, knee, hip, and root bone positions
             int[] bones = new int[] { heel_bone, knee_bone, hip_bone, root_bone };

@@ -228,7 +228,7 @@ GameObject:
   m_Component:
   - component: {fileID: 193199519}
   - component: {fileID: 193199518}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: TerrainGroup_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -376,6 +376,9 @@ MonoBehaviour:
   vcam: {fileID: 0}
   camera_follow: {fileID: 0}
   camera_lookAt: {fileID: 0}
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 0
   search_time: 0.1
   ik_enabled: 1
   adjustment_enabled: 1
@@ -652,10 +655,13 @@ MonoBehaviour:
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1592004115}
   camera_lookAt: {fileID: 1385709156}
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64
   search_time: 0.1
-  ik_enabled: 0
-  adjustment_enabled: 0
-  clamping_enabled: 0
+  ik_enabled: 1
+  adjustment_enabled: 1
+  clamping_enabled: 1
   gizmos: 1
   rigged: 0
 --- !u!23 &1013524421
@@ -855,7 +861,7 @@ GameObject:
   - component: {fileID: 1481093989}
   - component: {fileID: 1481093991}
   - component: {fileID: 1481093990}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Terrain_0_0_aaf054ca-d777-462d-8929-88bf5f7444b1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
