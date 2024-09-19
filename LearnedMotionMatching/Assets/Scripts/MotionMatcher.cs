@@ -5,6 +5,7 @@ using Unity.Barracuda;
 using System;
 using UnityEditor;
 using Cinemachine;
+using Unity.VisualScripting;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -426,6 +427,11 @@ public class MotionMatcher : MonoBehaviour
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
             desired_rotation, simulation_rotation_halflife, dt);
 
+        // Project simulation position on terrain
+        RaycastHit hit;
+        Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit));
+        simulation_position.y = hit.point.y;
+
         //Adjustment
         if (adjustment_enabled)
         {
@@ -475,7 +481,7 @@ public class MotionMatcher : MonoBehaviour
         }
 
         forward_kinamatic_full();
-        //camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+
         orbit_camera_update(pose.root_position + Vector3.up, gamepad_stickright, desired_strafe, dt);
 
         if (!rigged)
