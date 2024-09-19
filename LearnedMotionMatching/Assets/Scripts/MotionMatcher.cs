@@ -71,6 +71,9 @@ public class MotionMatcher : MonoBehaviour
 
     [Header("Camera")]
     public CinemachineVirtualCamera vcam;
+    [SerializeField] private Transform camera_follow;
+    [SerializeField] private Transform camera_lookAt;
+
 
     private float camera_azimuth = 0.0f;
     private float camera_altitude = .4f;
@@ -225,6 +228,9 @@ public class MotionMatcher : MonoBehaviour
 
         frame_index = db.range_starts[0];
         initialize_pose();
+
+        vcam.Follow = camera_follow;
+        vcam.LookAt = camera_lookAt;
 
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
@@ -469,7 +475,8 @@ public class MotionMatcher : MonoBehaviour
         }
 
         forward_kinamatic_full();
-        camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+        //camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepad_stickright, desired_strafe, dt);
+        orbit_camera_update(pose.root_position + Vector3.up, gamepad_stickright, desired_strafe, dt);
 
         if (!rigged)
             deform_character_mesh();
@@ -1049,12 +1056,13 @@ public class MotionMatcher : MonoBehaviour
 
         Vector4 rotation_azimuth = Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0, 1f, 0));
 
-        Vector3 position = Quat.quat_mul_vec(rotation_azimuth, new Vector3(0, 0, camera_distance));
+        Vector3 position = Quat.quat_mul_vec(rotation_azimuth, new Vector3(0, 0, -camera_distance));
         Vector3 axis = Quat.vec_normalize(Quat._cross(position, new Vector3(0, 1f, 0)));
         Vector4 rotation_altitude = Quat.quat_from_angle_axis(camera_altitude, axis);
         Vector3 eye = target + Quat.quat_mul_vec(rotation_altitude, position);
 
-
+        camera_follow.position = eye;
+        camera_lookAt.position = target;
     }
     #endregion
 
