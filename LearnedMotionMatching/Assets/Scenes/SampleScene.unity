@@ -644,7 +644,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stepper: {fileID: 5022602860645237092, guid: b13fc4593d105324ea7b3fc062a957c1, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: ffb669c5d657d7449a39c57f4e17ac30, type: 3}
-  projector: {fileID: 5022602860645237092, guid: a80d233f7b285b7418fb41bf3cfd3d47, type: 3}
+  projector: {fileID: 5022602860645237092, guid: 67d51b93f3406d847a82d141bd82b4fc, type: 3}
   vcam: {fileID: 769392282}
   search_time: 0.1
   ik_enabled: 0
