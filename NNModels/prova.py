@@ -20,7 +20,7 @@ nfeatures = X.shape[1]
 nlatent = Z.shape[1]
 nextra = contacts.shape[1]
 
-clip_index = 2
+clip_index = 0
 start = database['range_starts'][clip_index]
 stop = min(database['range_stops'][clip_index], start + 3000)
 
@@ -79,7 +79,45 @@ with torch.no_grad():
         [stop - start, 3, 2, 3]
     )
     print(start)
-    print(Qgnd_traj_toe_pos[0])
-    print(Qtil_traj_toe_pos[0])
-    print(X[0])
-    print(Z[0])
+    print(Qgnd_traj_toe_pos[1])
+    print(Qtil_traj_toe_pos[1])
+
+    Xgnd = X[np.newaxis]
+    Zgnd = Z[np.newaxis]
+
+    Xtil = Xgnd.clone()
+    Ztil = Zgnd.clone()
+
+    for k in range(1, stop - start):
+        if (k - 1) % 20 == 0:  # Simulating the Projector's goal
+            Xtil_prev = Xgnd[:, k - 1]
+            Ztil_prev = Zgnd[:, k - 1]
+        else:
+            Xtil_prev = Xtil[:, k - 1]
+            Ztil_prev = Ztil[:, k - 1]
+
+        delta = (stepper((torch.cat([Xtil_prev, Ztil_prev], dim=-1) -
+                          stepper_mean_in) / stepper_std_in) *
+                 stepper_std_out + stepper_mean_out)
+        Xtil[:, k] = Xtil_prev + dt * delta[:, :nfeatures]
+        Ztil[:, k] = Ztil_prev + dt * delta[:, nfeatures:]
+
+    Ytil = decompressor(torch.cat([Xtil[0], Ztil[0]], dim=-1)) * decompressor_std_out + decompressor_mean_out
+
+    Ytil_pos = Ytil[:, 0 * (nbones - 1):3 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])
+    Ytil_txy = Ytil[:, 3 * (nbones - 1):9 * (nbones - 1)].reshape([stop - start, nbones - 1, 3, 2])
+    Ytil_vel = Ytil[:, 9 * (nbones - 1):12 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])
+    Ytil_ang = Ytil[:, 12 * (nbones - 1):15 * (nbones - 1)].reshape([stop - start, nbones - 1, 3])
+
+    Ytil_rvel = Ytil[:, 15 * (nbones - 1) + 0:15 * (nbones - 1) + 3].reshape([stop - start, 3])
+    Ytil_rang = Ytil[:, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([stop - start, 3])
+    Ytil_extra = Ytil[:, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
+        [stop - start, nextra]
+    )
+
+    Qtil_traj_toe_pos = Ytil[:, 15 * (nbones - 1) + 6 + nextra:15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3].reshape(
+        [stop - start, 3, 2, 3]
+    )
+
+    print(Qtil_traj_toe_pos[1])
+    print(Xtil[0][1])

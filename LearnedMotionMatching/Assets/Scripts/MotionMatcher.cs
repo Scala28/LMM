@@ -153,6 +153,7 @@ public class MotionMatcher : MonoBehaviour
     private Vector2[][] trajectory_toe_position = new Vector2[3][];
     private Vector3[] terrain_root_positions;
     private Vector4[] terrain_root_rotations;
+    private Vector3[][] terrain_toe_positions = new Vector3[3][];
     
     #endregion
 
@@ -273,21 +274,21 @@ public class MotionMatcher : MonoBehaviour
         Array.Copy(db.features[frame_index], feature_curr, db.nfeatures());
         Array.Copy(db.features[frame_index], feature_proj, db.nfeatures());
 
-        latent_curr = new float[35];
-        latent_proj = new float[35];
+        latent_curr = new float[latents[0].Length];
+        latent_proj = new float[latents[0].Length];
     }
     #region Initialize
     private void initialize_models()
     {
 
-        //stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
-        //    ModelLoader.Load(stepper));
+        stepper_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+            ModelLoader.Load(stepper));
         decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(decompressor));
         //projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
         //    ModelLoader.Load(projector));
 
-        //stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
+        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
         decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
         //projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/locomotion/projector.bin");
     }
@@ -476,8 +477,10 @@ public class MotionMatcher : MonoBehaviour
         //    display_frame_pose();
 
 
-        Array.Copy(db.features[frame_index], feature_curr, db.nfeatures());
-        Array.Copy(latents[frame_index], latent_curr, latent_curr.Length);
+        evaluate_stepper();
+
+        // Array.Copy(db.features[frame_index + 1], feature_curr, db.nfeatures());
+        // Array.Copy(latents[frame_index + 1], latent_curr, 35);
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 
@@ -488,7 +491,6 @@ public class MotionMatcher : MonoBehaviour
         forward_kinamatic_full();
 
         deform_character_mesh();
-        frame_index += 1;
     }
 
     #region NN inferences
@@ -920,6 +922,7 @@ public class MotionMatcher : MonoBehaviour
         for(int i=0; i < trajectory_toe_position.Length; i++)
         {
             hit_y[i] = new float[2];
+            terrain_toe_positions[i] = new Vector3[2];
             // Record terrain height at 15, 30, 45 local to root now
             for(int j=0; j < trajectory_toe_position[0].Length; j++)
             {
@@ -933,8 +936,9 @@ public class MotionMatcher : MonoBehaviour
 
                 Vector3 chr_hit_point = Quat.quat_inv_mul_vec(global_pose.root_rotation, 
                     hit_point.point - global_pose.root_position);
-                
+
                 hit_y[i][j] = chr_hit_point.y;
+                terrain_toe_positions[i][j] = chr_hit_point;
             }
         }
         return hit_y;
@@ -1499,6 +1503,13 @@ public class MotionMatcher : MonoBehaviour
                 for (int i = 0; i < trajectory_positions.Length; i++)
                 {
                     Gizmos.DrawSphere(trajectory_positions[i], .2f);
+                }
+            }
+            foreach (Vector3[] vec in current_pose.traj_toe_position)
+            {
+                foreach(Vector3 v in vec)
+                {
+                    Gizmos.DrawCube(Quat.quat_mul_vec(global_pose.root_rotation, v) + global_pose.root_position, new Vector3(.2f, .2f, .2f));
                 }
             }
         }
