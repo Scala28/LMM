@@ -385,7 +385,6 @@ MonoBehaviour:
   clamping_enabled: 1
   gizmos: 1
   rigged: 1
-  speed_multiplier: 1
 --- !u!1 &769392281
 GameObject:
   m_ObjectHideFlags: 0
@@ -665,7 +664,6 @@ MonoBehaviour:
   clamping_enabled: 1
   gizmos: 1
   rigged: 0
-  speed_multiplier: 1
 --- !u!23 &1013524421
 MeshRenderer:
   m_ObjectHideFlags: 0

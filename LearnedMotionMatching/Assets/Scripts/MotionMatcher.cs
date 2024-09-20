@@ -210,6 +210,8 @@ public class MotionMatcher : MonoBehaviour
     private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
 
+    private float time_elapsed = 0f;
+
     public bool rigged = false;
 
 
@@ -223,9 +225,10 @@ public class MotionMatcher : MonoBehaviour
         {
             mesh = DataManager.gen_mesh_from_character(ch);
             transform.GetComponent<MeshFilter>().mesh = mesh;
-        }else
+        }
+        else 
             initialize_skeleton(this.transform);
-
+        
         Debug.Assert(db.nbones() == ch.nbones());
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
@@ -348,6 +351,11 @@ public class MotionMatcher : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        time_elapsed += Time.deltaTime;
+        if (rigged)
+            if (time_elapsed < dt)
+                return;
+
         Vector3 gamepad_stickleft = input_handler.MoveInput;
         Vector3 gamepad_stickright = input_handler.LookInput;
 
@@ -493,6 +501,8 @@ public class MotionMatcher : MonoBehaviour
             deform_character_mesh();
         else
             display_frame_pose();
+
+        time_elapsed = 0f;
     }
 
     #region NN inferences
@@ -1480,20 +1490,18 @@ public class MotionMatcher : MonoBehaviour
     private void display_frame_pose()
     {
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-        Vector3 ang = Quat.convert_ToEuler(global_pose.root_rotation) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+        transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
             JointMotionData jdata = global_pose.joints[i - 1];
 
-            ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
+            // ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
 
-            joint.rotation = Quaternion.Euler(0f, 0f, -ang.z) *
-                Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) *
+            //    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+            joint.rotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
         }
-        ang = Quat.convert_ToEuler(global_pose.root_rotation) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
     }
 
     private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
