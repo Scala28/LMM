@@ -210,6 +210,8 @@ public class MotionMatcher : MonoBehaviour
 
     public bool rigged = false;
 
+    public float speed_multiplier = 1.0f;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -354,9 +356,9 @@ public class MotionMatcher : MonoBehaviour
         desired_gait_update();
 
         // Get the desired simulation speeds based on the gait
-        float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait);
-        float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait);
-        float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait);
+        float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait) * speed_multiplier;
+        float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait) * speed_multiplier;
+        float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait) * speed_multiplier;
 
         // Get the desired velocity
         Vector3 desired_velocity_curr =
@@ -913,10 +915,12 @@ public class MotionMatcher : MonoBehaviour
             trajectory_toe_position[i][1] = new Vector2(right_pos.x, right_pos.z);
         }
     }
-    private float[][] cast_terrain_height()
+    private (float[][], float, float, float) cast_terrain_height()
     {
         float[][] hit_y = new float[trajectory_toe_position.Length][];
-
+        float max_height = float.MinValue;
+        float min_height = float.MaxValue;
+        float variance = 0f;
         for(int i=0; i < trajectory_toe_position.Length; i++)
         {
             hit_y[i] = new float[2];
@@ -937,9 +941,12 @@ public class MotionMatcher : MonoBehaviour
 
                 hit_y[i][j] = chr_hit_point.y;
                 terrain_toe_positions[i][j] = hit_point.point;
+                max_height = chr_hit_point.y > max_height ? chr_hit_point.y : max_height;
+                min_height = chr_hit_point.y < min_height ? chr_hit_point.y : min_height;
+                variance += chr_hit_point.y * chr_hit_point.y;
             }
         }
-        return hit_y;
+        return (hit_y, max_height, min_height, variance);
     }
     private (float[], int) compute_query_vector()
     {
@@ -1011,22 +1018,25 @@ public class MotionMatcher : MonoBehaviour
         offset += 6;
 
         // terrain heights at 0, 15, 30, 45 local to root now
+        RaycastHit hit;
+        Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position, -Vector3.up, out hit,
+            float.MaxValue, whatIsTerrain));
+        Vector3 terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
 
-        Vector3 terrain_height_0_left = global_pose.joints[(int)character.Bone_LeftToe - 1].position;
-        terrain_height_0_left.y -= ik_foot_height;
-
-        Vector3 terrain_height_0_right = global_pose.joints[(int)character.Bone_RightToe - 1].position;
-        terrain_height_0_right.y -= ik_foot_height;
-
-        terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
-            terrain_height_0_left - global_pose.root_position);
-
-        terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
-            terrain_height_0_right - global_pose.root_position);
+        Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position, -Vector3.up, out hit,
+            float.MaxValue, whatIsTerrain));
+        Vector3 terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
 
         compute_trajectory_toe_position();
 
-        float[][] terrain_heights = cast_terrain_height();
+        (float[][] terrain_heights, float traj_max_height, float traj_min_height, float height_variance) = cast_terrain_height();
+
+        float max_height = Mathf.Max(Mathf.Max(terrain_height_0_left.y, terrain_height_0_right.y), traj_max_height);
+        float min_height = Mathf.Min(Mathf.Min(terrain_height_0_left.y, terrain_height_0_right.y), traj_min_height);
+
+        bool terrain = (max_height - min_height) > .2f;
 
         query[offset + 0] = terrain_height_0_left.y;
         query[offset + 1] = terrain_height_0_right.y;
@@ -1469,7 +1479,7 @@ public class MotionMatcher : MonoBehaviour
     {
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         Vector3 ang = Quat.convert_ToEuler(global_pose.root_rotation) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
+        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
@@ -1480,6 +1490,8 @@ public class MotionMatcher : MonoBehaviour
             joint.rotation = Quaternion.Euler(0f, 0f, -ang.z) *
                 Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         }
+        ang = Quat.convert_ToEuler(global_pose.root_rotation) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0f, 0f, ang.z) * Quaternion.Euler(0f, ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
     }
 
     private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
@@ -1502,16 +1514,16 @@ public class MotionMatcher : MonoBehaviour
         {
             if (gizmos)
             {
-                for (int i = 0; i < trajectory_positions.Length; i++)
+                foreach (Vector3 v in trajectory_positions)
                 {
-                    Gizmos.DrawSphere(trajectory_positions[i], .15f);
+                    Gizmos.DrawSphere(v, .15f);
                 }
-            }
-            foreach (Vector3[] vec in terrain_toe_positions)
-            {
-                foreach(Vector3 v in vec)
+                foreach (Vector3[] vec in terrain_toe_positions)
                 {
-                    Gizmos.DrawCube(v, new Vector3(.2f, .2f, .2f));
+                    foreach (Vector3 v in vec)
+                    {
+                        Gizmos.DrawCube(v, new Vector3(.2f, .2f, .2f));
+                    }
                 }
             }
         }
