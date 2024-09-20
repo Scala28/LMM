@@ -157,7 +157,7 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] trajectory_angular_velocities = new Vector3[4];
 
     private Vector2[][] trajectory_toe_position = new Vector2[3][];
-    public float terrain_speed_multiplier = 1.0f;
+    private float terrain_speed_multiplier = 1.0f;
 
     private Vector3[] terrain_root_positions;
     private Vector4[] terrain_root_rotations;
@@ -1033,8 +1033,10 @@ public class MotionMatcher : MonoBehaviour
         height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
         height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
+        float multiplier_min_value = input_handler.GaitInput ? .3f : .5f;
+
         if (height_variance >= .15f)
-            terrain_speed_multiplier = lerpf(.3f, 1f, clampf(1 - height_variance, 0f, 1f));
+            terrain_speed_multiplier = lerpf(multiplier_min_value, 1f, clampf(1 - height_variance, 0f, 1f));
         else
             terrain_speed_multiplier = 1f;
 
