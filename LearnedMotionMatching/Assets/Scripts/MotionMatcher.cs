@@ -1494,13 +1494,13 @@ public class MotionMatcher : MonoBehaviour
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
-            JointMotionData jdata = global_pose.joints[i - 1];
+            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
 
             // ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
 
             //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) *
             //    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
-            joint.rotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.localRotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
         }
     }
 
