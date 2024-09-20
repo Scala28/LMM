@@ -157,6 +157,8 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] trajectory_angular_velocities = new Vector3[4];
 
     private Vector2[][] trajectory_toe_position = new Vector2[3][];
+    public float terrain_speed_multiplier = 1.0f;
+
     private Vector3[] terrain_root_positions;
     private Vector4[] terrain_root_rotations;
     private Vector3[][] terrain_toe_positions = new Vector3[3][];
@@ -210,7 +212,6 @@ public class MotionMatcher : MonoBehaviour
 
     public bool rigged = false;
 
-    public float speed_multiplier = 1.0f;
 
     // Start is called before the first frame update
     void Start()
@@ -356,9 +357,9 @@ public class MotionMatcher : MonoBehaviour
         desired_gait_update();
 
         // Get the desired simulation speeds based on the gait
-        float simulation_fwrd_speed = lerpf(simulation_run_fwrd_speed, simulation_walk_fwrd_speed, desired_gait) * speed_multiplier;
-        float simulation_side_speed = lerpf(simulation_run_side_speed, simulation_walk_side_speed, desired_gait) * speed_multiplier;
-        float simulation_back_speed = lerpf(simulation_run_back_speed, simulation_walk_back_speed, desired_gait) * speed_multiplier;
+        float simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
+        float simulation_side_speed = lerpf(simulation_walk_side_speed, simulation_run_side_speed, desired_gait) * terrain_speed_multiplier;
+        float simulation_back_speed = lerpf(simulation_walk_back_speed, simulation_run_back_speed, desired_gait) * terrain_speed_multiplier;
 
         // Get the desired velocity
         Vector3 desired_velocity_curr =
@@ -739,7 +740,7 @@ public class MotionMatcher : MonoBehaviour
         Spring.simple_spring_damper_exact(
             ref desired_gait,
             ref desired_gait_velocity,
-            input_handler.GaitInput ? 0.0f : 1.0f,
+            input_handler.GaitInput ? 1.0f : 0.0f,
             gait_change_halflife,
             dt);
     }
@@ -915,11 +916,9 @@ public class MotionMatcher : MonoBehaviour
             trajectory_toe_position[i][1] = new Vector2(right_pos.x, right_pos.z);
         }
     }
-    private (float[][], float, float, float) cast_terrain_height()
+    private (float[][], float) cast_terrain_height()
     {
         float[][] hit_y = new float[trajectory_toe_position.Length][];
-        float max_height = float.MinValue;
-        float min_height = float.MaxValue;
         float variance = 0f;
         for(int i=0; i < trajectory_toe_position.Length; i++)
         {
@@ -941,12 +940,10 @@ public class MotionMatcher : MonoBehaviour
 
                 hit_y[i][j] = chr_hit_point.y;
                 terrain_toe_positions[i][j] = hit_point.point;
-                max_height = chr_hit_point.y > max_height ? chr_hit_point.y : max_height;
-                min_height = chr_hit_point.y < min_height ? chr_hit_point.y : min_height;
                 variance += chr_hit_point.y * chr_hit_point.y;
             }
         }
-        return (hit_y, max_height, min_height, variance);
+        return (hit_y, variance);
     }
     private (float[], int) compute_query_vector()
     {
@@ -1031,12 +1028,15 @@ public class MotionMatcher : MonoBehaviour
 
         compute_trajectory_toe_position();
 
-        (float[][] terrain_heights, float traj_max_height, float traj_min_height, float height_variance) = cast_terrain_height();
+        (float[][] terrain_heights, float height_variance) = cast_terrain_height();
 
-        float max_height = Mathf.Max(Mathf.Max(terrain_height_0_left.y, terrain_height_0_right.y), traj_max_height);
-        float min_height = Mathf.Min(Mathf.Min(terrain_height_0_left.y, terrain_height_0_right.y), traj_min_height);
+        height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
+        height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
-        bool terrain = (max_height - min_height) > .2f;
+        if (height_variance >= .15f)
+            terrain_speed_multiplier = lerpf(.3f, 1f, clampf(1 - height_variance, 0f, 1f));
+        else
+            terrain_speed_multiplier = 1f;
 
         query[offset + 0] = terrain_height_0_left.y;
         query[offset + 1] = terrain_height_0_right.y;
