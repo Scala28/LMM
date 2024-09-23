@@ -227,7 +227,7 @@ public class MotionMatcher : MonoBehaviour
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
         else 
-            initialize_skeleton(this.transform);
+            initialize_skeleton(transform);
         
         Debug.Assert(db.nbones() == ch.nbones());
 
@@ -309,12 +309,45 @@ public class MotionMatcher : MonoBehaviour
     }
     private void initialize_skeleton(Transform bone)
     {
+        (Vector3[] loc_bone_rest_pos, Vector4[] loc_bone_rest_rot) = put_local(ch.bone_rest_positions, ch.bone_rest_rotations);
         if (bone.CompareTag("joint"))
         {
             bones.Add(bone);
+            if (bone.parent != null)
+            {
+                Vector3 pos = loc_bone_rest_pos[bones.Count - 1];
+                Vector4 q = loc_bone_rest_rot[bones.Count - 1];
+                bone.localPosition = new Vector3(-pos.x, pos.y, pos.z);
+                bone.localRotation = new Quaternion(q.y, -q.z, -q.w, q.x);
+                Debug.Log(pos);
+                Debug.Log(Quat.convert_ToEuler(q) * Mathf.Rad2Deg);
+            }
         }
         foreach (Transform child in bone)
             initialize_skeleton(child);
+    }
+    private (Vector3[], Vector4[]) put_local(Vector3[] g_positions, Vector4[] g_rotations)
+    {
+        Vector3[] l_positions = new Vector3[g_positions.Length];
+        Vector4[] l_rotations = new Vector4[g_rotations.Length];
+        for (int i = 0; i < db.bone_parents.Length; i++)
+        {
+            Debug.Assert(db.bone_parents[i] < i);
+            if (db.bone_parents[i] == -1)
+            {
+                l_positions[i] = g_positions[i];
+                l_rotations[i] = g_rotations[i];
+            }
+            else
+            {
+                Vector3 parent_pos = g_positions[db.bone_parents[i]];
+                Vector4 parent_rot = g_rotations[db.bone_parents[i]];
+
+                l_positions[i] = Quat.quat_mul_vec(Quat.quat_inv(parent_rot), g_positions[i] - parent_pos);
+                l_rotations[i] = Quat.quat_mul(Quat.quat_inv(parent_rot), g_rotations[i]);
+            }
+        }
+        return (l_positions, l_rotations);
     }
     private void initialize_pose()
     {
@@ -1043,7 +1076,7 @@ public class MotionMatcher : MonoBehaviour
         height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
         height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
-        float multiplier_min_value = input_handler.GaitInput ? .3f : .5f;
+        float multiplier_min_value = input_handler.GaitInput ? .2f : .4f;
 
         if (height_variance >= .15f)
             terrain_speed_multiplier = lerpf(multiplier_min_value, 1f, clampf(1 - height_variance, 0f, 1f));
@@ -1494,13 +1527,12 @@ public class MotionMatcher : MonoBehaviour
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
-            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
+            JointMotionData jdata = global_pose.joints[i - 1];
 
-            // ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
-
-            //joint.rotation = Quaternion.Euler(0f, 0f, ang.z) *
-            //    Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
-            joint.localRotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.position = new Vector3(-jdata.position.x, jdata.position.y, jdata.position.z);
+            joint.rotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            //Vector3 ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
+            //joint.rotation = Quaternion.Euler(0f, 0f, -ang.z) * Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         }
     }
 

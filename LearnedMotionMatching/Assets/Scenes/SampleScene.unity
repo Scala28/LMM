@@ -611,7 +611,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!33 &1013524417
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -829,7 +829,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1201315955}
   m_Layer: 0
-  m_Name: camera?lookAt
+  m_Name: camera_lookAt
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1014,7 +1014,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1692440518}
   m_Layer: 0
-  m_Name: camera?follow
+  m_Name: camera_follow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1406,7 +1406,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &919132148757540218
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3245,7 +3245,7 @@ Transform:
   m_GameObject: {fileID: 2599133105506152134}
   serializedVersion: 2
   m_LocalRotation: {x: 0.0012778762, y: -0.0069873943, z: -0.01595342, w: 0.99984753}
-  m_LocalPosition: {x: -0.112841375, y: -0.00000016097329, z: -0.00000009162764}
+  m_LocalPosition: {x: -0.105, y: -0, z: 0.008}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
