@@ -91,7 +91,7 @@ public static class Quat
         }
         return ris;
     }
-    private static Vector4 quat_from_xform(Matrix4x4 xfm)
+    public static Vector4 quat_from_xform(Matrix4x4 xfm)
     {
         Vector4 q;
         float t;
@@ -137,7 +137,27 @@ public static class Quat
 
         return quat_normalize(q);
     }
+    public static Matrix4x4 quat_to_xform(Vector4 q) {
+        (float qw, float qx, float qy, float qz) = (q.x, q.y, q.z, q.w);
+        Matrix4x4 mat = new Matrix4x4();
 
+        (float x2, float y2, float z2) = (qx + qx, qy + qy, qz + qz);
+        (float xx, float yy, float wx) = (qx * x2, qy * y2, qw * x2);
+        (float xy, float yz, float wy) = (qx * y2, qy * z2, qw * y2);
+        (float xz, float zz, float wz) = (qx * z2, qz * z2, qw * z2);
+
+        mat.m00 = 1f - (yy + zz);
+        mat.m01 = xy - wz;
+        mat.m02 = xz + wy;
+        mat.m10 = xy + wz;
+        mat.m11 = 1f - (xx + zz);
+        mat.m12 = yz - wx;
+        mat.m20 = xz - wy;
+        mat.m21 = yz + wx;
+        mat.m22 = 1f - (xx + yy);
+
+        return mat;
+    }
     public static Vector4 quat_normalize(Vector4 q, float eps = 1e-8f)
     {
         float norm = Mathf.Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
@@ -364,6 +384,26 @@ public static class Quat
     {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
+
+    public static float[,] mat3xx3_mul(float[,] a, float[,] b)
+    {
+        float[,] c = new float[3, 3];
+
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                c[i, j] = 0;
+                for (int k = 0; k < 3; k++)
+                {
+                    c[i, j] += a[i, k] * b[k, j];
+                }
+            }
+        }
+
+        return c;
+    }
+
 
     private static float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private static float clampf(float x, float min, float max)

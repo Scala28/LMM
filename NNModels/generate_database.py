@@ -23,7 +23,7 @@ def animation_mirror(lrot, lpos, names, parents):
 
     gpos_mirror = mirror_pos * gpos[:, joints_mirror]
     grot_mirror = quat.from_xform(mirror_rot * quat.to_xform(grot[:, joints_mirror]))
-
+    
     return quat.ik(grot_mirror, gpos_mirror, parents)
 
 

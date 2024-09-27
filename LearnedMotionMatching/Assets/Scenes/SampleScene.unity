@@ -376,15 +376,15 @@ MonoBehaviour:
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1692440518}
   camera_lookAt: {fileID: 1201315955}
-  whatIsTerrain:
-    serializedVersion: 2
-    m_Bits: 64
   search_time: 0.1
   ik_enabled: 1
   adjustment_enabled: 1
   clamping_enabled: 1
-  gizmos: 1
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64
   rigged: 1
+  gizmos: 1
 --- !u!1 &769392281
 GameObject:
   m_ObjectHideFlags: 0
@@ -655,15 +655,15 @@ MonoBehaviour:
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1592004115}
   camera_lookAt: {fileID: 1385709156}
-  whatIsTerrain:
-    serializedVersion: 2
-    m_Bits: 64
   search_time: 0.1
   ik_enabled: 1
   adjustment_enabled: 1
   clamping_enabled: 1
-  gizmos: 1
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64
   rigged: 0
+  gizmos: 1
 --- !u!23 &1013524421
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1217,7 +1217,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 919132148757540217}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1778,7 +1778,7 @@ Transform:
   - {fileID: 390817450179000638}
   - {fileID: 4823483559552392321}
   m_Father: {fileID: 543450653031528387}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -90, z: -90}
 --- !u!4 &2218214611880954987
 Transform:
   m_ObjectHideFlags: 0

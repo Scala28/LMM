@@ -5,7 +5,6 @@ using Unity.Barracuda;
 using System;
 using UnityEditor;
 using Cinemachine;
-using Unity.VisualScripting;
 
 public class MotionMatcher : MonoBehaviour
 {
@@ -105,7 +104,6 @@ public class MotionMatcher : MonoBehaviour
     Vector3 transition_dst_position;
     Vector4 transition_dst_rotation;
 
-    [SerializeField] private LayerMask whatIsTerrain;
 
     [Header("Animation")]
 
@@ -140,7 +138,7 @@ public class MotionMatcher : MonoBehaviour
     private float simulation_rotation_halflife = 0.27f;
 
     // All speeds in m/s
-    private float simulation_run_fwrd_speed = 4.0f;
+    private float simulation_run_fwrd_speed = 3.5f;
     private float simulation_run_side_speed = 3.0f;
     private float simulation_run_back_speed = 2.5f;
 
@@ -189,7 +187,7 @@ public class MotionMatcher : MonoBehaviour
     #region Adjustments
     public bool adjustment_enabled = true;
     private bool adjustment_by_velocity = true;
-    private float adjustment_position_halflife = 0.1f;
+    private float adjustment_position_halflife = 0.075f;
     private float adjustment_rotation_halflife = 0.2f;
     private float adjustment_position_max_ratio = 0.5f;
     private float adjustment_rotation_max_ratio = 0.5f;
@@ -201,18 +199,17 @@ public class MotionMatcher : MonoBehaviour
     private float clamping_max_angle = .5f * Mathf.PI;
     #endregion
 
+    [SerializeField] private LayerMask whatIsTerrain;
+    public bool rigged = false;
     public bool gizmos = false;
 
     private int frame_index;
 
     private const float dt = 1 / 60f;
+    private float time_elapsed = 0f;
 
     private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
-
-    private float time_elapsed = 0f;
-
-    public bool rigged = false;
 
 
     // Start is called before the first frame update
@@ -226,9 +223,9 @@ public class MotionMatcher : MonoBehaviour
             mesh = DataManager.gen_mesh_from_character(ch);
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
-        else 
+        else
             initialize_skeleton(transform);
-        
+
         Debug.Assert(db.nbones() == ch.nbones());
 
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
@@ -250,7 +247,7 @@ public class MotionMatcher : MonoBehaviour
 
         contact_bones[0] = (int)character.Bone_LeftToe;
         contact_bones[1] = (int)character.Bone_RightToe;
-        
+
         contact_states = new bool[contact_bones.Length];
         contact_locks = new bool[contact_bones.Length];
         contact_positions = new Vector3[contact_bones.Length];
@@ -315,12 +312,10 @@ public class MotionMatcher : MonoBehaviour
             bones.Add(bone);
             if (bone.parent != null)
             {
-                Vector3 pos = loc_bone_rest_pos[bones.Count - 1];
-                Vector4 q = loc_bone_rest_rot[bones.Count - 1];
-                bone.localPosition = new Vector3(-pos.x, pos.y, pos.z);
-                bone.localRotation = new Quaternion(q.y, -q.z, -q.w, q.x);
-                Debug.Log(pos);
-                Debug.Log(Quat.convert_ToEuler(q) * Mathf.Rad2Deg);
+                Vector3 pos = ch.bone_rest_positions[bones.Count - 1];
+                Vector4 q = ch.bone_rest_rotations[bones.Count - 1]; 
+                bone.position = new Vector3(-pos.x, pos.y, pos.z);
+                bone.rotation = new Quaternion(q.y, -q.z, -q.w, q.x);
             }
         }
         foreach (Transform child in bone)
@@ -1059,13 +1054,14 @@ public class MotionMatcher : MonoBehaviour
 
         // terrain heights at 0, 15, 30, 45 local to root now
         RaycastHit hit;
-        Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position, -Vector3.up, out hit,
-            float.MaxValue, whatIsTerrain));
+        Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position, 
+                    -Vector3.up, out hit,float.MaxValue, whatIsTerrain);
+
         Vector3 terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
             hit.point - global_pose.root_position);
 
-        Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position, -Vector3.up, out hit,
-            float.MaxValue, whatIsTerrain));
+        Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position, 
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
         Vector3 terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
             hit.point - global_pose.root_position);
 
@@ -1076,7 +1072,7 @@ public class MotionMatcher : MonoBehaviour
         height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
         height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
-        float multiplier_min_value = input_handler.GaitInput ? .2f : .4f;
+        float multiplier_min_value = input_handler.GaitInput ? .175f : .4f;
 
         if (height_variance >= .15f)
             terrain_speed_multiplier = lerpf(multiplier_min_value, 1f, clampf(1 - height_variance, 0f, 1f));
@@ -1477,7 +1473,9 @@ public class MotionMatcher : MonoBehaviour
     #region clamping
     private Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
     {
-        if(length(character_position - simulation_position) > max_distance)
+        Vector3 distance_xz = (character_position - simulation_position);
+        distance_xz.y = 0f;
+        if (length(distance_xz) > max_distance)
         {
             return max_distance * Quat.vec_normalize(character_position - simulation_position) + simulation_position;
         }
@@ -1522,8 +1520,9 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-        transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
+        transform.position = new Vector3(-global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+        transform.rotation = new Quaternion(global_pose.root_rotation.y, -global_pose.root_rotation.z, -global_pose.root_rotation.w, global_pose.root_rotation.x);
+
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
@@ -1531,8 +1530,6 @@ public class MotionMatcher : MonoBehaviour
 
             joint.position = new Vector3(-jdata.position.x, jdata.position.y, jdata.position.z);
             joint.rotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
-            //Vector3 ang = Quat.convert_ToEuler(jdata.rotation) * Mathf.Rad2Deg;
-            //joint.rotation = Quaternion.Euler(0f, 0f, -ang.z) * Quaternion.Euler(0f, -ang.y, 0f) * Quaternion.Euler(ang.x, 0f, 0f);
         }
     }
 
