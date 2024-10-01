@@ -33,14 +33,6 @@ public class MotionMatcher : MonoBehaviour
     private float[] feature_proj;
     private float[] latent_curr;
     private float[] latent_proj;
-
-    // Theese are for generating features from database
-    private float feature_weight_foot_position = 0.75f;
-    private float feature_weight_foot_velocity = 1.0f;
-    private float feature_weight_hip_velocity = 1.0f;
-    private float feature_weight_trajectory_positions = 1.0f;
-    private float feature_weight_trajectory_directions = 1.5f;
-    private float feature_weight_trajectory_toe_height = 1.0f;
     #endregion
     public enum character
     {
@@ -1088,14 +1080,14 @@ public class MotionMatcher : MonoBehaviour
         }
         else
         {
-            Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position,
-                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
+            Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position,
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
 
             terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
                 hit.point - global_pose.root_position);
 
-            Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position,
-                        -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
+            Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position,
+                        -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
             terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
                 hit.point - global_pose.root_position);
         }
@@ -1600,6 +1592,6 @@ public class MotionMatcher : MonoBehaviour
                 }
             }
         }
-        catch (Exception e) { }
+        catch { }
     }
 }
