@@ -33,6 +33,7 @@ public class MotionMatcher : MonoBehaviour
     private float[] feature_proj;
     private float[] latent_curr;
     private float[] latent_proj;
+
     #endregion
     public enum character
     {
@@ -152,7 +153,7 @@ public class MotionMatcher : MonoBehaviour
     private Vector3[] terrain_root_positions;
     private Vector4[] terrain_root_rotations;
     private Vector3[][] terrain_toe_positions = new Vector3[3][];
-    
+
     #endregion
 
     #region Contact states and foot locking
@@ -304,10 +305,10 @@ public class MotionMatcher : MonoBehaviour
             bones.Add(bone);
             if (bone.parent != null)
             {
-                Vector3 pos = ch.bone_rest_positions[bones.Count - 1];
-                Vector4 q = ch.bone_rest_rotations[bones.Count - 1]; 
-                bone.position = new Vector3(-pos.x, pos.y, pos.z);
-                bone.rotation = new Quaternion(q.y, -q.z, -q.w, q.x);
+                Vector3 pos = loc_bone_rest_pos[bones.Count - 1];
+                Vector4 q = loc_bone_rest_rot[bones.Count - 1];
+                bone.localPosition = new Vector3(-pos.x, pos.y, -pos.z);
+                bone.localRotation = new Quaternion(-q.y, q.z, -q.w, q.x);
             }
         }
         foreach (Transform child in bone)
@@ -476,15 +477,13 @@ public class MotionMatcher : MonoBehaviour
                 adjusted_position = adjust_character_position_by_velocity(
                     pose.root_position,
                     pose.root_velocity,
-                    rigged ? new Vector3(-simulation_position.x, simulation_position.y, simulation_position.z) : simulation_rotation,
+                    simulation_position,
                     adjustment_position_halflife,
                     dt);
                 adjusted_rotation = adjust_character_rotation_by_velocity(
                     pose.root_rotation,
                     pose.root_angular_velocity,
-                    rigged ? Quat.quat_from_scaled_angle_axis(new Vector3(Quat.quat_to_scaled_angle_axis(simulation_rotation).x,
-                                                                        -Quat.quat_to_scaled_angle_axis(simulation_rotation).y,
-                                                                        Quat.quat_to_scaled_angle_axis(simulation_rotation).z)) : simulation_rotation,
+                    simulation_rotation,
                     adjustment_rotation_halflife,
                     dt);
             }
@@ -499,13 +498,11 @@ public class MotionMatcher : MonoBehaviour
 
             adjusted_position = clamp_character_position(
                 adjusted_position,
-                rigged ? new Vector3(-simulation_position.x, simulation_position.y, simulation_position.z) : simulation_position,
+                simulation_position,
                 clamping_max_distance);
             adjusted_rotation = clamp_character_rotation(
                 adjusted_rotation,
-                rigged ? Quat.quat_from_scaled_angle_axis(new Vector3(Quat.quat_to_scaled_angle_axis(simulation_rotation).x,
-                                                                        -Quat.quat_to_scaled_angle_axis(simulation_rotation).y,
-                                                                        Quat.quat_to_scaled_angle_axis(simulation_rotation).z)) : simulation_rotation,
+                simulation_rotation,
                 clamping_max_angle);
 
             inertialize_root_adjust(adjusted_position, adjusted_rotation);
@@ -519,8 +516,7 @@ public class MotionMatcher : MonoBehaviour
 
         forward_kinamatic_full();
 
-        orbit_camera_update((rigged ? new Vector3(-pose.root_position.x, pose.root_position.y, pose.root_position.z) : pose.root_position) + Vector3.up, 
-            gamepad_stickright, desired_strafe, dt);
+        orbit_camera_update(pose.root_position + Vector3.up, gamepad_stickright, desired_strafe, dt);
 
         if (!rigged)
             deform_character_mesh();
@@ -942,7 +938,7 @@ public class MotionMatcher : MonoBehaviour
 
         // Compute global toe positions at 15, 30, 45
 
-        for(int i=0; i<trajectory_toe_position.Length; i++)
+        for (int i = 0; i < trajectory_toe_position.Length; i++)
         {
             Vector3 left_pos = Quat.quat_mul_vec(terrain_root_rotations[i], current_pose.traj_toe_position[i][0]) + terrain_root_positions[i];
             Vector3 right_pos = Quat.quat_mul_vec(terrain_root_rotations[i], current_pose.traj_toe_position[i][1]) + terrain_root_positions[i];
@@ -955,14 +951,14 @@ public class MotionMatcher : MonoBehaviour
     {
         float[][] hit_y = new float[trajectory_toe_position.Length][];
         float variance = 0f;
-        for(int i=0; i < trajectory_toe_position.Length; i++)
+        for (int i = 0; i < trajectory_toe_position.Length; i++)
         {
             hit_y[i] = new float[2];
             terrain_toe_positions[i] = new Vector3[2];
             // Record terrain height at 15, 30, 45 local to root now
-            for(int j=0; j < trajectory_toe_position[0].Length; j++)
+            for (int j = 0; j < trajectory_toe_position[0].Length; j++)
             {
-            
+
                 RaycastHit hit_point;
                 Ray ray = new Ray(new Vector3(
                     trajectory_toe_position[i][j].x,
@@ -970,7 +966,7 @@ public class MotionMatcher : MonoBehaviour
                     trajectory_toe_position[i][j].y), -Vector3.up);
                 Debug.Assert(Physics.Raycast(ray, out hit_point, float.MaxValue, whatIsTerrain));
 
-                Vector3 chr_hit_point = Quat.quat_inv_mul_vec(global_pose.root_rotation, 
+                Vector3 chr_hit_point = Quat.quat_inv_mul_vec(global_pose.root_rotation,
                     hit_point.point - global_pose.root_position);
 
                 hit_y[i][j] = chr_hit_point.y;
@@ -1022,13 +1018,9 @@ public class MotionMatcher : MonoBehaviour
         offset += 3;
 
         // query_compute_trajectory_position_feature
-        // Inverse input on x axis if rigged (display_frame_pose() representation in x reversed)
-        Vector3 traj0 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-trajectory_positions[1].x, trajectory_positions[1].y, trajectory_positions[1].z) - pose.root_position) :
-            Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[1] - pose.root_position);
-        Vector3 traj1 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-trajectory_positions[2].x, trajectory_positions[2].y, trajectory_positions[2].z) - pose.root_position) :
-            Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[2] - pose.root_position);
-        Vector3 traj2 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-trajectory_positions[3].x, trajectory_positions[3].y, trajectory_positions[3].z) - pose.root_position) : 
-            Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[3] - pose.root_position);
+        Vector3 traj0 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[1] - pose.root_position);
+        Vector3 traj1 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[2] - pose.root_position);
+        Vector3 traj2 = Quat.quat_inv_mul_vec(pose.root_rotation, trajectory_positions[3] - pose.root_position);
 
         query[offset + 0] = traj0.x;
         query[offset + 1] = traj0.z;
@@ -1040,12 +1032,9 @@ public class MotionMatcher : MonoBehaviour
         offset += 6;
 
         // query_compute_trajectory_direction_feature
-        Vector3 v0 = Quat.quat_mul_vec(trajectory_rotations[1], new Vector3(0, 0, 1f));
-        Vector3 dir0 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-v0.x, v0.y, v0.z)) : Quat.quat_inv_mul_vec(pose.root_rotation, v0);
-        Vector3 v1 = Quat.quat_mul_vec(trajectory_rotations[2], new Vector3(0, 0, 1f));
-        Vector3 dir1 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-v1.x, v1.y, v1.z)) : Quat.quat_inv_mul_vec(pose.root_rotation, v1);
-        Vector3 v2 = Quat.quat_mul_vec(trajectory_rotations[3], new Vector3(0, 0, 1f));
-        Vector3 dir2 = rigged ? Quat.quat_inv_mul_vec(pose.root_rotation, new Vector3(-v2.x, v2.y, v2.z)) : Quat.quat_inv_mul_vec(pose.root_rotation, v2);
+        Vector3 dir0 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[1], new Vector3(0, 0, 1f)));
+        Vector3 dir1 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[2], new Vector3(0, 0, 1f)));
+        Vector3 dir2 = Quat.quat_inv_mul_vec(pose.root_rotation, Quat.quat_mul_vec(trajectory_rotations[3], new Vector3(0, 0, 1f)));
 
         query[offset + 0] = dir0.x;
         query[offset + 1] = dir0.z;
@@ -1058,39 +1047,17 @@ public class MotionMatcher : MonoBehaviour
 
         // terrain heights at 0, 15, 30, 45 local to root now
         RaycastHit hit;
-        Vector3 terrain_height_0_left;
-        Vector3 terrain_height_0_right;
+        Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position,
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
 
-        if (rigged)
-        {
-            Vector3 inv_position_left = new Vector3(-global_pose.joints[(int)character.Bone_LeftToe - 1].position.x,
-                                                    global_pose.joints[(int)character.Bone_LeftToe - 1].position.y,
-                                                    global_pose.joints[(int)character.Bone_LeftToe - 1].position.z);
-            Vector3 inv_position_right = new Vector3(-global_pose.joints[(int)character.Bone_RightToe - 1].position.x,
-                                                    global_pose.joints[(int)character.Bone_RightToe - 1].position.y,
-                                                    global_pose.joints[(int)character.Bone_RightToe - 1].position.z);
-            Debug.Assert(Physics.Raycast(inv_position_left, -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
-            Vector3 root_pos = new Vector3(-global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-            Vector3 angle = Quat.quat_to_scaled_angle_axis(global_pose.root_rotation);
-            Vector4 root_rot = Quat.quat_to_scaled_angle_axis(new Vector3(angle.x, -angle.y, angle.z));
-            terrain_height_0_left = Quat.quat_inv_mul_vec(root_rot, hit.point - root_pos);
+        Vector3 terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
 
-            Debug.Assert(Physics.Raycast(inv_position_right, -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
-            terrain_height_0_right = Quat.quat_inv_mul_vec(root_rot, hit.point - root_pos);
-        }
-        else
-        {
-            Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_LeftToe - 1].position,
-                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
+        Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position,
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
+        Vector3 terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
 
-            terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
-                hit.point - global_pose.root_position);
-
-            Debug.Assert(Physics.Raycast(global_pose.joints[(int)character.Bone_RightToe - 1].position,
-                        -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
-            terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
-                hit.point - global_pose.root_position);
-        }
         compute_trajectory_toe_position();
 
         (float[][] terrain_heights, float height_variance) = cast_terrain_height();
@@ -1098,7 +1065,7 @@ public class MotionMatcher : MonoBehaviour
         height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
         height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
-        float multiplier_min_value = input_handler.GaitInput ? .2f : .4f;
+        float multiplier_min_value = input_handler.GaitInput ? .175f : .4f;
 
         if (height_variance >= .15f)
             terrain_speed_multiplier = lerpf(multiplier_min_value, 1f, clampf(1 - height_variance, 0f, 1f));
@@ -1116,7 +1083,7 @@ public class MotionMatcher : MonoBehaviour
 
         offset += 8;
 
-        return (query, offset);         
+        return (query, offset);
     }
     private float orbit_camera_azimuth(float azimuth, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
@@ -1257,8 +1224,7 @@ public class MotionMatcher : MonoBehaviour
             contact_update(i, global_pose.joints[toe_bone - 1].position);
 
             RaycastHit hit;
-            Debug.Assert(Physics.Raycast(rigged ? new Vector3(-contact_positions[i].x, 100f, contact_positions[i].z) : new Vector3(contact_positions[i].x, 100f, contact_positions[i].z),
-                -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
+            Debug.Assert(Physics.Raycast(new Vector3(contact_positions[i].x, 100f, contact_positions[i].z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
 
             // Ensure contact position never goes through floor
             Vector3 contact_position_clamp = contact_positions[i];
@@ -1469,7 +1435,7 @@ public class MotionMatcher : MonoBehaviour
         // multiplied by the ratio then we need to clamp it to that length
         float max_length = adjustment_position_max_ratio * length(character_vel) * dt;
 
-        if(length(adjustment_position) > max_length)
+        if (length(adjustment_position) > max_length)
         {
             adjustment_position = max_length * Quat.vec_normalize(adjustment_position);
         }
@@ -1487,7 +1453,7 @@ public class MotionMatcher : MonoBehaviour
 
         float max_length = adjustment_rotation_max_ratio * length(character_angular_vel) * dt;
 
-        if(length(Quat.quat_to_scaled_angle_axis(adjustment_rotation)) > max_length)
+        if (length(Quat.quat_to_scaled_angle_axis(adjustment_rotation)) > max_length)
         {
             adjustment_rotation = Quat.quat_from_scaled_angle_axis(max_length *
                 Quat.vec_normalize(Quat.quat_to_scaled_angle_axis(adjustment_rotation)));
@@ -1512,7 +1478,7 @@ public class MotionMatcher : MonoBehaviour
     }
     private Vector4 clamp_character_rotation(Vector4 character_rotation, Vector4 simulation_rotation, float max_angle)
     {
-        if(Quat.quat_angle_between(character_rotation, simulation_rotation) > max_angle)
+        if (Quat.quat_angle_between(character_rotation, simulation_rotation) > max_angle)
         {
             Vector4 diff = Quat.quat_abs(Quat.quat_mul_inv(character_rotation, simulation_rotation));
             float diff_angle; Vector3 diff_axis;
@@ -1546,16 +1512,16 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        transform.position = new Vector3(-global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-        transform.rotation = new Quaternion(global_pose.root_rotation.y, -global_pose.root_rotation.z, -global_pose.root_rotation.w, global_pose.root_rotation.x);
+        transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+        transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = bones[i];
-            JointMotionData jdata = global_pose.joints[i - 1];
+            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
 
-            joint.position = new Vector3(-jdata.position.x, jdata.position.y, jdata.position.z);
-            joint.rotation = new Quaternion(jdata.rotation.y, -jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.localPosition = new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z);
+            joint.localRotation = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
         }
     }
 
@@ -1592,6 +1558,6 @@ public class MotionMatcher : MonoBehaviour
                 }
             }
         }
-        catch { }
+        catch (Exception e) { }
     }
 }
