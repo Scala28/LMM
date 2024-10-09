@@ -72,7 +72,6 @@ public class MotionMatcher : MonoBehaviour
     private float camera_altitude = .4f;
     private float camera_distance = 4.0f;
 
-
     private DataManager.database db;
     private DataManager.character ch;
 
@@ -131,9 +130,9 @@ public class MotionMatcher : MonoBehaviour
     private float simulation_rotation_halflife = 0.27f;
 
     // All speeds in m/s
-    private float simulation_run_fwrd_speed = 3.5f;
-    private float simulation_run_side_speed = 3.0f;
-    private float simulation_run_back_speed = 2.5f;
+    private float simulation_run_fwrd_speed = 3.3f;
+    private float simulation_run_side_speed = 2.8f;
+    private float simulation_run_back_speed = 2.3f;
 
     private float simulation_walk_fwrd_speed = 1.75f;
     private float simulation_walk_side_speed = 1.5f;
@@ -203,6 +202,8 @@ public class MotionMatcher : MonoBehaviour
 
     private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
+
+    public bool gen_input = false;
 
 
     // Start is called before the first frame update
@@ -1558,6 +1559,6 @@ public class MotionMatcher : MonoBehaviour
                 }
             }
         }
-        catch (Exception e) { }
+        catch { }
     }
 }

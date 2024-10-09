@@ -384,11 +384,9 @@ public static class Quat
     {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
-
     public static float[,] mat3xx3_mul(float[,] a, float[,] b)
     {
         float[,] c = new float[3, 3];
-
         for (int i = 0; i < 3; i++)
         {
             for (int j = 0; j < 3; j++)
@@ -400,10 +398,8 @@ public static class Quat
                 }
             }
         }
-
         return c;
     }
-
 
     private static float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private static float clampf(float x, float min, float max)
