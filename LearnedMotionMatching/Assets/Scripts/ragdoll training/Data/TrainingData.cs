@@ -7,12 +7,21 @@ using UnityEngine.Rendering.HighDefinition;
 public class TrainingData : ScriptableObject
 {
     [Header("ArticulationBody settings")]
+    public int solverIterations = 32;
     public List<ConfigManager.MusclePower> MusclePowers;
     public float[] boneToStiffness = new float[23];
     public float forceLimit;
     public float damping;
     public bool dampingScalesWithStiffness;
     public bool selfCollision;
+
+    [Header("Physical character settings")]
+    public int fixedUpdateFrequency = 256;
+    public bool resolveSimReferenceFrameWithSimRotation = false;
+
+    [Header("Training hyperparameters")]
+    public int MAX_EPISODE_LENGTH_SECONDS = 20;
+    public int EVALUATE_EVERY_K = 2;
 }
 public enum ActionRotationType
 {

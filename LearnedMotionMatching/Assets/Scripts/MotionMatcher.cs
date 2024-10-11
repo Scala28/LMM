@@ -72,6 +72,7 @@ public class MotionMatcher : MonoBehaviour
     private float camera_altitude = .4f;
     private float camera_distance = 4.0f;
 
+    public DataManager.database DataBase { get { return db; } }
     private DataManager.database db;
     private DataManager.character ch;
 
@@ -83,6 +84,8 @@ public class MotionMatcher : MonoBehaviour
     private Pose trns_pose;
     private Pose global_pose;
     private Pose adjusted_bones_pose;
+
+    public Pose local_pose { get { return adjusted_bones_pose; } }
 
     private bool[] global_bone_computed;
 
@@ -194,43 +197,55 @@ public class MotionMatcher : MonoBehaviour
     [SerializeField] private LayerMask whatIsTerrain;
     public bool rigged = false;
     public bool gizmos = false;
+    public bool set_vcam = true;
 
     private int frame_index;
 
     private const float dt = 1 / 60f;
     private float time_elapsed = 0f;
 
-    private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
+    public Transform[] rigToTransform;
 
-    public bool gen_input = false;
+    #region Control
+    [HideInInspector]
+    public bool Is_initialized { get { return _initialized; } }
+    private bool _initialized = false;
+    #endregion
 
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
+        Application.targetFrameRate = 60;
         input_handler = GetComponent<InputHandler>();
+
         db = DataManager.load_database("Assets/Resources/terrain_db.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
+
         ch = DataManager.load_character("Assets/Resources/character.bin");
+
+        Debug.Assert(db.nbones() == ch.nbones());
+
         if (!rigged)
         {
             mesh = DataManager.gen_mesh_from_character(ch);
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
         else
-            initialize_skeleton(transform);
+            Debug.Assert(rigToTransform.Length == db.nbones());
 
-        Debug.Assert(db.nbones() == ch.nbones());
-
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
 
         latents = DataManager.load_latent("Assets/Resources/latent.bin");
 
         frame_index = db.range_starts[0];
         initialize_pose();
 
-        vcam.Follow = camera_follow;
-        vcam.LookAt = camera_lookAt;
+        if (set_vcam)
+        {
+            vcam.Follow = camera_follow;
+            vcam.LookAt = camera_lookAt;
+        }
 
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
@@ -282,6 +297,8 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[latents[0].Length];
         latent_proj = new float[latents[0].Length];
+
+        _initialized = true;
     }
     #region Initialize
     private void initialize_models()
@@ -297,23 +314,6 @@ public class MotionMatcher : MonoBehaviour
         stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
         decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
         projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/projector.bin");
-    }
-    private void initialize_skeleton(Transform bone)
-    {
-        (Vector3[] loc_bone_rest_pos, Vector4[] loc_bone_rest_rot) = put_local(ch.bone_rest_positions, ch.bone_rest_rotations);
-        if (bone.CompareTag("joint"))
-        {
-            bones.Add(bone);
-            if (bone.parent != null)
-            {
-                Vector3 pos = loc_bone_rest_pos[bones.Count - 1];
-                Vector4 q = loc_bone_rest_rot[bones.Count - 1];
-                bone.localPosition = new Vector3(-pos.x, pos.y, -pos.z);
-                bone.localRotation = new Quaternion(-q.y, q.z, -q.w, q.x);
-            }
-        }
-        foreach (Transform child in bone)
-            initialize_skeleton(child);
     }
     private (Vector3[], Vector4[]) put_local(Vector3[] g_positions, Vector4[] g_rotations)
     {
@@ -358,6 +358,7 @@ public class MotionMatcher : MonoBehaviour
 
         current_pose = pose.DeepClone();
         trns_pose = pose.DeepClone();
+        adjusted_bones_pose = pose.DeepClone();
 
         bone_offset_positions = new Vector3[db.nbones()];
         bone_offset_rotations = new Vector4[db.nbones()];
@@ -371,12 +372,12 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        time_elapsed += Time.deltaTime;
-        if (rigged)
-            if (time_elapsed < dt)
-                return;
+        time_elapsed += Time.fixedDeltaTime;
+        //if (rigged)
+        //    if (time_elapsed < dt)
+        //        return;
 
         Vector3 gamepad_stickleft = input_handler.MoveInput;
         Vector3 gamepad_stickright = input_handler.LookInput;
@@ -1518,7 +1519,7 @@ public class MotionMatcher : MonoBehaviour
 
         for (int i = 1; i < db.nbones(); i++)
         {
-            Transform joint = bones[i];
+            Transform joint = rigToTransform[i];
             JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
 
             joint.localPosition = new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z);

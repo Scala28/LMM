@@ -587,7 +587,6 @@ public static class DataManager
             count = reader.ReadInt32();
             features_scale = readFloat_toArray(reader, count);
         }
-
         return (features, features_offset, features_scale);
     }
     public static float[][] load_latent(string filename)

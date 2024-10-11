@@ -14,24 +14,31 @@ public class SimCharacterController : MonoBehaviour
     public Collider[] boneToCollider;
     public ArticulationBody[] boneToArtBody;
 
+    #region Control
+    [HideInInspector]
+    public bool Is_initialized { get { return _initialized; } }
+    private bool _initialized = false;
+    #endregion
+
     private void Awake()
     {
         _config = ConfigManager.Instance;
-        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
 
-        initColliders();
-        initArticulationBodies();
+        getColliders();
+        getArticulationBodies();
         initArticulationDrives();
         setupIgnoreCollisions();
+
+        _initialized = true;
     }
 
-    private void initColliders()
+    private void getColliders()
     {
-        boneToCollider = new Collider[db.nbones()];
-        for (int i = 1; i < db.nbones(); i++)
+        boneToCollider = new Collider[boneToTransform.Length];
+        for (int i = 1; i < boneToTransform.Length; i++)
         {
             Transform trans = boneToTransform[i];
-            if (i == (int)Bone_LeftFoot || i == (int)Bone_RightFoot)
+            if(i == (int)Bone_LeftFoot || i == (int)Bone_RightFoot)
                 boneToCollider[i] = UnityObjUtils.getChildBoxCollider(trans.gameObject).GetComponent<Collider>();
             else
                 boneToCollider[i] = UnityObjUtils.getChildCapsuleCollider(trans.gameObject).GetComponent<Collider>();
@@ -39,14 +46,15 @@ public class SimCharacterController : MonoBehaviour
                 Debug.Log($"Could not find collider for {(MotionMatcher.character)i}");
         }
     }
-    private void initArticulationBodies()
+    private void getArticulationBodies()
     {
-        for(int i=0; i<db.nbones(); i++)
+        boneToArtBody = new ArticulationBody[boneToTransform.Length];
+        for(int i=0; i<boneToTransform.Length; i++)
             boneToArtBody[i] = boneToTransform[i].GetComponent<ArticulationBody>();
     }
     private void initArticulationDrives()
     {
-        for(int i=1; i<db.nbones(); i++)
+        for(int i=1; i<boneToTransform.Length; i++)
         {
             bool musclePowerExists = _config.Training_data.MusclePowers.Any(x => x.Bone == (MotionMatcher.character)i);
             Vector3 musclePower = musclePowerExists ? _config.Training_data.MusclePowers.First(x => x.Bone == (MotionMatcher.character)i).PowerVector : Vector3.zero;
@@ -84,7 +92,7 @@ public class SimCharacterController : MonoBehaviour
             for (int j = i + 1; j < feetColliders.Length; j++)
                 Physics.IgnoreCollision(boneToCollider[feetColliders[i]], boneToCollider[feetColliders[j]]);
 
-        for (int i = 2; i < db.nbones(); i++) // start at 2 because hip has no parent collider
+        for (int i = 2; i < boneToTransform.Length; i++) // start at 2 because hip has no parent collider
         {
             int parent = db.bone_parents[i];
             Physics.IgnoreCollision(boneToCollider[i], boneToCollider[parent]);
@@ -92,7 +100,76 @@ public class SimCharacterController : MonoBehaviour
             Physics.IgnoreCollision(boneToCollider[i], boneToCollider[(int)Bone_Neck]);
             if (i == (int)Bone_LeftUpLeg || i == (int)Bone_RightUpLeg)
                 Physics.IgnoreCollision(boneToCollider[i], boneToCollider[(int)Bone_Spine]);
+        }
+    }
 
+    public static void teleportSimChar(CharInfo sim_char, CharInfo kin_char, float verticalOffset = .15f, bool setVelocities = false)
+    {
+        sim_char.transform.rotation = kin_char.transform.rotation;
+        Transform kin_root = kin_char.boneToTransform[(int)Bone_Entity];
+        Transform kinHips = kin_char.boneToTransform[(int)Bone_Hips];
+        Transform simHips = sim_char.boneToTransform[(int)Bone_Hips];
+        // Adding this to root transform position will give hip transform position
+        Vector3 simHipPositionOffset = sim_char.transform.position - simHips.position;
+        // we need to set: 
+        // simRootPosition + simHipPositionOffset = kinHipPosition 
+        // simRootPosition = kinHipPosition - simHipPositionOffset
+
+        // We teleport the sim char a little higher to prevent it from clipping into the ground and bouncing off
+        sim_char.root.TeleportRoot(kinHips.position + simHipPositionOffset + Vector3.up * verticalOffset, kin_root.rotation);
+        sim_char.root.resetJointPhysics();
+        //if (setVelocities)
+        //{
+        //    sim_char.root.velocity = kin_char.MMScript.local_pose.root_velocity;
+        //}
+        //for (int i = 1; i < 23; i++)
+        //{
+        //    MotionMatcher.character bone = (MotionMatcher.character)i;
+        //    ArticulationBody body = sim_char.boneToArt[i];
+        //    if (body.jointType != ArticulationJointType.SphericalJoint)
+        //    {
+        //        body.resetJointPhysics();
+        //        continue;
+        //    }
+        //    Quaternion targetLocalRot = kin_char.boneToTransform[i].localRotation;
+        //    bool isFootBone = bone == Bone_LeftFoot || bone == Bone_RightFoot;
+        //    setArtBodyDrivesToRotationAndReset(body, targetLocalRot, true, isFootBone);
+        //}
+    }
+    private static void setArtBodyDrivesToRotationAndReset(ArticulationBody body, Quaternion targetRot, bool resetEverything, bool doNotSetZRot = false)
+    {
+        Vector3 TargetRotationInJointSpace = body.ToTargetRotationInReducedSpace(targetRot, false);
+        if (body.dofCount == 3)
+        {
+            body.resetJointPosition(doNotSetZRot ? new Vector3(TargetRotationInJointSpace.x, TargetRotationInJointSpace.y, 0f) : TargetRotationInJointSpace, resetEverything);
+            TargetRotationInJointSpace *= Mathf.Rad2Deg;
+            var drive = body.xDrive;
+            drive.target = TargetRotationInJointSpace.x;
+            body.xDrive = drive;
+
+            drive = body.yDrive;
+            drive.target = TargetRotationInJointSpace.y;
+            body.yDrive = drive;
+
+            drive = body.zDrive;
+            drive.target = TargetRotationInJointSpace.z;
+            body.zDrive = drive;
+        }
+        else if (body.dofCount == 1)
+        {
+            float new_target = 0f;
+            if (body.twistLock != ArticulationDofLock.LockedMotion)
+                new_target = TargetRotationInJointSpace.x;
+            else if (body.swingYLock != ArticulationDofLock.LockedMotion)
+                new_target = TargetRotationInJointSpace.y;
+            else if (body.swingZLock != ArticulationDofLock.LockedMotion)
+                new_target = TargetRotationInJointSpace.z;
+            body.resetJointPosition(new_target, resetEverything);
+            TargetRotationInJointSpace *= Mathf.Rad2Deg;
+            var drive = body.zDrive;
+            drive.target = TargetRotationInJointSpace.z;
+            body.zDrive = drive;
         }
     }
 }
+ 
