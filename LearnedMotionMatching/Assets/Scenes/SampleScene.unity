@@ -395,7 +395,7 @@ MonoBehaviour:
   MaxStep: 0
   kin_char_prefab: {fileID: 536787371494200998, guid: 0122f7b7f5b26b843bd88f8c210cdd39, type: 3}
   sim_char_prefab: {fileID: 1698237335039107927, guid: bb31332a00655ce46af95914ccbe7651, type: 3}
-  updateVelOnTeleport: 1
+  updateVelOnTeleport: 0
   stateBones: 05000000090000000a0000000e0000001100000015000000
 --- !u!114 &499100971
 MonoBehaviour:

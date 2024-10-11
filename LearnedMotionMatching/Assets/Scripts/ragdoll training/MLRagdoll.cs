@@ -177,8 +177,7 @@ public class MLRagdoll : Agent
     public override void OnEpisodeBegin()
     {
         lastEpisodeEndingFrame = curFixedUpdate;
-        float verticalOffset = .15f;
-        //SimCharacterController.teleportSimChar(simChar, kinChar, verticalOffset, updateVelOnTeleport);
+        SimCharacterController.teleportSimChar(simChar, kinChar, .01f, updateVelOnTeleport);
         lastSimCharTeleportFixedUpdate = curFixedUpdate;
         Physics.Simulate(.00001f);
         resetData();

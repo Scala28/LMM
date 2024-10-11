@@ -375,9 +375,9 @@ public class MotionMatcher : MonoBehaviour
     void FixedUpdate()
     {
         time_elapsed += Time.fixedDeltaTime;
-        //if (rigged)
-        //    if (time_elapsed < dt)
-        //        return;
+        if (rigged)
+            if (time_elapsed < dt * 3f)
+                return;
 
         Vector3 gamepad_stickleft = input_handler.MoveInput;
         Vector3 gamepad_stickright = input_handler.LookInput;

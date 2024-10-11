@@ -156,7 +156,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1800328861264175610}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -239,7 +239,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7528357975869699396}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1615,7 +1615,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &779120179096487881 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -7953412300187084337, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -1742,7 +1742,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &1011902480454189195 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -7684601133023764851, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -1879,7 +1879,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &1196940890372052929 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -8373225867684951609, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -1950,7 +1950,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &1255379260379932704 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -8485853983425661402, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2021,7 +2021,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &1382524387453076240 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 612356030872313110, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2125,7 +2125,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &1440846938358688175 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8597694248213088343, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2232,7 +2232,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 0
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!114 &8712556460080294404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2465,7 +2465,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &3069764681656675563 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -5635746149187095827, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2758,7 +2758,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &4412938745400339879 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -6454264774184668255, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2829,7 +2829,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &4534185218738773054 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -6504155103773949384, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -2905,7 +2905,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &4657822775010152679 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -2597493791749927199, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3050,7 +3050,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &5285604811461966782 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5911552409327101368, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3121,7 +3121,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &5353913225231944215 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5844788018589045777, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3192,7 +3192,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &5407235247536066088 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5790058765815975982, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3268,7 +3268,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &5443849218979066053 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -3396769582767526205, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3354,7 +3354,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &5602735806941228040 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6237725735928541710, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3602,7 +3602,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &7203912333668343923 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8694551007408537205, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3683,7 +3683,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &7276145785137383062 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -24171662176741232, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3764,7 +3764,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &7468989198402469048 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -218672999929158978, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -3986,7 +3986,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!1 &8631638052537691965 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7825440968731144507, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -4100,7 +4100,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 1
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &8817689550013178558 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -2229693138803917640, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -4204,7 +4204,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &9022276827434845923 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7378480529437153509, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}
@@ -4318,7 +4318,7 @@ ArticulationBody:
   m_ImplicitTensor: 1
   m_Immovable: 0
   m_UseGravity: 1
-  m_CollisionDetectionMode: 0
+  m_CollisionDetectionMode: 1
 --- !u!4 &9201872990127358991 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7269846299603589641, guid: b1938e8ecd88b564ca534c27680a635f, type: 3}

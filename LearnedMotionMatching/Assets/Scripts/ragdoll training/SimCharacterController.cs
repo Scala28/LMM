@@ -103,7 +103,7 @@ public class SimCharacterController : MonoBehaviour
         }
     }
 
-    public static void teleportSimChar(CharInfo sim_char, CharInfo kin_char, float verticalOffset = .15f, bool setVelocities = false)
+    public static void teleportSimChar(CharInfo sim_char, CharInfo kin_char, float verticalOffset = .01f, bool setVelocities = false)
     {
         sim_char.transform.rotation = kin_char.transform.rotation;
         Transform kin_root = kin_char.boneToTransform[(int)Bone_Entity];
@@ -116,25 +116,25 @@ public class SimCharacterController : MonoBehaviour
         // simRootPosition = kinHipPosition - simHipPositionOffset
 
         // We teleport the sim char a little higher to prevent it from clipping into the ground and bouncing off
-        sim_char.root.TeleportRoot(kinHips.position + simHipPositionOffset + Vector3.up * verticalOffset, kin_root.rotation);
+        sim_char.root.TeleportRoot(kinHips.position + simHipPositionOffset + Vector3.up * verticalOffset, kin_char.transform.rotation);
         sim_char.root.resetJointPhysics();
-        //if (setVelocities)
-        //{
-        //    sim_char.root.velocity = kin_char.MMScript.local_pose.root_velocity;
-        //}
-        //for (int i = 1; i < 23; i++)
-        //{
-        //    MotionMatcher.character bone = (MotionMatcher.character)i;
-        //    ArticulationBody body = sim_char.boneToArt[i];
-        //    if (body.jointType != ArticulationJointType.SphericalJoint)
-        //    {
-        //        body.resetJointPhysics();
-        //        continue;
-        //    }
-        //    Quaternion targetLocalRot = kin_char.boneToTransform[i].localRotation;
-        //    bool isFootBone = bone == Bone_LeftFoot || bone == Bone_RightFoot;
-        //    setArtBodyDrivesToRotationAndReset(body, targetLocalRot, true, isFootBone);
-        //}
+        if (setVelocities)
+        {
+            sim_char.root.velocity = kin_char.MMScript.local_pose.root_velocity;
+        }
+        for (int i = 1; i < 23; i++)
+        {
+            MotionMatcher.character bone = (MotionMatcher.character)i;
+            ArticulationBody body = sim_char.boneToArt[i];
+            if (body.jointType != ArticulationJointType.SphericalJoint)
+            {
+                body.resetJointPhysics();
+                continue;
+            }
+            Quaternion targetLocalRot = kin_char.boneToTransform[i].localRotation;
+            bool isFootBone = bone == Bone_LeftFoot || bone == Bone_RightFoot;
+            setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, targetLocalRot.y, -targetLocalRot.z, targetLocalRot.w), true, isFootBone);
+        }
     }
     private static void setArtBodyDrivesToRotationAndReset(ArticulationBody body, Quaternion targetRot, bool resetEverything, bool doNotSetZRot = false)
     {
