@@ -25,7 +25,7 @@ public class ConfigManager : MonoBehaviour
         else
         {
             Application.targetFrameRate = 60;
-            Time.fixedDeltaTime = 1f / 60;
+            Time.fixedDeltaTime = 1f / Training_data.fixedUpdateFrequency;
             _instance = this;
         }
     }

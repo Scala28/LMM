@@ -42,5 +42,7 @@ MonoBehaviour:
   damping: 0
   dampingScalesWithStiffness: 0
   selfCollision: 0
+  fixedUpdateFrequency: 60
+  resolveSimReferenceFrameWithSimRotation: 0
   MAX_EPISODE_LENGTH_SECONDS: 20
   EVALUATE_EVERY_K: 2
