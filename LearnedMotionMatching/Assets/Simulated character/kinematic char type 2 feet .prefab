@@ -874,6 +874,34 @@ PrefabInstance:
       propertyPath: m_Materials.Array.data[0]
       value: 
       objectReference: {fileID: -1936150240291098062, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.9998473
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.0014372416
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.0069898847
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.015952138
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -0.152
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0.804
+      objectReference: {fileID: 0}
+    - target: {fileID: 3899292994791971969, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 72.179
+      objectReference: {fileID: 0}
     - target: {fileID: 3915435810242302158, guid: 9b09244f4601b4449a579f7c7a337fb6, type: 3}
       propertyPath: m_Layer
       value: 6
@@ -1457,6 +1485,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   rigged: 1
+  lock60Fps: 1
   gizmos: 0
   set_vcam: 0
   rigToTransform:
@@ -1483,6 +1512,7 @@ MonoBehaviour:
   - {fileID: 4444901946060470134}
   - {fileID: 7915010812675240722}
   - {fileID: 5427046981933285606}
+  training: 1
 --- !u!114 &4052249877432516087
 MonoBehaviour:
   m_ObjectHideFlags: 0

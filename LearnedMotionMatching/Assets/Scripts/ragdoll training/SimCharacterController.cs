@@ -103,21 +103,22 @@ public class SimCharacterController : MonoBehaviour
         }
     }
 
-    public static void teleportSimChar(CharInfo sim_char, CharInfo kin_char, float verticalOffset = .01f, bool setVelocities = false)
+    public static void teleportSimChar(CharInfo sim_char, CharInfo kin_char, float verticalOffset = .15f, bool setVelocities = false)
     {
         sim_char.transform.rotation = kin_char.transform.rotation;
         Transform kin_root = kin_char.boneToTransform[(int)Bone_Entity];
         Transform kinHips = kin_char.boneToTransform[(int)Bone_Hips];
         Transform simHips = sim_char.boneToTransform[(int)Bone_Hips];
         // Adding this to root transform position will give hip transform position
-        Vector3 simHipPositionOffset = sim_char.transform.position - simHips.position;
+        Vector3 simHipPositionOffset = simHips.position - sim_char.transform.position;
         // we need to set: 
         // simRootPosition + simHipPositionOffset = kinHipPosition 
         // simRootPosition = kinHipPosition - simHipPositionOffset
 
         // We teleport the sim char a little higher to prevent it from clipping into the ground and bouncing off
-        sim_char.root.TeleportRoot(kinHips.position + simHipPositionOffset + Vector3.up * verticalOffset, kin_char.transform.rotation);
+        sim_char.root.TeleportRoot(kinHips.position - simHipPositionOffset + Vector3.up * verticalOffset, kin_root.rotation);
         sim_char.root.resetJointPhysics();
+
         if (setVelocities)
         {
             sim_char.root.velocity = kin_char.MMScript.local_pose.root_velocity;
@@ -133,7 +134,31 @@ public class SimCharacterController : MonoBehaviour
             }
             Quaternion targetLocalRot = kin_char.boneToTransform[i].localRotation;
             bool isFootBone = bone == Bone_LeftFoot || bone == Bone_RightFoot;
-            setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, targetLocalRot.y, -targetLocalRot.z, targetLocalRot.w), true, isFootBone);
+            if (bone != Bone_Hips)
+                setArtBodyDrivesToRotationAndReset(body, new Quaternion(targetLocalRot.x, targetLocalRot.y, targetLocalRot.z, targetLocalRot.w), true, isFootBone);
+            else
+            {
+                setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, -targetLocalRot.y, targetLocalRot.z, targetLocalRot.w), true, isFootBone);
+            }
+        }
+    }
+    public static void teleportSimCharRoot(CharInfo simChar, Vector3 newKinCharPos, Vector3 simCharPosOffset)
+    {
+        // simPosOffset = how far off was the sim char from the kin char before teleport? 
+        // Before teleport: simCharPos + simCharPosOffset = kinCharPos ; simCharPosOffset = kinCharPos - simCharPos
+        // After teleport: newSimCharPos + simCharPosOffset = newKinCharPos ; newSimCharPos = newKinCharPos - simCharPosOffset
+        Vector3 newSimCharPos = newKinCharPos - simCharPosOffset;
+        simChar.root.TeleportRoot(newSimCharPos, simChar.root.transform.rotation);
+        for (int i = 1; i < 23; i++)
+        {
+            MotionMatcher.character bone = (MotionMatcher.character)i;
+            ArticulationBody body = simChar.boneToArt[i];
+            if (body.jointType != ArticulationJointType.SphericalJoint)
+            {
+                continue;
+            }
+            Quaternion targetLocalRot = simChar.boneToTransform[i].localRotation;
+            setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, targetLocalRot.y, -targetLocalRot.z, targetLocalRot.w), false);
         }
     }
     private static void setArtBodyDrivesToRotationAndReset(ArticulationBody body, Quaternion targetRot, bool resetEverything, bool doNotSetZRot = false)

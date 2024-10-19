@@ -267,6 +267,50 @@ Transform:
   - {fileID: 758781801}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &348326344
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 348326345}
+  - component: {fileID: 348326346}
+  m_Layer: 0
+  m_Name: AcademyManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &348326345
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 348326344}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1999304523}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &348326346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 348326344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c72d827662a204d42bd1faf85ece1759, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &399606929
 GameObject:
   m_ObjectHideFlags: 0
@@ -359,6 +403,51 @@ Terrain:
   m_EnableHeightmapRayTracing: 1
   m_EnableTreesAndDetailsRayTracing: 0
   m_TreeMotionVectorModeOverride: 3
+--- !u!1 &494598837
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 494598838}
+  - component: {fileID: 494598839}
+  m_Layer: 0
+  m_Name: Sync60Fps
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &494598838
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 494598837}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1999304523}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &494598839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 494598837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca8087ab19d6d1f4bb1a9be0f3138c79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isSyncFrame: 0
 --- !u!1 &499100969
 GameObject:
   m_ObjectHideFlags: 0
@@ -395,8 +484,7 @@ MonoBehaviour:
   MaxStep: 0
   kin_char_prefab: {fileID: 536787371494200998, guid: 0122f7b7f5b26b843bd88f8c210cdd39, type: 3}
   sim_char_prefab: {fileID: 1698237335039107927, guid: bb31332a00655ce46af95914ccbe7651, type: 3}
-  updateVelOnTeleport: 0
-  stateBones: 05000000090000000a0000000e0000001100000015000000
+  updateVelOnTeleport: 1
 --- !u!114 &499100971
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -995,9 +1083,13 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   rigged: 0
+  lock60Fps: 1
   gizmos: 1
   set_vcam: 1
   rigToTransform: []
+  training: 0
+  origin: {x: 0, y: 0, z: 0}
+  teleportedThisFixedUpdate: 0
 --- !u!23 &1013524421
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1494,6 +1586,8 @@ Transform:
   m_Children:
   - {fileID: 516088980}
   - {fileID: 927350659}
+  - {fileID: 494598838}
+  - {fileID: 348326345}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &97321021117495524
@@ -3425,6 +3519,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   rigged: 1
+  lock60Fps: 1
   gizmos: 1
   set_vcam: 1
   rigToTransform:
@@ -3451,6 +3546,9 @@ MonoBehaviour:
   - {fileID: 7243072913512170026}
   - {fileID: 7642471620665885795}
   - {fileID: 3033189453536526440}
+  training: 0
+  origin: {x: 0, y: 0, z: 0}
+  teleportedThisFixedUpdate: 0
 --- !u!4 &6464056804904019280
 Transform:
   m_ObjectHideFlags: 0

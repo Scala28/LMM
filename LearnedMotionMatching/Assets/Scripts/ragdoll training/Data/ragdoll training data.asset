@@ -35,13 +35,13 @@ MonoBehaviour:
   - Bone: 4
     PowerVector: {x: 800, y: 800, z: 1600}
   - Bone: 20
-    PowerVector: {x: 800, y: 800, z: 800}
+    PowerVector: {x: 4000, y: 4000, z: 4000}
   - Bone: 16
-    PowerVector: {x: 800, y: 800, z: 800}
+    PowerVector: {x: 4000, y: 4000, z: 4000}
   - Bone: 21
-    PowerVector: {x: 1600, y: 1600, z: 1600}
+    PowerVector: {x: 4000, y: 4000, z: 4000}
   - Bone: 17
-    PowerVector: {x: 1600, y: 1600, z: 1600}
+    PowerVector: {x: 4000, y: 4000, z: 4000}
   boneToStiffness:
   - 0
   - 4000
@@ -58,19 +58,26 @@ MonoBehaviour:
   - 4000
   - 1000
   - 1000
-  - 1000
-  - 1000
+  - 4000
+  - 2000
   - 2000
   - 1000
-  - 1000
-  - 1000
+  - 4000
+  - 2000
   - 2000
   - 1000
-  forceLimit: 200
+  forceLimit: 400
   damping: 100
   dampingScalesWithStiffness: 0
   selfCollision: 0
-  fixedUpdateFrequency: 60
+  fixedUpdateFrequency: 256
   resolveSimReferenceFrameWithSimRotation: 0
+  networkControlsAllJoints: 0
+  setRotsDirectly: 0
+  fullRangeEulerOutputs: 0
+  setDriveTargetVelocities: 1
+  applyActionOverMultipleTimeSteps: 0
+  max_wandering_radius: 15
   MAX_EPISODE_LENGTH_SECONDS: 20
   EVALUATE_EVERY_K: 2
+  ACTION_STIFFNESS_HYPERPARAM: 0.2

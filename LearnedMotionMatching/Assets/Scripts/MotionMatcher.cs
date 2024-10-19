@@ -35,6 +35,9 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_proj;
 
     #endregion
+
+    private SyncFPS _sync60Fps;
+    private ConfigManager _config;
     public enum character
     {
         Bone_Entity = 0,
@@ -196,13 +199,13 @@ public class MotionMatcher : MonoBehaviour
 
     [SerializeField] private LayerMask whatIsTerrain;
     public bool rigged = false;
+    public bool lock60Fps = false;
     public bool gizmos = false;
     public bool set_vcam = true;
 
     private int frame_index;
 
     private const float dt = 1 / 60f;
-    private float time_elapsed = 0f;
 
     private Mesh mesh;
     public Transform[] rigToTransform;
@@ -213,11 +216,19 @@ public class MotionMatcher : MonoBehaviour
     private bool _initialized = false;
     #endregion
 
+    public bool training = false;
+    [HideInInspector]
+    public Vector3 origin;
+
+    [HideInInspector]
+    public bool teleportedThisFixedUpdate = false;
 
     // Start is called before the first frame update
     void Awake()
     {
         Application.targetFrameRate = 60;
+        _sync60Fps = SyncFPS.Instance;
+        _config = ConfigManager.Instance;
         input_handler = GetComponent<InputHandler>();
 
         db = DataManager.load_database("Assets/Resources/terrain_db.bin");
@@ -300,6 +311,10 @@ public class MotionMatcher : MonoBehaviour
 
         _initialized = true;
     }
+    void Start()
+    {
+        origin = transform.position;
+    }
     #region Initialize
     private void initialize_models()
     {
@@ -374,10 +389,10 @@ public class MotionMatcher : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-        time_elapsed += Time.fixedDeltaTime;
-        if (rigged)
-            if (time_elapsed < dt * 3f)
-                return;
+        if (lock60Fps && !_sync60Fps.isSyncFrame)
+            return;
+
+        teleportedThisFixedUpdate = false;
 
         Vector3 gamepad_stickleft = input_handler.MoveInput;
         Vector3 gamepad_stickright = input_handler.LookInput;
@@ -423,6 +438,36 @@ public class MotionMatcher : MonoBehaviour
         }
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
+
+        if (training)
+        {
+            if(Vector3.Distance(origin, global_pose.root_position) > _config.Training_data.max_wandering_radius)
+            {
+                pose.root_position = origin;
+                simulation_position = origin;
+                force_search = true;
+                for (int i = 0; i < contact_bones.Length; i++)
+                {
+                    Vector3 bone_position;
+                    Vector3 bone_velocity;
+                    Vector4 bone_rotation;
+                    Vector3 bone_angular_rotation;
+
+                    forward_kinematics_velocity(out bone_position, out bone_velocity, out bone_rotation, out bone_angular_rotation,
+                        contact_bones[i]);
+
+                    contact_states[i] = false;
+                    contact_locks[i] = false;
+                    contact_positions[i] = bone_position;
+                    contact_velocities[i] = bone_velocity;
+                    contact_points[i] = bone_position;
+                    contact_targets[i] = bone_position;
+                    contact_offset_positions[i] = Vector3.zero;
+                    contact_offset_velocities[i] = Vector3.zero;
+                }
+                teleportedThisFixedUpdate = true;
+            }
+        }
 
         trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
         trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
@@ -524,8 +569,6 @@ public class MotionMatcher : MonoBehaviour
             deform_character_mesh();
         else
             display_frame_pose();
-
-        time_elapsed = 0f;
     }
 
     #region NN inferences
@@ -1514,6 +1557,7 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
+        Debug.Log("display_pose");
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
