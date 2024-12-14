@@ -113,11 +113,13 @@ public class MotionMatcher : MonoBehaviour
 
     private InputHandler input_handler;
 
+    public Vector3 Desired_velocity { get { return desired_velocity; } }
     private Vector3 desired_velocity;
     private Vector3 desired_velocity_change_curr;
     private Vector3 desired_velocity_change_prev;
     private float desired_velocity_change_threshold = 50.0f;
 
+    public Quaternion Desired_rotation { get { return new Quaternion(desired_rotation.y, desired_rotation.z, desired_rotation.w, desired_rotation.x); } }
     private Vector4 desired_rotation = new Vector4(1f, 0f, 0f, 0f);
     private Vector3 desired_rotation_change_curr;
     private Vector3 desired_rotation_change_prev;
@@ -217,9 +219,11 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     public bool training = false;
+    public bool gen_inputs = false;
+    private InputGenerator input_generator;
+
     [HideInInspector]
     public Vector3 origin;
-
     [HideInInspector]
     public bool teleportedThisFixedUpdate = false;
 
@@ -309,6 +313,12 @@ public class MotionMatcher : MonoBehaviour
         latent_curr = new float[latents[0].Length];
         latent_proj = new float[latents[0].Length];
 
+        if (gen_inputs)
+        {
+            input_generator = gameObject.AddComponent<InputGenerator>();
+            input_generator.inputChangeHalflife = _config.Training_data.input_generator_halflife;
+        }
+
         _initialized = true;
     }
     void Start()
@@ -386,7 +396,11 @@ public class MotionMatcher : MonoBehaviour
     }
     #endregion
 
-    // Update is called once per frame
+    public void setVCam(CinemachineVirtualCamera cam) {
+        vcam = cam;
+        vcam.Follow = camera_follow;
+        vcam.LookAt = camera_lookAt;
+    }
     void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)
@@ -394,13 +408,40 @@ public class MotionMatcher : MonoBehaviour
 
         teleportedThisFixedUpdate = false;
 
-        Vector3 gamepad_stickleft = input_handler.MoveInput;
-        Vector3 gamepad_stickright = input_handler.LookInput;
+        Vector3 gamepad_stickleft = Vector3.zero;
+        Vector3 gamepad_stickright = Vector3.zero;
 
-        bool desired_strafe = input_handler.StrafeInput;
+        bool desired_strafe = false;
 
-        // Get the desired gait (walk / run)
-        desired_gait_update();
+        if (training)
+        {
+            if (should_change_generated_inputs())
+            {
+                input_generator.changeDirection();
+                gamepad_stickleft = new Vector3(input_generator.currentPosition.x, 0f, input_generator.currentPosition.y);
+                desired_strafe = UnityEngine.Random.value <= .5f;
+                Spring.simple_spring_damper_exact(
+                    ref desired_gait,
+                    ref desired_gait_velocity,
+                    UnityEngine.Random.value <= 0.7f ? 1.0f : 0.0f,
+                    .1f,
+                    dt);
+                Vector2 rotation_vec = desired_strafe ? UnityEngine.Random.insideUnitCircle : gamepad_stickleft;
+                gamepad_stickright = new Vector3(rotation_vec.x, 0f, rotation_vec.y);
+            }
+            else if (gen_inputs)
+            {
+                gamepad_stickleft = new Vector3(input_generator.currentPosition.x, 0f, input_generator.currentPosition.y);
+            }
+        }
+        else {
+            gamepad_stickleft = input_handler.MoveInput;
+            gamepad_stickright = input_handler.LookInput;
+            desired_strafe = input_handler.StrafeInput;
+
+            // Get the desired gait (walk / run)
+            desired_gait_update();
+        }
 
         // Get the desired simulation speeds based on the gait
         float simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
@@ -1539,6 +1580,26 @@ public class MotionMatcher : MonoBehaviour
             return character_rotation;
         }
     }
+    public void clamp_kinChar(Vector3 target_pos) {
+        Vector3 adjusted_pos = pose.root_position;
+        Vector4 adjusted_rot = pose.root_rotation;
+
+        adjusted_pos = clamp_character_position(
+            adjusted_pos,
+            new Vector3(target_pos.x, adjusted_pos.y, target_pos.z),
+            _config.Training_data.clampingMaxDistance);
+
+        inertialize_root_adjust(adjusted_pos, adjusted_rot);
+    }
+    #endregion
+
+    #region Input generator
+    bool should_change_generated_inputs()
+    {
+        if (!gen_inputs)
+            return false;
+        return _sync60Fps.isSyncFrame && UnityEngine.Random.value <= _config.Training_data.prob_to_change_inputs;
+    }
     #endregion
     private void deform_character_mesh()
     {
@@ -1557,7 +1618,7 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        Debug.Log("display_pose");
+        //Debug.Log("display_pose");
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 

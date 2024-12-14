@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f607f73dae19ddc4dba1c49507dd4883, type: 3}
   m_Name: ragdoll training data
   m_EditorClassIdentifier: 
-  solverIterations: 32
+  solverIterations: 64
   MusclePowers:
   - Bone: 1
     PowerVector: {x: 1600, y: 1600, z: 1600}
@@ -35,13 +35,13 @@ MonoBehaviour:
   - Bone: 4
     PowerVector: {x: 800, y: 800, z: 1600}
   - Bone: 20
-    PowerVector: {x: 4000, y: 4000, z: 4000}
+    PowerVector: {x: 800, y: 800, z: 800}
   - Bone: 16
-    PowerVector: {x: 4000, y: 4000, z: 4000}
+    PowerVector: {x: 800, y: 800, z: 800}
   - Bone: 21
-    PowerVector: {x: 4000, y: 4000, z: 4000}
+    PowerVector: {x: 1600, y: 1600, z: 1600}
   - Bone: 17
-    PowerVector: {x: 4000, y: 4000, z: 4000}
+    PowerVector: {x: 1600, y: 1600, z: 1600}
   boneToStiffness:
   - 0
   - 4000
@@ -58,19 +58,19 @@ MonoBehaviour:
   - 4000
   - 1000
   - 1000
-  - 4000
-  - 2000
+  - 1000
+  - 1000
   - 2000
   - 1000
-  - 4000
-  - 2000
+  - 1000
+  - 1000
   - 2000
   - 1000
-  forceLimit: 400
+  forceLimit: 200
   damping: 100
   dampingScalesWithStiffness: 0
   selfCollision: 0
-  fixedUpdateFrequency: 256
+  fixedUpdateFrequency: 240
   resolveSimReferenceFrameWithSimRotation: 0
   networkControlsAllJoints: 0
   setRotsDirectly: 0
@@ -78,6 +78,13 @@ MonoBehaviour:
   setDriveTargetVelocities: 1
   applyActionOverMultipleTimeSteps: 0
   max_wandering_radius: 15
+  prob_to_change_inputs: 0.005
+  input_generator_halflife: 0.5
+  addOrientationDataToState: 0
+  clampKinCharToSim: 1
+  clampingMaxDistance: 0.666
   MAX_EPISODE_LENGTH_SECONDS: 20
   EVALUATE_EVERY_K: 2
   ACTION_STIFFNESS_HYPERPARAM: 0.2
+  EPISODE_END_REWARD: -0.5
+  N_FRAMES_TO_NOT_COUNT_REWARD_AFTER_TELEPORT: 2

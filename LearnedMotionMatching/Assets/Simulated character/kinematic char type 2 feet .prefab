@@ -1513,6 +1513,9 @@ MonoBehaviour:
   - {fileID: 7915010812675240722}
   - {fileID: 5427046981933285606}
   training: 1
+  gen_inputs: 1
+  origin: {x: 0, y: 0, z: 0}
+  teleportedThisFixedUpdate: 0
 --- !u!114 &4052249877432516087
 MonoBehaviour:
   m_ObjectHideFlags: 0

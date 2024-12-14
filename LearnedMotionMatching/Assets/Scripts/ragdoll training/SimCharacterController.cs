@@ -158,7 +158,7 @@ public class SimCharacterController : MonoBehaviour
                 continue;
             }
             Quaternion targetLocalRot = simChar.boneToTransform[i].localRotation;
-            setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, targetLocalRot.y, -targetLocalRot.z, targetLocalRot.w), false);
+            setArtBodyDrivesToRotationAndReset(body, targetLocalRot, false);
         }
     }
     private static void setArtBodyDrivesToRotationAndReset(ArticulationBody body, Quaternion targetRot, bool resetEverything, bool doNotSetZRot = false)

@@ -25,11 +25,22 @@ public class TrainingData : ScriptableObject
 
     [Header("Kinematic character settings")]
     public float max_wandering_radius = 50f;
+    public float prob_to_change_inputs = 0.005f;
+    public float input_generator_halflife = .5f;
+
+    [Header("Training settings")]
+    public bool addOrientationDataToState = false;
+
+    [Header("Inference settings")]
+    public bool clampKinCharToSim = true;
+    public float clampingMaxDistance = 0.666f;
 
     [Header("Training hyperparameters")]
     public int MAX_EPISODE_LENGTH_SECONDS = 20;
     public int EVALUATE_EVERY_K = 2;
     public float ACTION_STIFFNESS_HYPERPARAM = .2f;
+    public float EPISODE_END_REWARD = -.5f;
+    public int N_FRAMES_TO_NOT_COUNT_REWARD_AFTER_TELEPORT = 2;
 }
 public enum ActionRotationType
 {

@@ -137,13 +137,17 @@ public class Pose
     }
     public Quaternion[] getRotations_quat()
     {
-        Quaternion[] _out = new Quaternion[joints.Length + 1];
         Vector4[] rotations = getRotations();
+        Quaternion[] _out = new Quaternion[rotations.Length];
         for(int i=0; i<rotations.Length; i++)
         {
             Vector4 q = rotations[i];
-            _out[i] = new Quaternion(q.y, q.z, q.w, q.x);
+            if (i != 0)
+                _out[i] = new Quaternion(-q.y, q.z, -q.w, q.x);
+            else
+                _out[i] = new Quaternion(q.y, q.z, q.w, q.x);
         }
+        
         return _out;
     }
 
