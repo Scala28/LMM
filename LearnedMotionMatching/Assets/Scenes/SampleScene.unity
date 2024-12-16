@@ -448,89 +448,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isSyncFrame: 0
---- !u!1 &499100969
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 499100972}
-  - component: {fileID: 499100971}
-  - component: {fileID: 499100970}
-  m_Layer: 0
-  m_Name: MLRagdoll
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &499100970
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 499100969}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5e3ae943f618a54189edd1ccf04e686, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  agentParameters:
-    maxStep: 0
-  hasUpgradedFromAgentParameters: 1
-  MaxStep: 0
-  kin_char_prefab: {fileID: 536787371494200998, guid: 0122f7b7f5b26b843bd88f8c210cdd39, type: 3}
-  sim_char_prefab: {fileID: 1698237335039107927, guid: bb31332a00655ce46af95914ccbe7651, type: 3}
-  updateVelOnTeleport: 1
-  vcam: {fileID: 769392282}
---- !u!114 &499100971
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 499100969}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5d1c4e0b1822b495aa52bc52839ecb30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_BrainParameters:
-    VectorObservationSize: 111
-    NumStackedVectorObservations: 1
-    m_ActionSpec:
-      m_NumContinuousActions: 23
-      BranchSizes: 
-    VectorActionSize: 17000000
-    VectorActionDescriptions: []
-    VectorActionSpaceType: 1
-    hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
-  m_InferenceDevice: 0
-  m_BehaviorType: 0
-  m_BehaviorName: MLRagdollv1
-  TeamId: 0
-  m_UseChildSensors: 1
-  m_UseChildActuators: 1
-  m_ObservableAttributeHandling: 0
---- !u!4 &499100972
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 499100969}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 594563602}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &516088978
 GameObject:
   m_ObjectHideFlags: 0
@@ -575,38 +492,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1999304523}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &594563601
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 594563602}
-  m_Layer: 0
-  m_Name: Agents templates
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &594563602
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 594563601}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 499100972}
-  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &705507993
 GameObject:
@@ -1102,9 +987,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3578941490adc442a0ca4bb2beb881f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stepper: {fileID: 5022602860645237092, guid: b13fc4593d105324ea7b3fc062a957c1, type: 3}
-  decompressor: {fileID: 5022602860645237092, guid: ffb669c5d657d7449a39c57f4e17ac30, type: 3}
-  projector: {fileID: 5022602860645237092, guid: 67d51b93f3406d847a82d141bd82b4fc, type: 3}
+  stepper: {fileID: 5022602860645237092, guid: 66ba6dec1f95a5f40973fbeb5d401e93, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 647e0991b786e5841b7574413ffcc154, type: 3}
+  projector: {fileID: 5022602860645237092, guid: b37f57b22fe17c547a40fe66fefa658f, type: 3}
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1592004115}
   camera_lookAt: {fileID: 1385709156}
@@ -1308,8 +1193,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c783f8adc5be6ab43a0b6fe0e12ad4bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  numAgents: 1
-  ragdollAgent: {fileID: 499100969}
+  numAgents: 2
+  ragdollAgent: {fileID: 5368841030920328096, guid: 1408f84c27314aa47a1a3edcfa0405db, type: 3}
   reportMeanRewardEveryNSteps: 10000
 --- !u!4 &1192597857
 Transform:
@@ -3586,9 +3471,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3578941490adc442a0ca4bb2beb881f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stepper: {fileID: 5022602860645237092, guid: b13fc4593d105324ea7b3fc062a957c1, type: 3}
-  decompressor: {fileID: 5022602860645237092, guid: ffb669c5d657d7449a39c57f4e17ac30, type: 3}
-  projector: {fileID: 5022602860645237092, guid: 67d51b93f3406d847a82d141bd82b4fc, type: 3}
+  stepper: {fileID: 5022602860645237092, guid: 66ba6dec1f95a5f40973fbeb5d401e93, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 647e0991b786e5841b7574413ffcc154, type: 3}
+  projector: {fileID: 5022602860645237092, guid: b37f57b22fe17c547a40fe66fefa658f, type: 3}
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 3505399632511279433}
   camera_lookAt: {fileID: 7214978439748685094}
@@ -4414,5 +4299,4 @@ SceneRoots:
   - {fileID: 1013524418}
   - {fileID: 193199519}
   - {fileID: 1192597857}
-  - {fileID: 594563602}
   - {fileID: 1999304523}

@@ -4,11 +4,7 @@ using UnityEngine;
 using System.IO;
 using UnityEditor;
 using System;
-using UnityEngine.Scripting;
 using Unity.Barracuda;
-using System.Linq;
-using UnityEditor.PackageManager;
-using UnityEngine.Assertions;
 
 
 public static class DataManager
@@ -457,31 +453,10 @@ public static class DataManager
     #endregion
 
     #region Loaders
-    public static (int, int, float[]) Load_database_fromResources(string filename)
-    {
-        TextAsset binAsset = Resources.Load(filename) as TextAsset; 
-        if(binAsset == null)
-        {
-            Debug.Log("Failed to load .bin file " + filename);
-            return (0, 0, null);
-        }
-
-        using (MemoryStream memStream = new MemoryStream(binAsset.bytes))
-        using (BinaryReader reader = new BinaryReader(memStream))
-        {
-            int nframes = reader.ReadInt32();
-            int ndata = reader.ReadInt32();
-            float[] data = new float[nframes * ndata];
-            for (int i = 0; i < data.Length; i++)
-            {
-                data[i] = reader.ReadSingle();
-            }
-            return (nframes, ndata, data);
-        }
-    }
     public static Model Load_net_fromParameters(string filename)
     {
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
         using (BinaryReader reader = new BinaryReader(fs))
         {
             int meanInLen = reader.ReadInt32();
@@ -525,15 +500,16 @@ public static class DataManager
     }
     public static database load_database(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         database db = new database();
-        using(FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
             db.bone_positions = readVec3_toArray2d(reader, rows, cols);
 
-            rows = reader.ReadInt32(); 
+            rows = reader.ReadInt32();
             cols = reader.ReadInt32();
             db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
 
@@ -560,26 +536,28 @@ public static class DataManager
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
-            db.terrain_positions = readVec3_toArray2d(reader, rows, cols/3);
+            db.terrain_positions = readVec3_toArray2d(reader, rows, cols / 3);
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
-            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols/3);
+            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols / 3);
 
         }
         return db;
     }
+
     public static (float[][], float[], float[]) load_features(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         float[][] features;
         float[] features_offset;
         float[] features_scale;
-        using(FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            features = readFloat_toArray2d(reader, rows, cols );
+            features = readFloat_toArray2d(reader, rows, cols);
 
             int count = reader.ReadInt32();
             features_offset = readFloat_toArray(reader, count);
@@ -589,25 +567,29 @@ public static class DataManager
         }
         return (features, features_offset, features_scale);
     }
+
     public static float[][] load_latent(string filename)
     {
-        float[][] latets;
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
+        float[][] latents;
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
         using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            latets = readFloat_toArray2d(reader, rows, cols);
+            latents = readFloat_toArray2d(reader, rows, cols);
 
         }
 
-        return latets;
+        return latents;
     }
+
     public static character load_character(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         character c = new character();
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int count = reader.ReadInt32();
             c.positions = readVec3_toArray(reader, count);
@@ -623,7 +605,7 @@ public static class DataManager
 
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            c.bone_weights = readFloat_toArray2d(reader,rows,cols);
+            c.bone_weights = readFloat_toArray2d(reader, rows, cols);
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();

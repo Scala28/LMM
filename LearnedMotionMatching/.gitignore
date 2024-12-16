@@ -8,8 +8,12 @@
 /[Bb]uild/
 /[Bb]uilds/
 /[Ll]ogs/
+/[Cc]onfig/
 /[Uu]ser[Ss]ettings/
 /Assets/[Rr]esources
+/Assets/[Ss]treamingAssets
+/Assets/NNModels-onnx
+/[Rr]esults
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data

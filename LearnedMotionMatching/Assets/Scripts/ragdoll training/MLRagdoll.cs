@@ -158,17 +158,17 @@ public class MLRagdoll : Agent
         numObservations = behaviorParam.BrainParameters.VectorObservationSize;
         numActions = behaviorParam.BrainParameters.ActionSpec.NumContinuousActions;
 
+        foreach (var ab in simChar.transform.GetComponentsInChildren<ArticulationBody>())
+        {
+            ab.gameObject.AddComponent<CollisionReporter>().agent = this;
+            ab.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        }
+
         bool isInference = behaviorParam.BehaviorType == Unity.MLAgents.Policies.BehaviorType.InferenceOnly;
         if (isInference) {
             kinChar.MMScript.setVCam(vcam);
             kinChar.MMScript.training = false;
             kinChar.MMScript.gen_inputs = false;
-            if (_config.Training_data.clampKinCharToSim) {
-                foreach (var ab in simChar.transform.GetComponentsInChildren<ArticulationBody>()) {
-                    ab.gameObject.AddComponent<CollisionReporter>().agent = this;
-                    ab.collisionDetectionMode = CollisionDetectionMode.Continuous;
-                }
-            }
         }
 
         curFixedUpdate = _config.Training_data.EVALUATE_EVERY_K - 1;
@@ -207,13 +207,14 @@ public class MLRagdoll : Agent
         {
             int numStepPerSecond = (int)Mathf.Ceil(1f / dt);
             MaxStep = numStepPerSecond * _config.Training_data.MAX_EPISODE_LENGTH_SECONDS;
+            Debug.Log(MaxStep);
         }
         init();
     }
     private int lastEpisodeEndingFrame = 0;
     public override void OnEpisodeBegin()
     {
-        Debug.Log("Begin episode");
+        //Debug.Log("Begin episode");
         lastEpisodeEndingFrame = curFixedUpdate;
         SimCharacterController.teleportSimChar(simChar, kinChar, 0f, updateVelOnTeleport);
         lastSimCharTeleportFixedUpdate = curFixedUpdate;
@@ -554,7 +555,7 @@ public class MLRagdoll : Agent
 
             finalReward = _config.Training_data.EPISODE_END_REWARD;
             SetReward(_config.Training_data.EPISODE_END_REWARD);
-            Debug.Log($"{Time.frameCount}: Calling end episode on: {curFixedUpdate}, lasted {curFixedUpdate - lastEpisodeEndingFrame} frames ({(curFixedUpdate - lastEpisodeEndingFrame) / 60f} sec)");
+            //Debug.Log($"{Time.frameCount}: Calling end episode on: {curFixedUpdate}, lasted {curFixedUpdate - lastEpisodeEndingFrame} frames ({(curFixedUpdate - lastEpisodeEndingFrame) / 60f} sec)");
             endThisFrame = false;
             EndEpisode();
             return;
@@ -614,9 +615,9 @@ public class MLRagdoll : Agent
             return;
         foreach (ContactPoint contact in collision.contacts) {
             string colliderName = contact.thisCollider.gameObject.name;
-            if (!colliderName.ToLower().Contains("toe") && !colliderName.ToLower().Contains("foot") && !colliderName.ToLower().Contains("leg_") && contact.otherCollider.gameObject.name == "Ground")
+            if (!colliderName.ToLower().Contains("toe") && !colliderName.ToLower().Contains("foot") && !colliderName.ToLower().Contains("leg_") && contact.otherCollider.CompareTag("Ground"))
             {
-                Debug.Log($"Collider name: {colliderName} other collider name: {contact.otherCollider.gameObject.name}");
+                //Debug.Log($"Collider name: {colliderName} other collider name: {contact.otherCollider.gameObject.name}");
                 endThisFrame = true;
             }
         }

@@ -235,10 +235,10 @@ public class MotionMatcher : MonoBehaviour
         _config = ConfigManager.Instance;
         input_handler = GetComponent<InputHandler>();
 
-        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
+        db = DataManager.load_database("Data/terrain_db.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain_features.bin");
 
-        ch = DataManager.load_character("Assets/Resources/character.bin");
+        ch = DataManager.load_character("Data/character.bin");
 
         Debug.Assert(db.nbones() == ch.nbones());
 
@@ -250,8 +250,7 @@ public class MotionMatcher : MonoBehaviour
         else
             Debug.Assert(rigToTransform.Length == db.nbones());
 
-
-        latents = DataManager.load_latent("Assets/Resources/latent.bin");
+        latents = DataManager.load_latent("Data/latent.bin");
 
         frame_index = db.range_starts[0];
         initialize_pose();
@@ -336,9 +335,9 @@ public class MotionMatcher : MonoBehaviour
         projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(projector));
 
-        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
-        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/projector.bin");
+        stepper_nn = DataManager.Load_net_fromParameters("NNModels/terrain/stepper.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("NNModels/terrain/decompressor.bin");
+        projector_nn = DataManager.Load_net_fromParameters("NNModels/terrain/projector.bin");
     }
     private (Vector3[], Vector4[]) put_local(Vector3[] g_positions, Vector4[] g_rotations)
     {
@@ -401,6 +400,8 @@ public class MotionMatcher : MonoBehaviour
         vcam.Follow = camera_follow;
         vcam.LookAt = camera_lookAt;
     }
+    bool desired_strafe = false;
+    bool gait_input = false;
     void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)
@@ -411,37 +412,32 @@ public class MotionMatcher : MonoBehaviour
         Vector3 gamepad_stickleft = Vector3.zero;
         Vector3 gamepad_stickright = Vector3.zero;
 
-        bool desired_strafe = false;
-
         if (training)
         {
             if (should_change_generated_inputs())
             {
                 input_generator.changeDirection();
-                gamepad_stickleft = new Vector3(input_generator.currentPosition.x, 0f, input_generator.currentPosition.y);
-                desired_strafe = UnityEngine.Random.value <= .5f;
-                Spring.simple_spring_damper_exact(
-                    ref desired_gait,
-                    ref desired_gait_velocity,
-                    UnityEngine.Random.value <= 0.7f ? 1.0f : 0.0f,
-                    .1f,
-                    dt);
-                Vector2 rotation_vec = desired_strafe ? UnityEngine.Random.insideUnitCircle : gamepad_stickleft;
-                gamepad_stickright = new Vector3(rotation_vec.x, 0f, rotation_vec.y);
+                gamepad_stickleft = input_generator.gamepad_left;
+                gamepad_stickright = input_generator.gamepad_right;
+                desired_strafe = input_generator.Input_1;
+                gait_input = input_generator.Input_2;
             }
             else if (gen_inputs)
             {
-                gamepad_stickleft = new Vector3(input_generator.currentPosition.x, 0f, input_generator.currentPosition.y);
+                gamepad_stickleft = input_generator.gamepad_left;
+                gamepad_stickright = input_generator.gamepad_right;
             }
         }
         else {
             gamepad_stickleft = input_handler.MoveInput;
             gamepad_stickright = input_handler.LookInput;
             desired_strafe = input_handler.StrafeInput;
+            gait_input = input_handler.GaitInput;
 
-            // Get the desired gait (walk / run)
-            desired_gait_update();
         }
+
+        // Get the desired gait (walk / run)
+        desired_gait_update(gait_input);
 
         // Get the desired simulation speeds based on the gait
         float simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
@@ -852,12 +848,12 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     #region Trajectory & Gameplay Data
-    private void desired_gait_update(float gait_change_halflife = 0.1f)
+    private void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
     {
         Spring.simple_spring_damper_exact(
             ref desired_gait,
             ref desired_gait_velocity,
-            input_handler.GaitInput ? 1.0f : 0.0f,
+            gait ? 1.0f : 0.0f,
             gait_change_halflife,
             dt);
     }

@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f607f73dae19ddc4dba1c49507dd4883, type: 3}
   m_Name: ragdoll training data
   m_EditorClassIdentifier: 
+  filename: configv1.json
+  writeFileToPath: ../config
+  loadFileFromPath: ../config
   solverIterations: 64
   MusclePowers:
   - Bone: 1
