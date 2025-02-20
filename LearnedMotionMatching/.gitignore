@@ -13,6 +13,7 @@
 /Assets/[Rr]esources
 /Assets/[Ss]treamingAssets
 /Assets/NNModels-onnx
+/[Cc]ustom_logs
 /[Rr]esults
 
 # MemoryCaptures can get excessive in size.

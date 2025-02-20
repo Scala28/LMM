@@ -34,8 +34,7 @@ public static class ArtBodyUtils
     public static void SetDriveRotation(this ArticulationBody body, Quaternion targetLocalRotation, bool debug = false)
     {
         Vector3 target = body.ToTargetRotationInReducedSpace(targetLocalRotation, true);
-        //if (debug)
-        //Debug.Log($"{body.transform.name} Target rot: {target.ToString("f6
+
         // assign to the drive targets...
         ArticulationDrive xDrive = body.xDrive;
         xDrive.target = target.x;

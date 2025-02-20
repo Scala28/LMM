@@ -279,7 +279,7 @@ Bone_RightArm = 20
 Bone_RightForeArm = 21
 Bone_RightHand = 22
 
-database = load_database('data/terrain_db.bin')
+database = load_database('data/walk_db.bin')
 bone_positions = database['bone_positions']
 bone_rotations = database['bone_rotations']
 bone_velocities = database['bone_velocities']
@@ -302,7 +302,7 @@ features_32 = np.concatenate(features, axis=0).astype(np.float32)
 features_offset_32 = features_offset.astype(np.float32)
 features_scale_32 = features_scale.astype(np.float32)
 
-with open('data/terrain_features.bin', 'wb') as f:
+with open('data/walk_features.bin', 'wb') as f:
     f.write(struct.pack('II', nframes, nfeatures) + features_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_offset_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_scale_32.ravel().tobytes())

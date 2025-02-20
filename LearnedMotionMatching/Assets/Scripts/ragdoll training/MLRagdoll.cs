@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEditor;
 using static MotionMatcher.character;
 using Cinemachine;
+using Unity.VisualScripting;
+using System.Linq;
 
 public struct CharInfo
 {
@@ -141,6 +143,7 @@ public class MLRagdoll : Agent
             {
                 kinChar.boneToCollider[i] = UnityObjUtils.getChildBoxCollider(kinChar.boneToTransform[i].gameObject);
                 simChar.boneToCollider[i] = UnityObjUtils.getChildBoxCollider(simChar.boneToTransform[i].gameObject);
+                feetBoxSize = simChar.boneToCollider[i].GetComponent<BoxCollider>().size;
                 if (i == (int)Bone_LeftFoot)
                     leftFootColliderCenter = simChar.boneToCollider[i].GetComponent<BoxCollider>().center;
                 else if (i == (int)Bone_RightFoot)
@@ -200,6 +203,9 @@ public class MLRagdoll : Agent
         _config = ConfigManager.Instance;
         _sync60Fps = SyncFPS.Instance;
 
+        if(vcam == null)
+            vcam = GameObject.FindGameObjectWithTag("camera").GetComponent<CinemachineVirtualCamera>();
+
         kinematicCharObj = Instantiate(kin_char_prefab, Vector3.zero, Quaternion.identity);
         simulatedCharObj = Instantiate(sim_char_prefab, Vector3.zero, Quaternion.identity);
 
@@ -207,16 +213,16 @@ public class MLRagdoll : Agent
         {
             int numStepPerSecond = (int)Mathf.Ceil(1f / dt);
             MaxStep = numStepPerSecond * _config.Training_data.MAX_EPISODE_LENGTH_SECONDS;
-            Debug.Log(MaxStep);
         }
         init();
     }
     private int lastEpisodeEndingFrame = 0;
     public override void OnEpisodeBegin()
     {
-        //Debug.Log("Begin episode");
+        Debug.Log("Begin episode");
         lastEpisodeEndingFrame = curFixedUpdate;
-        SimCharacterController.teleportSimChar(simChar, kinChar, 0f, updateVelOnTeleport);
+        float vOffset = getVerticalOffset();
+        SimCharacterController.teleportSimChar(simChar, kinChar, vOffset + .05f, updateVelOnTeleport);
         lastSimCharTeleportFixedUpdate = curFixedUpdate;
         Physics.Simulate(.0001f);
         resetData();
@@ -271,7 +277,6 @@ public class MLRagdoll : Agent
             //SimCharacterController.teleportSimCharRoot(simChar, MMScript.origin, preTeleportSimCharOffset);
             applyActions(false);
             lastSimCharTeleportFixedUpdate = curFixedUpdate;
-            Debug.Log("teleport");
         }
         if (!_sync60Fps.isSyncFrame)
             return;
@@ -321,6 +326,9 @@ public class MLRagdoll : Agent
             state[state_idx++] = smoothedActions[i];
 
         Debug.Assert(state_idx == numObservations);
+
+        if (state.Contains(float.NaN))
+            Debug.Log("Nan values in observations");
 
         return state;
     }
@@ -530,13 +538,13 @@ public class MLRagdoll : Agent
     private bool endThisFrame = false;
 
     public void LateFixedUpdate() {
-        if (!_sync60Fps.isSyncFrame)
-            return;
+
         calculateReward();
 
         bool isInference = behaviorParam.BehaviorType == Unity.MLAgents.Policies.BehaviorType.InferenceOnly;
         if (!isInference)
             return;
+
         if (_config.Training_data.clampKinCharToSim)
         {
             kinChar.MMScript.clamp_kinChar(simChar.cm);
@@ -572,6 +580,7 @@ public class MLRagdoll : Agent
         else
             finalReward = (float)(fallFactor * (posReward + velReward + local_posReward + cmVelReward));
         AddReward(finalReward);
+
         return;
     }
     private void posAndVelReward(out double posReward, out double velReward) {
@@ -627,6 +636,30 @@ public class MLRagdoll : Agent
         simulatedCharObj.layer = layer;
         foreach (var child in simulatedCharObj.GetComponentsInChildren<Transform>())
             child.gameObject.layer = layer;
+    }
+
+    private float getVerticalOffset()
+    {
+        // ClearGizmos();
+        Transform leftFoot = kinChar.boneToCollider[(int)Bone_LeftFoot].transform;
+        Transform rightFoot = kinChar.boneToCollider[(int)Bone_RightFoot].transform;
+        float minPointOnFoot = Mathf.Min(getBottomMostPointOnFoot(leftFoot, leftFootColliderCenter), getBottomMostPointOnFoot(rightFoot, rightFootColliderCenter));
+        Transform leftToe = kinChar.boneToTransform[(int)Bone_LeftToe];
+        Transform rightToe = kinChar.boneToTransform[(int)Bone_RightToe];
+        float minToeY = Mathf.Min(leftToe.position.y, rightToe.position.y) - toeColliderRadius;
+        float maxGroundPenetration = Mathf.Max(0f, 0f - Mathf.Min(minPointOnFoot, minToeY));
+        return maxGroundPenetration;
+    }
+    private float getBottomMostPointOnFoot(Transform foot, Vector3 center)
+    {
+        float x = feetBoxSize.x / 2;
+        float y = feetBoxSize.y / 2;
+        float z = feetBoxSize.z / 2;
+        Vector3 topLeft = foot.TransformPoint(center + new Vector3(x, -y, z));
+        Vector3 topRight = foot.TransformPoint(center + new Vector3(x, -y, -z));
+        Vector3 bottomLeft = foot.TransformPoint(center + new Vector3(-x, -y, z));
+        Vector3 bottomRight = foot.TransformPoint(center + new Vector3(-x, -y, -z));
+        return Mathf.Min(topLeft.y, topRight.y, bottomLeft.y, bottomRight.y);
     }
 
 }

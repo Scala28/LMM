@@ -52,6 +52,7 @@ public class MLAgentDirector : MonoBehaviour
             agent.LateFixedUpdate();
             curStepReward += agent.finalReward / numAgents;
         }
+        //Debug.Log(curStepReward);
         meanReward += curStepReward / reportMeanRewardEveryNSteps;
 
         curStep++;

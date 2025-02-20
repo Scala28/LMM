@@ -218,6 +218,7 @@ public class MotionMatcher : MonoBehaviour
     private bool _initialized = false;
     #endregion
 
+    [Header("Training simulation")]
     public bool training = false;
     public bool gen_inputs = false;
     private InputGenerator input_generator;
@@ -227,7 +228,6 @@ public class MotionMatcher : MonoBehaviour
     [HideInInspector]
     public bool teleportedThisFixedUpdate = false;
 
-    // Start is called before the first frame update
     void Awake()
     {
         Application.targetFrameRate = 60;
@@ -400,13 +400,14 @@ public class MotionMatcher : MonoBehaviour
         vcam.Follow = camera_follow;
         vcam.LookAt = camera_lookAt;
     }
+
     bool desired_strafe = false;
     bool gait_input = false;
     void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)
             return;
-
+        
         teleportedThisFixedUpdate = false;
 
         Vector3 gamepad_stickleft = Vector3.zero;
@@ -546,7 +547,7 @@ public class MotionMatcher : MonoBehaviour
             desired_rotation, simulation_rotation_halflife, dt);
 
         // Project simulation position on terrain
-        RaycastHit hit;
+        RaycastHit hit = new RaycastHit();
         Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
         simulation_position.y = hit.point.y;
 
@@ -1041,7 +1042,7 @@ public class MotionMatcher : MonoBehaviour
             for (int j = 0; j < trajectory_toe_position[0].Length; j++)
             {
 
-                RaycastHit hit_point;
+                RaycastHit hit_point = new RaycastHit();
                 Ray ray = new Ray(new Vector3(
                     trajectory_toe_position[i][j].x,
                     100f,
@@ -1305,7 +1306,7 @@ public class MotionMatcher : MonoBehaviour
             // Update the contact state
             contact_update(i, global_pose.joints[toe_bone - 1].position);
 
-            RaycastHit hit;
+            RaycastHit hit = new RaycastHit();
             Debug.Assert(Physics.Raycast(new Vector3(contact_positions[i].x, 100f, contact_positions[i].z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
 
             // Ensure contact position never goes through floor
@@ -1618,16 +1619,47 @@ public class MotionMatcher : MonoBehaviour
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
+        Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
+
         for (int i = 1; i < db.nbones(); i++)
         {
             Transform joint = rigToTransform[i];
-            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
+            JointMotionData jdata = global_pose.joints[i - 1];
 
-            joint.localPosition = new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z);
-            joint.localRotation = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.position = mirrorMatrix.MultiplyPoint3x4(new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z));
+            Quaternion q = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.rotation = mirrorMatrix.rotation * q;
         }
+        
     }
 
+    Mesh mesh_inv;
+
+    [ContextMenu("invert mesh XZ")]
+    private void invert_mesh() {
+
+        mesh_inv = this.gameObject.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+
+        Debug.Assert(mesh_inv != null);
+
+        Vector3[] vertices = new Vector3[mesh_inv.vertices.Length];
+
+        Array.Copy(mesh_inv.vertices, vertices, vertices.Length);
+
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i].x *= -1;
+            vertices[i].z *= -1;
+        }
+
+        mesh_inv.SetVertices(vertices);
+        mesh_inv.RecalculateBounds();
+        mesh_inv.RecalculateTangents();
+        mesh_inv.RecalculateNormals();
+        mesh_inv.UploadMeshData(false);
+
+        //InvertTransform(this.transform);
+    }
     private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
     private float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }

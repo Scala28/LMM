@@ -6,6 +6,7 @@ TagManager:
   tags:
   - joint
   - Ground
+  - camera
   layers:
   - Default
   - TransparentFX

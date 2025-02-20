@@ -39,15 +39,15 @@ def database_trajectory_index_clamp(frame, offset):
 
 files = [
     # We just use a small section of this clip for the standing idle
-    ('animations/pushAndStumble1_subject5.bvh', 194, 351),
+    # ('animations/pushAndStumble1_subject5.bvh', 194, 351),
     # Running
-    ('animations/run1_subject5.bvh', 90, 7086),
+    # ('animations/run1_subject5.bvh', 90, 7086),
     # Walking
-    ('animations/walk1_subject5.bvh', 80, 6000),
+    ('animations/walk1_subject5.bvh', 0, 6000),
     # Terrain
-    ('animations/obstacles1_subject5.bvh', 200, 4500),
-    ('animations/obstacles2_subject5.bvh', 160, 5700),
-    ('animations/obstacles6_subject5.bvh', 120, 6600),
+    # ('animations/obstacles1_subject5.bvh', 200, 4500),
+    # ('animations/obstacles2_subject5.bvh', 160, 5700),
+    # ('animations/obstacles6_subject5.bvh', 120, 6600),
 ]
 
 """ We will accumulate data in these lists """
@@ -322,7 +322,7 @@ range_stops = np.array(range_stops).astype(np.int32)
 
 print("Writing Database...")
 
-with open('data/terrain_db.bin', 'wb') as f:
+with open('data/walk_db.bin', 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
@@ -340,8 +340,8 @@ with open('data/terrain_db.bin', 'wb') as f:
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
     f.write(struct.pack('II', nframes, nterrain) + terrain_positions.ravel().tobytes())
     f.write(struct.pack('II', nframes, ntoe_trajectory) + trajectory_toe_positions.ravel().tobytes())
-'''
-bvh.save('data/terrain_db.bvh', {
+
+bvh.save('data/walk_db.bvh', {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),
     'positions': 100.0 * bone_positions,
     'offsets': 100.0 * bone_positions[0],
@@ -349,4 +349,3 @@ bvh.save('data/terrain_db.bvh', {
     'names': ['joint_%i' % i for i in range(nbones)],
     'order': 'zyx'
 })
-'''
