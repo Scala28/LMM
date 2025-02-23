@@ -222,7 +222,7 @@ public class MLRagdoll : Agent
         Debug.Log("Begin episode");
         lastEpisodeEndingFrame = curFixedUpdate;
         float vOffset = getVerticalOffset();
-        SimCharacterController.teleportSimChar(simChar, kinChar, vOffset + .05f, updateVelOnTeleport);
+        SimCharacterController.teleportSimChar(simChar, kinChar, vOffset + .15f, updateVelOnTeleport);
         lastSimCharTeleportFixedUpdate = curFixedUpdate;
         Physics.Simulate(.0001f);
         resetData();
@@ -260,7 +260,15 @@ public class MLRagdoll : Agent
     }
     public override void CollectObservations(VectorSensor sensor)
     {
-        sensor.AddObservation(getState());
+        float[] state = getState();
+        for (int i = 0; i < state.Length; i++)
+        {
+            if (float.IsNaN(state[i]) || float.IsInfinity(state[i]))
+            {
+                Debug.LogError($"NaN or Infinity detected in state[{i}]: {state[i]}");
+            }
+        }
+        sensor.AddObservation(state);
     }
     public override void OnActionReceived(ActionBuffers actions)
     {

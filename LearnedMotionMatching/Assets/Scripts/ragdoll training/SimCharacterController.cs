@@ -138,7 +138,7 @@ public class SimCharacterController : MonoBehaviour
                 setArtBodyDrivesToRotationAndReset(body, new Quaternion(targetLocalRot.x, targetLocalRot.y, targetLocalRot.z, targetLocalRot.w), true, isFootBone);
             else
             {
-                setArtBodyDrivesToRotationAndReset(body, new Quaternion(-targetLocalRot.x, -targetLocalRot.y, targetLocalRot.z, targetLocalRot.w), true, isFootBone);
+                setArtBodyDrivesToRotationAndReset(body, new Quaternion(targetLocalRot.x, targetLocalRot.y, targetLocalRot.z, targetLocalRot.w), true, isFootBone);
             }
         }
     }

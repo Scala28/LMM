@@ -55,9 +55,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
+  m_Model: {fileID: 5022602860645237092, guid: 11be8c2510a8273469738bee1dbcfe3f, type: 3}
   m_InferenceDevice: 0
-  m_BehaviorType: 0
+  m_BehaviorType: 2
   m_BehaviorName: MLRagdollv1
   TeamId: 0
   m_UseChildSensors: 1
@@ -81,5 +81,5 @@ MonoBehaviour:
   MaxStep: 0
   kin_char_prefab: {fileID: 536787371494200998, guid: 0122f7b7f5b26b843bd88f8c210cdd39, type: 3}
   sim_char_prefab: {fileID: 1698237335039107927, guid: bb31332a00655ce46af95914ccbe7651, type: 3}
-  updateVelOnTeleport: 1
+  updateVelOnTeleport: 0
   vcam: {fileID: 0}
