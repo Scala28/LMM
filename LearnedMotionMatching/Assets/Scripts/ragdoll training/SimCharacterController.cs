@@ -121,7 +121,9 @@ public class SimCharacterController : MonoBehaviour
 
         if (setVelocities)
         {
-            sim_char.root.velocity = kin_char.MMScript.local_pose.root_velocity;
+            Vector3 rootVel = kin_char.MMScript.root_velocity;
+            //Debug.Log(rootVel);
+            sim_char.root.velocity = new Vector3(rootVel.x, rootVel.y, rootVel.z);
         }
         for (int i = 1; i < 23; i++)
         {

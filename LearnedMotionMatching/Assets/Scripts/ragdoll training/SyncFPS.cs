@@ -31,4 +31,5 @@ public class SyncFPS : MonoBehaviour
         isSyncFrame = true;
         timeSinceLastUpdate = 0;
     }
+    public float getPeriod() => period;
 }

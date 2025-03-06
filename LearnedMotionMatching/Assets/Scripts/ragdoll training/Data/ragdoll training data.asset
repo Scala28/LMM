@@ -83,6 +83,7 @@ MonoBehaviour:
   max_wandering_radius: 15
   prob_to_change_inputs: 0.005
   input_generator_halflife: 0.5
+  canRun: 1
   addOrientationDataToState: 0
   clampKinCharToSim: 1
   clampingMaxDistance: 0.666

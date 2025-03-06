@@ -33,6 +33,7 @@ public class TrainingData : ScriptableObject
     public float max_wandering_radius = 50f;
     public float prob_to_change_inputs = 0.005f;
     public float input_generator_halflife = .5f;
+    public bool canRun = true;
 
     [Header("Training settings")]
     public bool addOrientationDataToState = false;

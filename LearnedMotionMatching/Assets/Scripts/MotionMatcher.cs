@@ -89,6 +89,7 @@ public class MotionMatcher : MonoBehaviour
     private Pose adjusted_bones_pose;
 
     public Pose local_pose { get { return adjusted_bones_pose; } }
+    public Vector3 root_velocity { get { return kin_root_velocity; } }
 
     private bool[] global_bone_computed;
 
@@ -222,6 +223,8 @@ public class MotionMatcher : MonoBehaviour
     public bool training = false;
     public bool gen_inputs = false;
     private InputGenerator input_generator;
+    private Vector3 kin_root_velocity;
+    private Vector3 kin_root_last_pos;
 
     [HideInInspector]
     public Vector3 origin;
@@ -248,7 +251,10 @@ public class MotionMatcher : MonoBehaviour
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
         else
+        {
+            kin_root_last_pos = transform.position;
             Debug.Assert(rigToTransform.Length == db.nbones());
+        }
 
         latents = DataManager.load_latent("Data/latent.bin");
 
@@ -317,7 +323,6 @@ public class MotionMatcher : MonoBehaviour
             input_generator = gameObject.AddComponent<InputGenerator>();
             input_generator.inputChangeHalflife = _config.Training_data.input_generator_halflife;
         }
-
         _initialized = true;
     }
     void Start()
@@ -421,7 +426,7 @@ public class MotionMatcher : MonoBehaviour
                 gamepad_stickleft = input_generator.gamepad_left;
                 gamepad_stickright = input_generator.gamepad_right;
                 desired_strafe = input_generator.Input_1;
-                gait_input = input_generator.Input_2;
+                gait_input = input_generator.Input_2 && _config.Training_data.canRun;
             }
             else if (gen_inputs)
             {
@@ -1618,6 +1623,9 @@ public class MotionMatcher : MonoBehaviour
         //Debug.Log("display_pose");
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
+
+        kin_root_velocity = (transform.position - kin_root_last_pos) / _sync60Fps.getPeriod();
+        kin_root_last_pos = transform.position;
 
         Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
 
