@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< Updated upstream:LearnedMotionMatching/Assets/StreamingAssets.meta
 guid: c7df37ef8fe4ae04c8dad1b6dc5c254a
+========
+guid: bcdab65e3774ef240b7da6f57066f825
+>>>>>>>> Stashed changes:LearnedMotionMatching/Assets/NNModels.meta
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}
