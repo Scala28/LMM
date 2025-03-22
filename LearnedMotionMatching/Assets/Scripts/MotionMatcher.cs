@@ -238,8 +238,8 @@ public class MotionMatcher : MonoBehaviour
         _config = ConfigManager.Instance;
         input_handler = GetComponent<InputHandler>();
 
-        db = DataManager.load_database("Data/terrain_db.bin");
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain_features.bin");
+        db = DataManager.load_database("Data/terrain/terrain_db.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain/terrain_features.bin");
 
         ch = DataManager.load_character("Data/character.bin");
 
@@ -256,7 +256,7 @@ public class MotionMatcher : MonoBehaviour
             Debug.Assert(rigToTransform.Length == db.nbones());
         }
 
-        latents = DataManager.load_latent("Data/latent.bin");
+        latents = DataManager.load_latent("Data/terrain/latent.bin");
 
         frame_index = db.range_starts[0];
         initialize_pose();
