@@ -8,8 +8,17 @@
 /[Bb]uild/
 /[Bb]uilds/
 /[Ll]ogs/
+/[Cc]onfig/
 /[Uu]ser[Ss]ettings/
-/Assets/[Rr]esources
+/Assets/[Rr]esources/
+/Assets/[Ss]treamingAssets/
+/Assets/NNModels-onnx/
+/Assets/NNModels-onnx.meta
+/Assets/MLAgent Brains/
+/Assets/MLAgent Brains.meta
+/Assets/HDRPDefaultResources/
+/[Cc]ustom_logs/
+/[Rr]esults/
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
