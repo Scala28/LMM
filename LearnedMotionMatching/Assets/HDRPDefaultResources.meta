@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< Updated upstream:LearnedMotionMatching/Assets/HDRPDefaultResources.meta
 guid: e5d6744fec5a18d41b19a07fa1f1b894
+========
+guid: bcdab65e3774ef240b7da6f57066f825
+>>>>>>>> Stashed changes:LearnedMotionMatching/Assets/NNModels.meta
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}
