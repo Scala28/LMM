@@ -7,7 +7,7 @@ public class SyncFPS : MonoBehaviour
     private static SyncFPS _instance;
     float timeSinceLastUpdate = 0f;
     public bool isSyncFrame = false;
-    float period = 1f / 60f;
+    public float period = 1f / 60f;
 
     public static SyncFPS Instance { get { return _instance; } }
     private void Awake()

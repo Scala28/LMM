@@ -1,14 +1,11 @@
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using UnityEditor;
 using System;
-using UnityEngine.Scripting;
 using Unity.Barracuda;
-using System.Linq;
-using UnityEditor.PackageManager;
-using UnityEngine.Assertions;
 
 
 public static class DataManager
@@ -21,16 +18,16 @@ public static class DataManager
     private const int BOUND_SM_SIZE = 16;
     private const int BOUND_LR_SIZE = 64;
 
-    private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales, 
+    private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales,
         int offset, int size, float weight = 1.0f)
     {
-        for(int j=0; j<size; j++)
+        for (int j = 0; j < size; j++)
         {
             feature_offsets[offset + j] = 0.0f;
         }
-        for(int i=0; i<features.Length; i++)
+        for (int i = 0; i < features.Length; i++)
         {
-            for(int j=0; j<size; j++)
+            for (int j = 0; j < size; j++)
             {
                 feature_offsets[offset + j] += features[i][offset + j] / features.Length;
             }
@@ -38,37 +35,38 @@ public static class DataManager
 
         float[] vars = new float[size];
 
-        for(int i=0; i<features.Length; i++) { 
-            for(int j=0; j<vars.Length; j++)
+        for (int i = 0; i < features.Length; i++)
+        {
+            for (int j = 0; j < vars.Length; j++)
             {
                 vars[j] += squaref(features[i][offset + j] - feature_offsets[offset + j]) / features.Length;
             }
         }
 
         float std = 0.0f;
-        for(int j=0; j<size; j++)
+        for (int j = 0; j < size; j++)
         {
             std += Mathf.Sqrt(vars[j]) / size;
         }
 
         Debug.Assert(std > 0.0f);
 
-        for(int j=0; j < size; j++)
+        for (int j = 0; j < size; j++)
         {
             feature_scales[offset + j] = std / weight;
         }
 
-        for(int i=0; i<features.Length; i++)
+        for (int i = 0; i < features.Length; i++)
         {
-            for(int j=0; j<size; j++)
+            for (int j = 0; j < size; j++)
             {
-                features[i][offset+j] = (features[i][offset+j] - feature_offsets[offset + j]) / feature_scales[offset + j];
+                features[i][offset + j] = (features[i][offset + j] - feature_offsets[offset + j]) / feature_scales[offset + j];
             }
         }
     }
     private static void compute_bone_position_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
     {
-        for(int i=0; i<db.nframes();  i++)
+        for (int i = 0; i < db.nframes(); i++)
         {
             Vector3 bone_position;
             Vector4 bone_rotation;
@@ -133,7 +131,7 @@ public static class DataManager
     }
     private static void compute_bone_velocity_feature(ref database db, ref int offset, int bone, float weight = 1.0f)
     {
-        for(int i=0; i<db.nframes();i++)
+        for (int i = 0; i < db.nframes(); i++)
         {
             Vector3 bone_position;
             Vector4 bone_rotation;
@@ -156,7 +154,7 @@ public static class DataManager
     }
     private static void compute_trajectory_position_feature(ref database db, ref int offset, float weight = 1.0f)
     {
-        for(int i=0; i<db.nframes(); i++)
+        for (int i = 0; i < db.nframes(); i++)
         {
             int t0 = db.database_trajectory_index_clamp(i, 20);
             int t1 = db.database_trajectory_index_clamp(i, 40);
@@ -183,7 +181,7 @@ public static class DataManager
     }
     private static void compute_trajectory_direction_feature(ref database db, ref int offset, float weight = 1.0f)
     {
-        for(int i=0; i<db.nframes(); i++)
+        for (int i = 0; i < db.nframes(); i++)
         {
             int t0 = db.database_trajectory_index_clamp(i, 20);
             int t1 = db.database_trajectory_index_clamp(i, 40);
@@ -215,11 +213,11 @@ public static class DataManager
 
         db.bound_sm_min = new float[nbound_sm][];
         db.bound_sm_max = new float[nbound_sm][];
-        for (int i = 0; i< nbound_sm; i++)
+        for (int i = 0; i < nbound_sm; i++)
         {
             db.bound_sm_min[i] = new float[db.nfeatures()];
             db.bound_sm_max[i] = new float[db.nfeatures()];
-            for(int j=0; j<db.nfeatures(); j++)
+            for (int j = 0; j < db.nfeatures(); j++)
             {
                 db.bound_sm_min[i][j] = FLT_MAX;
                 db.bound_sm_max[i][j] = -FLT_MAX;
@@ -231,19 +229,19 @@ public static class DataManager
         {
             db.bound_lr_min[i] = new float[db.nfeatures()];
             db.bound_lr_max[i] = new float[db.nfeatures()];
-            for(int j=0; j < db.nfeatures(); j++)
+            for (int j = 0; j < db.nfeatures(); j++)
             {
                 db.bound_lr_min[i][j] = FLT_MAX;
                 db.bound_lr_max[i][j] = -FLT_MAX;
             }
         }
 
-        for(int i=0; i<db.nframes(); i++)
+        for (int i = 0; i < db.nframes(); i++)
         {
             int i_sm = i / BOUND_SM_SIZE;
             int i_lr = i / BOUND_LR_SIZE;
 
-            for(int j=0; j<db.nfeatures(); j++)
+            for (int j = 0; j < db.nfeatures(); j++)
             {
                 db.bound_sm_min[i_sm][j] = Mathf.Min(db.bound_sm_min[i_sm][j], db.features[i][j]);
                 db.bound_sm_max[i_sm][j] = Mathf.Max(db.bound_sm_max[i_sm][j], db.features[i][j]);
@@ -252,15 +250,15 @@ public static class DataManager
             }
         }
     }
-    public static void database_build_matching_features(ref database db, float weight_foot_position, float weight_foot_veloity, 
+    public static void database_build_matching_features(ref database db, float weight_foot_position, float weight_foot_veloity,
         float weight_hip_velocity, float weight_trajectory_position, float weight_trajectory_direction, float weight_trajectory_toe_height, float foot_height)
     {
         int nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 4 + 4;
 
         db.features = new float[db.nframes()][];
-        for(int i=0; i<db.features.Length; i++)
+        for (int i = 0; i < db.features.Length; i++)
         {
-            db.features[i]=new float[nfeatures];
+            db.features[i] = new float[nfeatures];
         }
         db.features_offset = new float[nfeatures];
         db.features_scale = new float[nfeatures];
@@ -291,7 +289,7 @@ public static class DataManager
                 bw.Write(db.features[0].Length);
                 foreach (float[] features in db.features)
                 {
-                    foreach(float feature in features)
+                    foreach (float feature in features)
                     {
                         bw.Write(feature);
                     }
@@ -309,7 +307,8 @@ public static class DataManager
                     bw.Write(scale);
                 }
             }
-        }catch(IOException e)
+        }
+        catch (IOException e)
         {
             Debug.LogException(e);
         }
@@ -337,11 +336,11 @@ public static class DataManager
         float[] temp = new float[count * 3];
         Vector3[] array = new Vector3[count];
         Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             array[i].x = temp[i * 3];
-            array[i].y = temp[i*3 + 1];
-            array[i].z = temp[i*3 + 2];
+            array[i].y = temp[i * 3 + 1];
+            array[i].z = temp[i * 3 + 2];
         }
         return array;
     }
@@ -351,10 +350,10 @@ public static class DataManager
         float[] temp = new float[count * 2];
         Vector2[] array = new Vector2[count];
         Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             array[i].x = temp[i * 2];
-            array[i].y = temp[i*2 + 1];
+            array[i].y = temp[i * 2 + 1];
         }
         return array;
     }
@@ -364,18 +363,18 @@ public static class DataManager
         float[] temp = new float[count * 4];
         Vector4[] array = new Vector4[count];
         Buffer.BlockCopy(buffer, 0, temp, 0, buffer.Length);
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             array[i].x = temp[i * 4];
-            array[i].y = temp[i*4 + 1];
-            array[i].z = temp[i*4 + 2];
-            array[i].w = temp[i*4 + 3];
+            array[i].y = temp[i * 4 + 1];
+            array[i].z = temp[i * 4 + 2];
+            array[i].w = temp[i * 4 + 3];
         }
         return array;
     }
     private static short[] readShort_toArray(BinaryReader reader, int count)
     {
-        byte[] buffer = reader.ReadBytes(count *  sizeof(short));
+        byte[] buffer = reader.ReadBytes(count * sizeof(short));
         short[] array = new short[count];
         Buffer.BlockCopy(buffer, 0, array, 0, buffer.Length);
         return array;
@@ -384,14 +383,14 @@ public static class DataManager
     {
         byte[] buffer = reader.ReadBytes(rows * cols * 3 * sizeof(float));
         Vector3[][] array2d = new Vector3[rows][];
-        for(int i=0; i<rows; i++)
+        for (int i = 0; i < rows; i++)
         {
             array2d[i] = new Vector3[cols];
-            for(int j=0; j < cols; j++)
+            for (int j = 0; j < cols; j++)
             {
                 Vector3 vec = new Vector3();
                 float[] temp = new float[3];
-                Buffer.BlockCopy(buffer, index(i, j, 0, 0, new TensorShape(rows, cols, 3, sizeof(float))) , temp, 0, 3 * sizeof(float));
+                Buffer.BlockCopy(buffer, index(i, j, 0, 0, new TensorShape(rows, cols, 3, sizeof(float))), temp, 0, 3 * sizeof(float));
                 vec.x = temp[0];
                 vec.y = temp[1];
                 vec.z = temp[2];
@@ -434,7 +433,7 @@ public static class DataManager
     }
     private static float[][] readFloat_toArray2d(BinaryReader reader, int rows, int cols)
     {
-        byte[] buffer = reader.ReadBytes(rows * cols * sizeof (float));
+        byte[] buffer = reader.ReadBytes(rows * cols * sizeof(float));
         float[][] array2d = new float[rows][];
         for (int i = 0; i < rows; i++)
         {
@@ -445,7 +444,7 @@ public static class DataManager
     }
     private static short[][] readShort_toArray2d(BinaryReader reader, int rows, int cols)
     {
-        byte[] buffer = reader.ReadBytes(rows * cols * sizeof (short));
+        byte[] buffer = reader.ReadBytes(rows * cols * sizeof(short));
         short[][] array2d = new short[rows][];
         for (int i = 0; i < rows; i++)
         {
@@ -457,31 +456,10 @@ public static class DataManager
     #endregion
 
     #region Loaders
-    public static (int, int, float[]) Load_database_fromResources(string filename)
-    {
-        TextAsset binAsset = Resources.Load(filename) as TextAsset; 
-        if(binAsset == null)
-        {
-            Debug.Log("Failed to load .bin file " + filename);
-            return (0, 0, null);
-        }
-
-        using (MemoryStream memStream = new MemoryStream(binAsset.bytes))
-        using (BinaryReader reader = new BinaryReader(memStream))
-        {
-            int nframes = reader.ReadInt32();
-            int ndata = reader.ReadInt32();
-            float[] data = new float[nframes * ndata];
-            for (int i = 0; i < data.Length; i++)
-            {
-                data[i] = reader.ReadSingle();
-            }
-            return (nframes, ndata, data);
-        }
-    }
     public static Model Load_net_fromParameters(string filename)
     {
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
         using (BinaryReader reader = new BinaryReader(fs))
         {
             int meanInLen = reader.ReadInt32();
@@ -500,7 +478,7 @@ public static class DataManager
 
             int numLayers = reader.ReadInt32();
 
-            for(int i = 0; i < numLayers; i++)
+            for (int i = 0; i < numLayers; i++)
             {
                 int weightCols = reader.ReadInt32();
                 int weightRows = reader.ReadInt32();
@@ -525,15 +503,16 @@ public static class DataManager
     }
     public static database load_database(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         database db = new database();
-        using(FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
             db.bone_positions = readVec3_toArray2d(reader, rows, cols);
 
-            rows = reader.ReadInt32(); 
+            rows = reader.ReadInt32();
             cols = reader.ReadInt32();
             db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
 
@@ -560,26 +539,28 @@ public static class DataManager
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
-            db.terrain_positions = readVec3_toArray2d(reader, rows, cols/3);
+            db.terrain_positions = readVec3_toArray2d(reader, rows, cols / 3);
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
-            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols/3);
+            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols / 3);
 
         }
         return db;
     }
+
     public static (float[][], float[], float[]) load_features(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         float[][] features;
         float[] features_offset;
         float[] features_scale;
-        using(FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            features = readFloat_toArray2d(reader, rows, cols );
+            features = readFloat_toArray2d(reader, rows, cols);
 
             int count = reader.ReadInt32();
             features_offset = readFloat_toArray(reader, count);
@@ -587,28 +568,31 @@ public static class DataManager
             count = reader.ReadInt32();
             features_scale = readFloat_toArray(reader, count);
         }
-
         return (features, features_offset, features_scale);
     }
+
     public static float[][] load_latent(string filename)
     {
-        float[][] latets;
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
+        float[][] latents;
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
         using (BinaryReader reader = new BinaryReader(fs))
         {
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            latets = readFloat_toArray2d(reader, rows, cols);
+            latents = readFloat_toArray2d(reader, rows, cols);
 
         }
 
-        return latets;
+        return latents;
     }
+
     public static character load_character(string filename)
     {
+        string path = Path.Combine(Application.streamingAssetsPath, filename);
         character c = new character();
-        using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-        using(BinaryReader reader = new BinaryReader(fs))
+        using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
         {
             int count = reader.ReadInt32();
             c.positions = readVec3_toArray(reader, count);
@@ -624,7 +608,7 @@ public static class DataManager
 
             int rows = reader.ReadInt32();
             int cols = reader.ReadInt32();
-            c.bone_weights = readFloat_toArray2d(reader,rows,cols);
+            c.bone_weights = readFloat_toArray2d(reader, rows, cols);
 
             rows = reader.ReadInt32();
             cols = reader.ReadInt32();
@@ -647,7 +631,7 @@ public static class DataManager
         mesh.normals = c.normals;
 
         int[] triangles = new int[c.triangles.Length];
-        for(int i=0; i<triangles.Length; i++)
+        for (int i = 0; i < triangles.Length; i++)
         {
             triangles[i] = c.triangles[i];
         }
@@ -732,9 +716,9 @@ public static class DataManager
 
         public static void liner_blend_skinning_positions(character c, Pose pose, ref Vector3[] anim_positions)
         {
-            for(int i=0; i<anim_positions.Length; i++)
+            for (int i = 0; i < anim_positions.Length; i++)
             {
-                for(int j=0; j < c.bone_indices[0].Length; j++)
+                for (int j = 0; j < c.bone_indices[0].Length; j++)
                 {
                     if (c.bone_weights[i][j] > 0.0f)
                     {
@@ -746,7 +730,7 @@ public static class DataManager
                         if (b == 0)
                             position = Quat.quat_mul_vec(pose.root_rotation, position) + pose.root_position;
                         else
-                            position = Quat.quat_mul_vec(pose.joints[b-1].rotation, position) + pose.joints[b-1].position;
+                            position = Quat.quat_mul_vec(pose.joints[b - 1].rotation, position) + pose.joints[b - 1].position;
 
                         anim_positions[i] = anim_positions[i] + c.bone_weights[i][j] * position;
                     }
@@ -755,9 +739,9 @@ public static class DataManager
         }
         public static void liner_blend_skinning_normals(character c, Pose pose, ref Vector3[] anim_normals)
         {
-            for(int i=0; i<anim_normals.Length; i++)
+            for (int i = 0; i < anim_normals.Length; i++)
             {
-                for(int j=0; j < c.bone_indices[0].Length; j++)
+                for (int j = 0; j < c.bone_indices[0].Length; j++)
                 {
                     if (c.bone_weights[i][j] > 0.0f)
                     {
@@ -774,7 +758,7 @@ public static class DataManager
                     }
                 }
             }
-            for(int i=0; i<anim_normals.Length; i++)
+            for (int i = 0; i < anim_normals.Length; i++)
                 anim_normals[i] = Quat.vec_normalize(anim_normals[i]);
         }
     }
@@ -818,8 +802,8 @@ public static class DataManager
             bone_vel = parent_vel + Quat.quat_mul_vec(parent_rot, velocities[bone]) +
                 Quat._cross(parent_ang_vel, Quat.quat_mul_vec(parent_rot, positions[bone]));
             bone_rot = Quat.quat_mul(parent_rot, rotations[bone]);
-                bone_angular_vel = Quat.quat_mul_vec(parent_rot, angular_velocities[bone]) + parent_ang_vel;
-            }
+            bone_angular_vel = Quat.quat_mul_vec(parent_rot, angular_velocities[bone]) + parent_ang_vel;
+        }
         else
         {
             bone_pos = positions[bone];

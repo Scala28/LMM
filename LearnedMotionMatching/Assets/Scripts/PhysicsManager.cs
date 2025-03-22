@@ -10,6 +10,6 @@ public class PhysicsManager : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        Physics.Simulate(Time.fixedDeltaTime);
+        Physics.Simulate(SyncFPS.Instance.period);
     }
 }
