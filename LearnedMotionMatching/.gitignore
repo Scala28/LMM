@@ -10,13 +10,13 @@
 /[Ll]ogs/
 /[Cc]onfig/
 /[Uu]ser[Ss]ettings/
-/Assets/[Rr]esources
-/Assets/[Ss]treamingAssets
-/Assets/NNModels-onnx
-/Assets/MLAgent Brains
-/Assets/HDRPDefaultResources
-/[Cc]ustom_logs
-/[Rr]esults
+/Assets/[Ss]treamingAssets/
+/Assets/NNModels-onnx/
+/Assets/MLAgent Brains/
+/Assets/MLAgents
+/Assets/HDRPDefaultResources/
+/[Cc]ustom_logs/
+/[Rr]esults/
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
@@ -77,6 +77,3 @@ crashlytics-build.properties
 # Packed Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 
-# Temporary auto-generated Android Assets
-/[Aa]ssets/[Ss]treamingAssets/aa.meta
-/[Aa]ssets/[Ss]treamingAssets/aa/*
