@@ -35,6 +35,8 @@ public class MotionMatcher : MonoBehaviour
     private float[] latent_proj;
 
     #endregion
+
+    private SyncFPS _sync60Fps;
     public enum character
     {
         Bone_Entity = 0,
@@ -72,6 +74,7 @@ public class MotionMatcher : MonoBehaviour
     private float camera_altitude = .4f;
     private float camera_distance = 4.0f;
 
+    public DataManager.database DataBase { get { return db; } }
     private DataManager.database db;
     private DataManager.character ch;
 
@@ -107,11 +110,13 @@ public class MotionMatcher : MonoBehaviour
 
     private InputHandler input_handler;
 
+    public Vector3 Desired_velocity { get { return desired_velocity; } }
     private Vector3 desired_velocity;
     private Vector3 desired_velocity_change_curr;
     private Vector3 desired_velocity_change_prev;
     private float desired_velocity_change_threshold = 50.0f;
 
+    public Quaternion Desired_rotation { get { return new Quaternion(desired_rotation.y, desired_rotation.z, desired_rotation.w, desired_rotation.x); } }
     private Vector4 desired_rotation = new Vector4(1f, 0f, 0f, 0f);
     private Vector3 desired_rotation_change_curr;
     private Vector3 desired_rotation_change_prev;
@@ -193,44 +198,59 @@ public class MotionMatcher : MonoBehaviour
 
     [SerializeField] private LayerMask whatIsTerrain;
     public bool rigged = false;
+    public bool lock60Fps = false;
     public bool gizmos = false;
+    public bool set_vcam = true;
 
     private int frame_index;
 
     private const float dt = 1 / 60f;
-    private float time_elapsed = 0f;
 
-    private List<Transform> bones = new List<Transform>();
     private Mesh mesh;
+    public Transform[] rigToTransform;
 
-    public bool gen_input = false;
+    #region Control
+    [HideInInspector]
+    public bool Is_initialized { get { return _initialized; } }
+    private bool _initialized = false;
+    #endregion
 
+    [HideInInspector]
+    public Vector3 origin;
+    [HideInInspector]
+    public bool teleportedThisFixedUpdate = false;
 
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
+        Application.targetFrameRate = 60;
+        _sync60Fps = SyncFPS.Instance;
         input_handler = GetComponent<InputHandler>();
-        db = DataManager.load_database("Assets/Resources/terrain_db.bin");
-        ch = DataManager.load_character("Assets/Resources/character.bin");
+
+        db = DataManager.load_database("Data/terrain_db.bin");
+        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain_features.bin");
+
+        ch = DataManager.load_character("Data/character.bin");
+
+        Debug.Assert(db.nbones() == ch.nbones());
+
         if (!rigged)
         {
             mesh = DataManager.gen_mesh_from_character(ch);
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
         else
-            initialize_skeleton(transform);
+            Debug.Assert(rigToTransform.Length == db.nbones());
 
-        Debug.Assert(db.nbones() == ch.nbones());
-
-        (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Assets/Resources/terrain_features.bin");
-
-        latents = DataManager.load_latent("Assets/Resources/latent.bin");
+        latents = DataManager.load_latent("Data/latent.bin");
 
         frame_index = db.range_starts[0];
         initialize_pose();
 
-        vcam.Follow = camera_follow;
-        vcam.LookAt = camera_lookAt;
+        if (set_vcam)
+        {
+            vcam.Follow = camera_follow;
+            vcam.LookAt = camera_lookAt;
+        }
 
         inertialize_pose_reset();
         inertialize_pose_update(pose.DeepClone(), 0.0f);
@@ -282,6 +302,12 @@ public class MotionMatcher : MonoBehaviour
 
         latent_curr = new float[latents[0].Length];
         latent_proj = new float[latents[0].Length];
+
+        _initialized = true;
+    }
+    void Start()
+    {
+        origin = transform.position;
     }
     #region Initialize
     private void initialize_models()
@@ -294,26 +320,9 @@ public class MotionMatcher : MonoBehaviour
         projector_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
             ModelLoader.Load(projector));
 
-        stepper_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/stepper.bin");
-        decompressor_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/decompressor.bin");
-        projector_nn = DataManager.Load_net_fromParameters("Assets/NNModels/terrain/projector.bin");
-    }
-    private void initialize_skeleton(Transform bone)
-    {
-        (Vector3[] loc_bone_rest_pos, Vector4[] loc_bone_rest_rot) = put_local(ch.bone_rest_positions, ch.bone_rest_rotations);
-        if (bone.CompareTag("joint"))
-        {
-            bones.Add(bone);
-            if (bone.parent != null)
-            {
-                Vector3 pos = loc_bone_rest_pos[bones.Count - 1];
-                Vector4 q = loc_bone_rest_rot[bones.Count - 1];
-                bone.localPosition = new Vector3(-pos.x, pos.y, -pos.z);
-                bone.localRotation = new Quaternion(-q.y, q.z, -q.w, q.x);
-            }
-        }
-        foreach (Transform child in bone)
-            initialize_skeleton(child);
+        stepper_nn = DataManager.Load_net_fromParameters("NNModels/terrain/stepper.bin");
+        decompressor_nn = DataManager.Load_net_fromParameters("NNModels/terrain/decompressor.bin");
+        projector_nn = DataManager.Load_net_fromParameters("NNModels/terrain/projector.bin");
     }
     private (Vector3[], Vector4[]) put_local(Vector3[] g_positions, Vector4[] g_rotations)
     {
@@ -358,6 +367,7 @@ public class MotionMatcher : MonoBehaviour
 
         current_pose = pose.DeepClone();
         trns_pose = pose.DeepClone();
+        adjusted_bones_pose = pose.DeepClone();
 
         bone_offset_positions = new Vector3[db.nbones()];
         bone_offset_rotations = new Vector4[db.nbones()];
@@ -370,21 +380,31 @@ public class MotionMatcher : MonoBehaviour
     }
     #endregion
 
-    // Update is called once per frame
-    void Update()
+    public void setVCam(CinemachineVirtualCamera cam) {
+        vcam = cam;
+        vcam.Follow = camera_follow;
+        vcam.LookAt = camera_lookAt;
+    }
+
+    bool desired_strafe = false;
+    bool gait_input = false;
+    void FixedUpdate()
     {
-        time_elapsed += Time.deltaTime;
-        if (rigged)
-            if (time_elapsed < dt)
-                return;
+        if (lock60Fps && !_sync60Fps.isSyncFrame)
+            return;
+        
+        teleportedThisFixedUpdate = false;
 
-        Vector3 gamepad_stickleft = input_handler.MoveInput;
-        Vector3 gamepad_stickright = input_handler.LookInput;
+        Vector3 gamepad_stickleft = Vector3.zero;
+        Vector3 gamepad_stickright = Vector3.zero;
 
-        bool desired_strafe = input_handler.StrafeInput;
+        gamepad_stickleft = input_handler.MoveInput;
+        gamepad_stickright = input_handler.LookInput;
+        desired_strafe = input_handler.StrafeInput;
+        gait_input = input_handler.GaitInput;
 
         // Get the desired gait (walk / run)
-        desired_gait_update();
+        desired_gait_update(gait_input);
 
         // Get the desired simulation speeds based on the gait
         float simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
@@ -422,6 +442,7 @@ public class MotionMatcher : MonoBehaviour
         }
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
+
 
         trajectory_desired_rotations_predict(gamepad_stickleft, gamepad_stickright, camera_azimuth, desired_strafe, 20.0f * dt);
         trajectory_rotations_predict(simulation_rotation_halflife, 20.0f * dt);
@@ -463,7 +484,7 @@ public class MotionMatcher : MonoBehaviour
             desired_rotation, simulation_rotation_halflife, dt);
 
         // Project simulation position on terrain
-        RaycastHit hit;
+        RaycastHit hit = new RaycastHit();
         Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
         simulation_position.y = hit.point.y;
 
@@ -523,8 +544,6 @@ public class MotionMatcher : MonoBehaviour
             deform_character_mesh();
         else
             display_frame_pose();
-
-        time_elapsed = 0f;
     }
 
     #region NN inferences
@@ -767,12 +786,12 @@ public class MotionMatcher : MonoBehaviour
     #endregion
 
     #region Trajectory & Gameplay Data
-    private void desired_gait_update(float gait_change_halflife = 0.1f)
+    private void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
     {
         Spring.simple_spring_damper_exact(
             ref desired_gait,
             ref desired_gait_velocity,
-            input_handler.GaitInput ? 1.0f : 0.0f,
+            gait ? 1.0f : 0.0f,
             gait_change_halflife,
             dt);
     }
@@ -960,7 +979,7 @@ public class MotionMatcher : MonoBehaviour
             for (int j = 0; j < trajectory_toe_position[0].Length; j++)
             {
 
-                RaycastHit hit_point;
+                RaycastHit hit_point = new RaycastHit();
                 Ray ray = new Ray(new Vector3(
                     trajectory_toe_position[i][j].x,
                     100f,
@@ -1224,7 +1243,7 @@ public class MotionMatcher : MonoBehaviour
             // Update the contact state
             contact_update(i, global_pose.joints[toe_bone - 1].position);
 
-            RaycastHit hit;
+            RaycastHit hit = new RaycastHit();
             Debug.Assert(Physics.Raycast(new Vector3(contact_positions[i].x, 100f, contact_positions[i].z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
 
             // Ensure contact position never goes through floor
@@ -1496,6 +1515,7 @@ public class MotionMatcher : MonoBehaviour
         }
     }
     #endregion
+
     private void deform_character_mesh()
     {
         Vector3[] mesh_vertices = new Vector3[mesh.vertices.Length];
@@ -1513,19 +1533,51 @@ public class MotionMatcher : MonoBehaviour
     }
     private void display_frame_pose()
     {
+        //Debug.Log("display_pose");
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
+        Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
+
         for (int i = 1; i < db.nbones(); i++)
         {
-            Transform joint = bones[i];
-            JointMotionData jdata = adjusted_bones_pose.joints[i - 1];
+            Transform joint = rigToTransform[i];
+            JointMotionData jdata = global_pose.joints[i - 1];
 
-            joint.localPosition = new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z);
-            joint.localRotation = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.position = mirrorMatrix.MultiplyPoint3x4(new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z));
+            Quaternion q = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+            joint.rotation = mirrorMatrix.rotation * q;
         }
+        
     }
 
+    Mesh mesh_inv;
+
+    [ContextMenu("invert mesh XZ")]
+    private void invert_mesh() {
+
+        mesh_inv = this.gameObject.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+
+        Debug.Assert(mesh_inv != null);
+
+        Vector3[] vertices = new Vector3[mesh_inv.vertices.Length];
+
+        Array.Copy(mesh_inv.vertices, vertices, vertices.Length);
+
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i].x *= -1;
+            vertices[i].z *= -1;
+        }
+
+        mesh_inv.SetVertices(vertices);
+        mesh_inv.RecalculateBounds();
+        mesh_inv.RecalculateTangents();
+        mesh_inv.RecalculateNormals();
+        mesh_inv.UploadMeshData(false);
+
+        //InvertTransform(this.transform);
+    }
     private float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     private float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
     private float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
