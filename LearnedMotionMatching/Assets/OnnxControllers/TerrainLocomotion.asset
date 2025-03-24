@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 422060b3ea79598489c0229fb7039289, type: 3}
+  m_Name: TerrainLocomotion
+  m_EditorClassIdentifier: 
+  stepper: {fileID: 5022602860645237092, guid: 66ba6dec1f95a5f40973fbeb5d401e93, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 647e0991b786e5841b7574413ffcc154, type: 3}
+  projector: {fileID: 5022602860645237092, guid: b37f57b22fe17c547a40fe66fefa658f, type: 3}
+  stepper_name: terrain/stepper.bin
+  decompressor_name: terrain/decompressor.bin
+  projector_name: terrain/projector.bin
+  search_time: 0.1
+  db_filename: terrain/terrain_db.bin
+  features_filename: terrain/terrain_features.bin
+  latents_filename: terrain/latent.bin
+  camera_azimuth: 1.9666662
+  camera_altitude: 0.4
+  camera_distance: 4
+  simulation_velocity_halflife: 0.27
+  simulation_rotation_halflife: 0.27
+  inertialize_blending_halflife: 0.1
+  ik_enabled: 1
+  adjustment_enabled: 1
+  clamping_enabled: 1
+  simulation_run_fwrd_speed: 3.3
+  simulation_run_side_speed: 2.8
+  simulation_run_back_speed: 2.3
+  simulation_walk_fwrd_speed: 1.75
+  simulation_walk_side_speed: 1.5
+  simulation_walk_back_speed: 1.25
+  terrain_speed_multiplier: 0.4
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64

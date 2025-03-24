@@ -5,20 +5,16 @@ using UnityEngine.InputSystem;
 
 public class InputHandler : MonoBehaviour
 {
-    #region Action readers
     private PlayerInput _playerInput;
-    private InputAction moveAction;
-    private InputAction lookAction;
-    #endregion 
 
     #region Inputs
-    public Vector2 RawMoveInput;
-    public Vector3 MoveInput;
-    public Vector2 RawLookInput;
-    public Vector3 LookInput;
+    public Vector2 Raw_stickLeft;
+    public Vector3 StickLeft;
+    public Vector2 Raw_stickRight;
+    public Vector3 StickRight;
 
-    public bool GaitInput;
-    public bool StrafeInput;
+    public bool Button1;
+    public bool Button2;
     #endregion
 
     #region Smooth movement input
@@ -26,30 +22,22 @@ public class InputHandler : MonoBehaviour
     public float deadzone = .2f;
     #endregion
 
-    // Start is called before the first frame update
     void Start()
     {
         _playerInput = GetComponent<PlayerInput>();
-        moveAction = _playerInput.actions["move"];
-        lookAction = _playerInput.actions["look"];
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
     #region Input event callbacks
     public void OnMoveInput(InputAction.CallbackContext context)
     {
-        RawMoveInput = context.ReadValue<Vector2>();
-        float movenorm = Mathf.Sqrt(RawMoveInput.x * RawMoveInput.x + RawMoveInput.y * RawMoveInput.y);
+        Raw_stickLeft = context.ReadValue<Vector2>();
+        float movenorm = Mathf.Sqrt(Raw_stickLeft.x * Raw_stickLeft.x + Raw_stickLeft.y * Raw_stickLeft.y);
         float movex;
         float movey;
         if(movenorm > deadzone)
         {
-            float dirX = RawMoveInput.x / movenorm;
-            float dirY = RawMoveInput.y / movenorm;
+            float dirX = Raw_stickLeft.x / movenorm;
+            float dirY = Raw_stickLeft.y / movenorm;
             float clippedNorm = movenorm > 1.0f ? 1.0f : movenorm * movenorm;
             movex = dirX * clippedNorm;
             movey = dirY * clippedNorm;
@@ -59,18 +47,18 @@ public class InputHandler : MonoBehaviour
             movex = 0.0f;
             movey = 0.0f;
         }
-        MoveInput = new Vector3(movex, 0.0f, movey);
+        StickLeft = new Vector3(movex, 0.0f, movey);
     }
     public void OnLookInput(InputAction.CallbackContext context)
     {
-        RawLookInput = context.ReadValue<Vector2>();
-        float looknorm = Mathf.Sqrt(RawLookInput.x * RawLookInput.x + RawLookInput.y * RawLookInput.y);
+        Raw_stickRight = context.ReadValue<Vector2>();
+        float looknorm = Mathf.Sqrt(Raw_stickRight.x * Raw_stickRight.x + Raw_stickRight.y * Raw_stickRight.y);
         float lookx;
         float looky;
         if (looknorm > deadzone)
         {
-            float dirX = RawLookInput.x / looknorm;
-            float dirY = RawLookInput.y / looknorm;
+            float dirX = Raw_stickRight.x / looknorm;
+            float dirY = Raw_stickRight.y / looknorm;
             float clippedNorm = looknorm > 1.0f ? 1.0f : looknorm * looknorm;
             lookx = dirX * clippedNorm;
             looky = dirY * clippedNorm;
@@ -80,21 +68,21 @@ public class InputHandler : MonoBehaviour
             lookx = 0.0f;
             looky = 0.0f;
         }
-        LookInput = new Vector3(lookx, 0.0f, looky);
+        StickRight = new Vector3(lookx, 0.0f, looky);
     }
     public void OnGaitInput(InputAction.CallbackContext context)
     {
         if (context.started)
-            GaitInput = !GaitInput;
+            Button1 = !Button1;
     }
     public void OnStrafeInput(InputAction.CallbackContext context)
     {
         if (context.started)
-            StrafeInput = true;
+            Button2 = true;
         if (context.performed)
-            StrafeInput = true;
+            Button2 = true;
         if (context.canceled)
-            StrafeInput = false;
+            Button2 = false;
     }
     #endregion
 }
