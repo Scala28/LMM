@@ -28,6 +28,8 @@ public class InputHandler : MonoBehaviour
     }
 
     #region Input event callbacks
+
+    #region locomotion
     public void OnMoveInput(InputAction.CallbackContext context)
     {
         Raw_stickLeft = context.ReadValue<Vector2>();
@@ -84,5 +86,10 @@ public class InputHandler : MonoBehaviour
         if (context.canceled)
             Button2 = false;
     }
+    #endregion
+
+    #region fight
+
+    #endregion
     #endregion
 }

@@ -32,7 +32,7 @@ public class ControllerOrchestrator : MonoBehaviour
     private Dictionary<Behaviour, string> action_maps = new Dictionary<Behaviour, string>()
     {
         {Behaviour.locomotion, "locomotion" },
-        {Behaviour.fight, "fight" },
+        {Behaviour.fight, "combact" },
         {Behaviour.climb, "climb" },
     };
     public enum character

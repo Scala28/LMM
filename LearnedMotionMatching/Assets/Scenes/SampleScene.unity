@@ -1207,7 +1207,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &619851155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1343,6 +1343,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
     m_ActionName: locomotion/strafe[/ USB Gamepad          /button7,/Keyboard/leftAlt]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 36a29a50-c831-457b-8609-4a06c589ec28
+    m_ActionName: combact/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 12409d11-4dc2-4ec5-97b1-8c19b8c34a0d
+    m_ActionName: combact/look/move torso[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 00be02a3-358b-4a7c-a200-696f3f79406e
+    m_ActionName: combact/lock target[/Keyboard/space]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
+    m_ActionName: combact/change target[/Keyboard/shift]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: keyboard
   m_DefaultActionMap: locomotion
@@ -1978,7 +1994,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &852832054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2137,6 +2153,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
     m_ActionName: locomotion/strafe[/Keyboard/leftAlt]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 36a29a50-c831-457b-8609-4a06c589ec28
+    m_ActionName: combact/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 12409d11-4dc2-4ec5-97b1-8c19b8c34a0d
+    m_ActionName: combact/look/move torso[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 00be02a3-358b-4a7c-a200-696f3f79406e
+    m_ActionName: combact/lock target[/Keyboard/space]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
+    m_ActionName: combact/change target[/Keyboard/shift]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: keyboard
   m_DefaultActionMap: locomotion

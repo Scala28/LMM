@@ -155,7 +155,7 @@ public abstract class MotionController : ScriptableObject
 
     protected const float dt = 1 / 60f;
 
-    public void Setup(ControllerOrchestrator controller) {
+    public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
         db = DataManager.load_database("Data/" + db_filename);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/" + features_filename);
@@ -280,7 +280,7 @@ public abstract class MotionController : ScriptableObject
     public abstract (Pose, float[], float[]) perform_cycle(Vector3 stickLeft, Vector3 stickRight, bool gait, bool strafe);
 
     #region NNet inference
-    public bool compute_projection_distance(float[] query, float transition_cost = 0.0f)
+    public virtual bool compute_projection_distance(float[] query, float transition_cost = 0.0f)
     {
         bool transition;
 
@@ -319,7 +319,7 @@ public abstract class MotionController : ScriptableObject
         }
         return transition;
     }
-    public void evaluate_stepper()
+    public virtual void evaluate_stepper()
     {
         Tensor stepper_in = new Tensor(new TensorShape(1, 1, 1, feature_curr.Length + latent_curr.Length));
         for (int i = 0; i < feature_curr.Length; i++)
@@ -340,7 +340,7 @@ public abstract class MotionController : ScriptableObject
         stepper_in.Dispose();
         stepper_out.Dispose();
     }
-    public void evaluate_decompressor(ref Pose target_pose, float[] features, float[] latents)
+    public virtual void evaluate_decompressor(ref Pose target_pose, float[] features, float[] latents)
     {
         Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, features.Length + latents.Length));
         for (int i = 0; i < features.Length; i++)
@@ -358,7 +358,7 @@ public abstract class MotionController : ScriptableObject
         decompressor_in.Dispose();
         decompressor_out.Dispose();
     }
-    public void evaluate_projector(float[] query)
+    public virtual void evaluate_projector(float[] query)
     {
         Tensor projector_in = new Tensor(new TensorShape(1, 1, 1, query.Length));
         for (int i = 0; i < query.Length; i++)
@@ -380,7 +380,7 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region adjustments
-    protected Vector3 adjust_character_position_by_velocity(Vector3 character_pos, Vector3 character_vel, Vector3 simulation_pos,
+    protected virtual Vector3 adjust_character_position_by_velocity(Vector3 character_pos, Vector3 character_vel, Vector3 simulation_pos,
         float halflife, float dt)
     {
         Vector3 adjustment_position = Spring.damp_adjustment_exact(
@@ -398,7 +398,7 @@ public abstract class MotionController : ScriptableObject
 
         return adjustment_position + character_pos;
     }
-    protected Vector3 adjust_character_rotation_by_velocity(Vector4 character_rot, Vector3 character_angular_vel, Vector4 simulation_rot,
+    protected virtual Vector3 adjust_character_rotation_by_velocity(Vector4 character_rot, Vector3 character_angular_vel, Vector4 simulation_rot,
         float halflife, float dt)
     {
         Vector4 adjustment_rotation = Spring.damp_adjustment_exact(
@@ -420,7 +420,7 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region clamping
-    protected Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
+    protected virtual Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
     {
         Vector3 distance = (character_position - simulation_position);
         if (length(distance) > max_distance)
@@ -432,7 +432,7 @@ public abstract class MotionController : ScriptableObject
             return character_position;
         }
     }
-    protected Vector4 clamp_character_rotation(Vector4 character_rotation, Vector4 simulation_rotation, float max_angle)
+    protected virtual Vector4 clamp_character_rotation(Vector4 character_rotation, Vector4 simulation_rotation, float max_angle)
     {
         if (Quat.quat_angle_between(character_rotation, simulation_rotation) > max_angle)
         {
@@ -453,7 +453,7 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region Contact & feet 
-    protected void compute_feet_positions(LayerMask whatIsTerrain)
+    protected virtual void compute_feet_positions(LayerMask whatIsTerrain)
     {
 
         for (int i = 0; i < contact_bones.Length; i++)
@@ -531,7 +531,7 @@ public abstract class MotionController : ScriptableObject
         }
     }
 
-    protected void contact_update(int indx, Vector3 input_contact_position, float eps = 1e-8f)
+    protected virtual void contact_update(int indx, Vector3 input_contact_position, float eps = 1e-8f)
     {
         Vector3 input_contact_velocity = (input_contact_position - contact_targets[indx]) / (dt + eps);
         contact_targets[indx] = input_contact_position;
