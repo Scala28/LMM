@@ -30,7 +30,6 @@ public class LocomotionController : MotionController
 
     public LayerMask whatIsTerrain;
 
-
     private float desired_gait = 0.0f;
     private float desired_gait_velocity = 0.0f;
 
@@ -507,9 +506,9 @@ public class LocomotionController : MotionController
         }
 
         adjusted_bones_pose = pose.DeepClone();
-        if(ik_enabled)
+        if (ik_enabled)
         {
-            compute_feet_positions();
+            compute_feet_positions(whatIsTerrain);
         }
 
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
@@ -519,219 +518,6 @@ public class LocomotionController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
-
-    #region adjustments
-    private Vector3 adjust_character_position_by_velocity(Vector3 character_pos, Vector3 character_vel, Vector3 simulation_pos,
-        float halflife, float dt)
-    {
-        Vector3 adjustment_position = Spring.damp_adjustment_exact(
-            simulation_pos - character_pos,
-            halflife,
-            dt);
-        // If the length of the adjustment is greater than the character velocity 
-        // multiplied by the ratio then we need to clamp it to that length
-        float max_length = adjustment_position_max_ratio * length(character_vel) * dt;
-
-        if (length(adjustment_position) > max_length)
-        {
-            adjustment_position = max_length * Quat.vec_normalize(adjustment_position);
-        }
-
-        return adjustment_position + character_pos;
-    }
-    private Vector3 adjust_character_rotation_by_velocity(Vector4 character_rot, Vector3 character_angular_vel, Vector4 simulation_rot,
-        float halflife, float dt)
-    {
-        Vector4 adjustment_rotation = Spring.damp_adjustment_exact(
-            Quat.quat_abs(Quat.quat_normalize(Quat.quat_mul_inv(
-                simulation_rot, character_rot))),
-            halflife,
-            dt);
-
-        float max_length = adjustment_rotation_max_ratio * length(character_angular_vel) * dt;
-
-        if (length(Quat.quat_to_scaled_angle_axis(adjustment_rotation)) > max_length)
-        {
-            adjustment_rotation = Quat.quat_from_scaled_angle_axis(max_length *
-                Quat.vec_normalize(Quat.quat_to_scaled_angle_axis(adjustment_rotation)));
-        }
-
-        return Quat.quat_mul(adjustment_rotation, character_rot);
-    }
-    #endregion
-
-    #region clamping
-    private Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
-    {
-        Vector3 distance = (character_position - simulation_position);
-        if (length(distance) > max_distance)
-        {
-            return max_distance * Quat.vec_normalize(character_position - simulation_position) + simulation_position;
-        }
-        else
-        {
-            return character_position;
-        }
-    }
-    private Vector4 clamp_character_rotation(Vector4 character_rotation, Vector4 simulation_rotation, float max_angle)
-    {
-        if (Quat.quat_angle_between(character_rotation, simulation_rotation) > max_angle)
-        {
-            Vector4 diff = Quat.quat_abs(Quat.quat_mul_inv(character_rotation, simulation_rotation));
-            float diff_angle; Vector3 diff_axis;
-            Quat.quat_to_angle_axis(diff, out diff_angle, out diff_axis);
-
-            diff_angle = clampf(diff_angle, -max_angle, max_angle);
-
-            return Quat.quat_mul(
-                Quat.quat_from_angle_axis(diff_angle, diff_axis), simulation_rotation);
-        }
-        else
-        {
-            return character_rotation;
-        }
-    }
-    #endregion
-
-    #region Contact & feet 
-    private void compute_feet_positions()
-    {
-
-        for (int i = 0; i < contact_bones.Length; i++)
-        {
-            // Find all the relevant bone indices
-            int toe_bone = contact_bones[i];
-            int heel_bone = db.bone_parents[toe_bone];
-            int knee_bone = db.bone_parents[heel_bone];
-            int hip_bone = db.bone_parents[knee_bone];
-            int root_bone = db.bone_parents[hip_bone];
-            // Compute the world space position for the toe
-            global_bone_computed = new bool[db.nbones()];
-
-            kinematics.forward_kinematic_partial(pose, toe_bone, ref global_pose, ref global_bone_computed, db);
-            // Update the contact state
-            contact_update(i, global_pose.joints[toe_bone - 1].position);
-
-            RaycastHit hit = new RaycastHit();
-            Debug.Assert(Physics.Raycast(new Vector3(contact_positions[i].x, 100f, contact_positions[i].z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
-
-            // Ensure contact position never goes through floor
-            Vector3 contact_position_clamp = contact_positions[i];
-            contact_position_clamp.y = Mathf.Max(contact_position_clamp.y, hit.point.y + ik_foot_height);
-
-            // Re-compute toe, heel, knee, hip, and root bone positions
-            int[] bones = new int[] { heel_bone, knee_bone, hip_bone, root_bone };
-
-            for (int bone_indx = 0; bone_indx < bones.Length; bone_indx++)
-            {
-                kinematics.forward_kinematic_partial(pose, bones[bone_indx], ref global_pose, ref global_bone_computed, db);
-            }
-            // Perform simple two-joint IK to place heel
-            // Qua lascio piu input variables in caso dobbiamo fare mani in futuro (per combattimento o altre cose)
-
-            kinematics.ik_two_bone(global_pose, ref adjusted_bones_pose,
-                contact_position_clamp,
-                hip_bone,
-                knee_bone,
-                heel_bone,
-                toe_bone,
-                root_bone,
-                ik_max_length_buffer);
-
-            // Re-compute toe, heel, and knee positions 
-            global_bone_computed = new bool[db.nbones()];
-
-            int[] bones_stptwo = new int[] { toe_bone, heel_bone, knee_bone };
-            for (int bone_indx = 0; bone_indx < bones_stptwo.Length; bone_indx++)
-            {
-                kinematics.forward_kinematic_partial(adjusted_bones_pose, bones_stptwo[bone_indx], ref global_pose, ref global_bone_computed, db);
-            }
-
-            // Rotate heel so toe is facing toward contact point
-            kinematics.ik_look_at(ref adjusted_bones_pose.joints[heel_bone - 1].rotation, global_pose, global_pose.joints[toe_bone - 1].position, contact_position_clamp, heel_bone, knee_bone);
-
-            // Re-compute toe and heel positions 
-            global_bone_computed = new bool[db.nbones()];
-
-            int[] bones_stptree = new int[] { toe_bone, heel_bone };
-            for (int bone_indx = 0; bone_indx < bones_stptree.Length; bone_indx++)
-            {
-                kinematics.forward_kinematic_partial(adjusted_bones_pose, bones_stptree[bone_indx], ref global_pose, ref global_bone_computed, db);
-            }
-
-            // Rotate toe bone so that the end of the toe
-            // does not intersect with the ground
-            Vector3 toe_end_curr = Quat.quat_mul_vec(global_pose.joints[toe_bone - 1].rotation, new Vector3(ik_toe_length, 0.0f, 0.0f)) +
-                    global_pose.joints[toe_bone - 1].position;
-
-            Vector3 toe_end_targ = toe_end_curr;
-            toe_end_targ.y = Mathf.Max(toe_end_targ.y, ik_foot_height);
-
-            kinematics.ik_look_at(ref adjusted_bones_pose.joints[toe_bone - 1].rotation, global_pose, toe_end_curr, toe_end_targ, toe_bone, heel_bone);
-
-        }
-    }
-
-    private void contact_update(int indx, Vector3 input_contact_position, float eps = 1e-8f)
-    {
-        Vector3 input_contact_velocity = (input_contact_position - contact_targets[indx]) / (dt + eps);
-        contact_targets[indx] = input_contact_position;
-
-        // Update the inertializer to tick forward in time
-        Spring.inertialize_update(
-            ref contact_positions[indx],
-            ref contact_velocities[indx],
-            ref contact_offset_positions[indx],
-            ref contact_offset_velocities[indx],
-            // If locked we feed the contact point and zero velocity,    
-            // otherwise we feed the input from the animation
-            contact_locks[indx] ? contact_points[indx] : input_contact_position,
-            contact_locks[indx] ? new Vector3() : input_contact_velocity,
-            ik_blending_halflife,
-            dt);
-
-        // If the contact point is too far from the current input position 
-        // then we need to unlock the contact
-        bool unlock_contact = contact_locks[indx] && (length(contact_points[indx] - input_contact_position) > ik_unlock_radius);
-
-        // If the contact was previously inactive but is now active we 
-        // need to transition to the locked contact state
-        if (!contact_states[indx] && current_pose.contact_states[indx])
-        {
-            // Contact point is given by the current position of 
-            // the foot projected onto the ground plus foot height
-            contact_locks[indx] = true;
-            contact_points[indx] = contact_positions[indx];
-            contact_points[indx].y = ik_foot_height;
-
-            Spring.inertialize_transition(
-                ref contact_offset_positions[indx],
-                ref contact_offset_velocities[indx],
-                input_contact_position,
-                input_contact_velocity,
-                contact_points[indx],
-                new Vector3());
-        }
-        // Otherwise if we need to unlock or we were previously in 
-        // contact but are no longer we transition to just taking 
-        // the input position as-is
-        else if ((contact_locks[indx] && contact_states[indx] && !current_pose.contact_states[indx]) || unlock_contact)
-        {
-            contact_locks[indx] = false;
-
-            Spring.inertialize_transition(
-                ref contact_offset_positions[indx],
-                ref contact_offset_velocities[indx],
-                contact_points[indx],
-                new Vector3(),
-                input_contact_position,
-                input_contact_velocity);
-        }
-        // Update contact state
-        contact_states[indx] = current_pose.contact_states[indx];
-    }
-    #endregion
-
     public (Vector3[], Vector3[][]) Gizmos() => (trajectory_positions, terrain_toe_positions);
 
 }

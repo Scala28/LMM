@@ -1207,7 +1207,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &619851155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1663,7 +1663,7 @@ MonoBehaviour:
   rigged: 1
   lock60Fps: 1
   gizmos: 1
-  set_vcam: 0
+  set_vcam: 1
   rigToTransform:
   - {fileID: 543450653031528387}
   - {fileID: 2176417841611610930}
@@ -1978,7 +1978,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &852832054
 MonoBehaviour:
   m_ObjectHideFlags: 0
