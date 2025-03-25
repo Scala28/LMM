@@ -33,6 +33,8 @@ public class LocomotionController : MotionController
     private float desired_gait = 0.0f;
     private float desired_gait_velocity = 0.0f;
 
+    public bool clamp_character_y = true;
+
     #region Trajectory & Gameplay Data
     public void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
     {
@@ -492,7 +494,13 @@ public class LocomotionController : MotionController
             Vector3 adjusted_position = pose.root_position;
             Vector4 adjusted_rotation = pose.root_rotation;
 
-            adjusted_position = clamp_character_position(
+            if(!clamp_character_y)
+                adjusted_position = this.clamp_character_position(
+                adjusted_position,
+                simulation_position,
+                clamping_max_distance);
+            else
+                adjusted_position = base.clamp_character_position(
                 adjusted_position,
                 simulation_position,
                 clamping_max_distance);
@@ -518,6 +526,24 @@ public class LocomotionController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
+    #region clamping
+    protected override Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
+    {
+        Vector3 distance = (character_position - simulation_position);
+        distance.y = 0;
+        if (length(distance) > max_distance)
+        {
+            Vector3 dir = (character_position - simulation_position);
+            dir.y = 0;
+            return max_distance * Quat.vec_normalize(dir) + simulation_position;
+        }
+        else
+        {
+            return character_position;
+        }
+    }
+    #endregion
     public (Vector3[], Vector3[][]) Gizmos() => (trajectory_positions, terrain_toe_positions);
+
 
 }

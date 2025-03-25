@@ -13,8 +13,8 @@ public class InputHandler : MonoBehaviour
     public Vector2 Raw_stickRight;
     public Vector3 StickRight;
 
-    public bool Button1;
-    public bool Button2;
+    public bool RightShoulder;
+    public bool LeftTrigger;
     #endregion
 
     #region Smooth movement input
@@ -29,8 +29,7 @@ public class InputHandler : MonoBehaviour
 
     #region Input event callbacks
 
-    #region locomotion
-    public void OnMoveInput(InputAction.CallbackContext context)
+    public void OnLeftStick(InputAction.CallbackContext context)
     {
         Raw_stickLeft = context.ReadValue<Vector2>();
         float movenorm = Mathf.Sqrt(Raw_stickLeft.x * Raw_stickLeft.x + Raw_stickLeft.y * Raw_stickLeft.y);
@@ -51,7 +50,7 @@ public class InputHandler : MonoBehaviour
         }
         StickLeft = new Vector3(movex, 0.0f, movey);
     }
-    public void OnLookInput(InputAction.CallbackContext context)
+    public void OnRightStick(InputAction.CallbackContext context)
     {
         Raw_stickRight = context.ReadValue<Vector2>();
         float looknorm = Mathf.Sqrt(Raw_stickRight.x * Raw_stickRight.x + Raw_stickRight.y * Raw_stickRight.y);
@@ -72,24 +71,19 @@ public class InputHandler : MonoBehaviour
         }
         StickRight = new Vector3(lookx, 0.0f, looky);
     }
-    public void OnGaitInput(InputAction.CallbackContext context)
+    public void OnRightShoulder(InputAction.CallbackContext context)
     {
         if (context.started)
-            Button1 = !Button1;
+            RightShoulder = !RightShoulder;
     }
-    public void OnStrafeInput(InputAction.CallbackContext context)
+    public void OnLeftTrigger(InputAction.CallbackContext context)
     {
         if (context.started)
-            Button2 = true;
+            LeftTrigger = true;
         if (context.performed)
-            Button2 = true;
+            LeftTrigger = true;
         if (context.canceled)
-            Button2 = false;
+            LeftTrigger = false;
     }
-    #endregion
-
-    #region fight
-
-    #endregion
     #endregion
 }

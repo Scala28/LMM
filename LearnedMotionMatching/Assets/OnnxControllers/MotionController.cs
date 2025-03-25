@@ -59,8 +59,10 @@ public abstract class MotionController : ScriptableObject
 
     #endregion
 
-    public float camera_azimuth = 0.0f;
-    public float camera_altitude = .4f;
+
+    [HideInInspector] public float camera_azimuth = 0.0f;
+    [HideInInspector] public float camera_altitude = .4f;
+    [Header("Animation")]
     public float camera_distance = 4.0f;
 
     #region Animation

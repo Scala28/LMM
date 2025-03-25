@@ -153,7 +153,7 @@ public class ControllerOrchestrator : MonoBehaviour
             camera_distance = current_controller.motion_controller.camera_distance;
 
             (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle(gamepad_stickleft, gamepad_stickright,
-                input_handler.Button1, input_handler.Button2);
+                input_handler.RightShoulder, input_handler.LeftTrigger);
         }
 
         if (render_mesh)

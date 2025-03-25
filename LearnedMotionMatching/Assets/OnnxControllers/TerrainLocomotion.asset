@@ -22,8 +22,8 @@ MonoBehaviour:
   db_filename: terrain/terrain_db.bin
   features_filename: terrain/terrain_features.bin
   latents_filename: terrain/latent.bin
-  camera_azimuth: 1.9666662
-  camera_altitude: 0.4
+  camera_azimuth: 0
+  camera_altitude: 0
   camera_distance: 4
   simulation_velocity_halflife: 0.27
   simulation_rotation_halflife: 0.27
@@ -37,7 +37,8 @@ MonoBehaviour:
   simulation_walk_fwrd_speed: 1.75
   simulation_walk_side_speed: 1.5
   simulation_walk_back_speed: 1.25
-  terrain_speed_multiplier: 0.4
+  terrain_speed_multiplier: 1
   whatIsTerrain:
     serializedVersion: 2
     m_Bits: 64
+  clamp_character_y: 0

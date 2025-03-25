@@ -400,8 +400,8 @@ public class MotionMatcher : MonoBehaviour
 
         gamepad_stickleft = input_handler.StickLeft;
         gamepad_stickright = input_handler.StickRight;
-        desired_strafe = input_handler.Button2;
-        gait_input = input_handler.Button1;
+        desired_strafe = input_handler.LeftTrigger;
+        gait_input = input_handler.RightShoulder;
 
         // Get the desired gait (walk / run)
         desired_gait_update(gait_input);
@@ -1085,7 +1085,7 @@ public class MotionMatcher : MonoBehaviour
         height_variance += terrain_height_0_left.y * terrain_height_0_left.y;
         height_variance += terrain_height_0_right.y * terrain_height_0_right.y;
 
-        float multiplier_min_value = input_handler.Button1 ? .175f : .4f;
+        float multiplier_min_value = input_handler.RightShoulder ? .175f : .4f;
 
         if (height_variance >= .15f)
             terrain_speed_multiplier = lerpf(multiplier_min_value, 1f, clampf(1 - height_variance, 0f, 1f));

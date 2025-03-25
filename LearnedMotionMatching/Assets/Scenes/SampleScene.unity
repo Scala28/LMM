@@ -1207,7 +1207,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &619851155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1231,7 +1231,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   lock60Fps: 1
-  gizmos: 0
+  gizmos: 1
   set_vcam: 1
   render_mesh: 1
   ch_filename: character.bin
@@ -1251,8 +1251,8 @@ MonoBehaviour:
   StickLeft: {x: 0, y: 0, z: 0}
   Raw_stickRight: {x: 0, y: 0}
   StickRight: {x: 0, y: 0, z: 0}
-  Button1: 0
-  Button2: 0
+  RightShoulder: 0
+  LeftTrigger: 0
   deadzone: 0.2
 --- !u!114 &619851157
 MonoBehaviour:
@@ -1283,7 +1283,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 619851156}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnMoveInput
+        m_MethodName: OnLeftStick
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1299,7 +1299,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 619851156}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnLookInput
+        m_MethodName: OnRightStick
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1315,7 +1315,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 619851156}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnGaitInput
+        m_MethodName: OnRightShoulder
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1331,7 +1331,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 619851156}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnStrafeInput
+        m_MethodName: OnLeftTrigger
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1344,19 +1344,67 @@ MonoBehaviour:
     m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
     m_ActionName: locomotion/strafe[/ USB Gamepad          /button7,/Keyboard/leftAlt]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 619851156}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnLeftStick
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 36a29a50-c831-457b-8609-4a06c589ec28
     m_ActionName: combact/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 619851156}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnRightStick
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 12409d11-4dc2-4ec5-97b1-8c19b8c34a0d
     m_ActionName: combact/look/move torso[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 619851156}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnLeftTrigger
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 00be02a3-358b-4a7c-a200-696f3f79406e
     m_ActionName: combact/lock target[/Keyboard/space]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 619851156}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnRightShoulder
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
     m_ActionName: combact/change target[/Keyboard/shift]
   m_NeverAutoSwitchControlSchemes: 0
@@ -1994,7 +2042,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &852832054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2061,8 +2109,8 @@ MonoBehaviour:
   StickLeft: {x: 0, y: 0, z: 0}
   Raw_stickRight: {x: 0, y: 0}
   StickRight: {x: 0, y: 0, z: 0}
-  Button1: 0
-  Button2: 0
+  RightShoulder: 0
+  LeftTrigger: 0
   deadzone: 0.2
 --- !u!114 &852832056
 MonoBehaviour:
@@ -2093,7 +2141,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 852832055}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnMoveInput
+        m_MethodName: OnLeftStick
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2109,7 +2157,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 852832055}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnLookInput
+        m_MethodName: OnRightStick
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2125,7 +2173,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 852832055}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnGaitInput
+        m_MethodName: OnRightShoulder
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2141,7 +2189,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 852832055}
         m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
-        m_MethodName: OnStrafeInput
+        m_MethodName: OnLeftTrigger
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2154,19 +2202,67 @@ MonoBehaviour:
     m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
     m_ActionName: locomotion/strafe[/Keyboard/leftAlt]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 852832055}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnLeftStick
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 36a29a50-c831-457b-8609-4a06c589ec28
     m_ActionName: combact/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 852832055}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnRightStick
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 12409d11-4dc2-4ec5-97b1-8c19b8c34a0d
     m_ActionName: combact/look/move torso[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 852832055}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnLeftTrigger
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 00be02a3-358b-4a7c-a200-696f3f79406e
     m_ActionName: combact/lock target[/Keyboard/space]
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 852832055}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnRightShoulder
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
     m_ActionName: combact/change target[/Keyboard/shift]
   m_NeverAutoSwitchControlSchemes: 0
@@ -2678,8 +2774,8 @@ MonoBehaviour:
   StickLeft: {x: 0, y: 0, z: 0}
   Raw_stickRight: {x: 0, y: 0}
   StickRight: {x: 0, y: 0, z: 0}
-  Button1: 0
-  Button2: 0
+  RightShoulder: 0
+  LeftTrigger: 0
   deadzone: 0.2
 --- !u!114 &1013524423
 MonoBehaviour:
@@ -2770,6 +2866,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 4372328f-ce44-4076-97d8-c37f7922eac8
     m_ActionName: locomotion/strafe[/ USB Gamepad          /button7,/Keyboard/leftAlt]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 36a29a50-c831-457b-8609-4a06c589ec28
+    m_ActionName: combact/move[/Keyboard/w,/Keyboard/s,/Keyboard/a,/Keyboard/d]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 12409d11-4dc2-4ec5-97b1-8c19b8c34a0d
+    m_ActionName: combact/look/move torso[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 00be02a3-358b-4a7c-a200-696f3f79406e
+    m_ActionName: combact/lock target[/Keyboard/space]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
+    m_ActionName: combact/change target[/Keyboard/shift]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: keyboard
   m_DefaultActionMap: locomotion
@@ -4626,8 +4738,8 @@ MonoBehaviour:
   StickLeft: {x: 0, y: 0, z: 0}
   Raw_stickRight: {x: 0, y: 0}
   StickRight: {x: 0, y: 0, z: 0}
-  Button1: 0
-  Button2: 0
+  RightShoulder: 0
+  LeftTrigger: 0
   deadzone: 0.2
 --- !u!114 &919132148757540219
 MonoBehaviour:
