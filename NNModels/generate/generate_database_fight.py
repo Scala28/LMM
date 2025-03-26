@@ -21,7 +21,7 @@ def animation_mirror(lrot, lpos, names, parents):
             names.index('Right' + n[4:]) if n.startswith('Left') else
             names.index(n))) for n in names])
 
-    mirror_pos = np.array([-1, 1, -1])
+    mirror_pos = np.array([-1, 1, 1])
     mirror_rot = np.array([[1, -1, -1], [-1, 1, 1], [-1, 1, 1]])
 
     grot, gpos = quat.fk(lrot, lpos, parents)
@@ -75,7 +75,7 @@ def generate_database(filename, start, stop, mirror, root_approach):
     if mirror:
         rotations, positions = animation_mirror(rotations, positions, bvh_data['names'], bvh_data['parents'])
         rotations = quat.unroll(rotations)
-        positions[:,0,2] = -positions[:,0,2]
+        # positions[:,0,2] = -positions[:,0,2]
 
     """ Supersample """
 
@@ -143,20 +143,20 @@ def generate_database(filename, start, stop, mirror, root_approach):
             global_rotations[:, sim_rotation_joint:sim_rotation_joint + 1], np.array([0.0, 1.0, 0.0]))
 
         smoothed = np.copy(sim_direction)
-        if (smoothing_type == 'ma'):
+        if smoothing_type == 'ma':
             kernel = np.ones(window_size) / window_size
             smoothed = np.apply_along_axis(lambda m: np.convolve(m, kernel, mode='same'), axis=0, arr=sim_direction)
-        elif (smoothing_type == 'ema'):
+        elif smoothing_type == 'ema':
             alpha = window_size / 100
             for i in range(3):  # Process each Euler angle separately
                 for t in range(1, len(sim_direction)):
                     smoothed[t][0][i] = alpha * sim_direction[t][0][i] + (1 - alpha) * smoothed[t - 1][0][i]
-        elif (smoothing_type == 'cma'):
+        elif smoothing_type == 'cma':
             if window_size % 2 == 0:
                 window_size += 1  # Ensure the window size is odd
             for i in range(3):  # Process each Euler axis separately
                 smoothed[:, 0, i] = np.convolve(sim_direction[:, 0, i], np.ones(window_size) / window_size, mode='same')
-        elif (smoothing_type == 'gf'):
+        elif smoothing_type == 'gf':
             for i in range(3):  # Process each Euler axis separately
                 smoothed[:, 0, i] = gaussian_filter1d(sim_direction[:, 0, i].flatten(), sigma=window_size,
                                                       mode="nearest")
@@ -276,7 +276,7 @@ range_stops = np.array(range_stops).astype(np.int32)
 contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
 
 """ Write Database """
-print('Generating Database generate/data/fight/{0}/database.bin . . .'.format(ms.settings_animation_type))
+print('Generating Database generate/data/fight/{0}/database.bin ...'.format(ms.settings_animation_type))
 
 with open('generate/data/fight/{0}/database.bin'.format(format(ms.settings_animation_type)), 'wb') as f:
     nframes = bone_positions.shape[0]

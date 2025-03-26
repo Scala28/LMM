@@ -26,10 +26,10 @@ def parse_input_animations(animations_list):
         add_toe = animations_list[i][4]
 
         if settings.bvh_type == 'default':
-            print("processing default format . . .")
+            print("processing default format ...")
             parser_def.process_bvh(animations_list[i][0], pth + anim_name)
         elif settings.bvh_type == 'mixamo':
-            print("processing mixamo format . . .")
+            print("processing mixamo format ...")
             parser_mix.process_bvh(animations_list[i][0], pth + anim_name, add_toe)
 
 
@@ -53,36 +53,36 @@ if __name__ == "__main__":
     backup_old_executions_settings()
 
     if 'parse_bvh' in settings.settings_run_components:
-        print("Starting BVH parsing . . .")
+        print("Starting BVH parsing ...")
         parse_input_animations(settings.settings_animations)
 
     venv_path = "C:/Users/lucas/AppData/Local/Programs/Python/Python39/python.exe"
 
     if settings.settings_animation_type == 'move':
         if 'generate_database' in settings.settings_run_components:
-            print("Generating database . . .")
+            print("Generating database ...")
             subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.settings_type)])
-            print("Generating root direction bvh. . .")
+            print("Generating root direction bvh ...")
             subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.settings_type)])
 
         if 'generate_features' in settings.settings_run_components:
-            print("Generating features . . .")
+            print("Generating features ...")
             subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.settings_type)])
 
         if 'train_decompressor' in settings.settings_run_components:
-            print("Starting decompressor training . . .")
+            print("Starting decompressor training ...")
             subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.settings_type)])
 
         if 'train_projector' in settings.settings_run_components:
-            print("Starting projector training . . .")
+            print("Starting projector training ...")
             subprocess.run([venv_path, "trainings/train_projector_{0}.py".format(settings.settings_type)])
 
         if 'train_stepper' in settings.settings_run_components:
-            print("Starting stepper training . . .")
+            print("Starting stepper training ...")
             subprocess.run([venv_path, "trainings/train_stepper_{0}.py".format(settings.settings_type)])
 
         if 'train_stepper_projector' in settings.settings_run_components:
-            print("Starting stepper and projector training . . .")
+            print("Starting stepper and projector training ...")
             process1 = subprocess.Popen([venv_path, "trainings/train_stepper_{0}.py".format(settings.settings_type)])
             process2 = subprocess.Popen([venv_path, "trainings/train_projector_{0}.py".format(settings.settings_type)])
             process1.wait()
