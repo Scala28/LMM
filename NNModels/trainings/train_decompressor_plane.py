@@ -1,59 +1,48 @@
 import sys
 import struct
 import matplotlib.pyplot as plt
-import bvh
-
 import numpy as np
 import torch
-
+import main_settings as ms
+import my_modules.bvh as bvh
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
 from train_common import load_database, load_features, save_network, save_network_onnx
-
 from torch.utils.tensorboard import SummaryWriter
 
-from sklearn.neighbors import KNeighborsRegressor
 
 if __name__ == '__main__':
     # Load data
-    database = load_database('data/terrain_db.bin')
+    database = load_database('./generate/data/plane/database.bin')
 
     parents = database['bone_parents']
     contacts = database['contact_states']
     range_starts = database['range_starts']
     range_stops = database['range_stops']
 
-    X = load_features('data/terrain_features.bin')['features'].astype(np.float32)
+    X = load_features('./generate/data/plane/features.bin')['features'].astype(np.float32)
     Ypos = database['bone_positions'].astype(np.float32)
     Yrot = database['bone_rotations'].astype(np.float32)
     Yvel = database['bone_velocities'].astype(np.float32)
     Yang = database['bone_angular_velocities'].astype(np.float32)
 
-    # Toe positions relative to the root at 15, 30, 45 frames ahead
-    # (nframes, 3, 2, 3)
-    Qtraj_toe_positions = database['trajectory_toe_positions'].astype(np.float32)
-
     # As pyTorch tensors
-    X = torch.as_tensor(X)  # (nframes, nfeatures)
+    X = torch.as_tensor(X) # (nframes, nfeatures)
 
-    Ypos = torch.as_tensor(Ypos)  # (nframes, nbones, 3/4)
+    Ypos = torch.as_tensor(Ypos) # (nframes, nbones, 3/4)
     Yrot = torch.as_tensor(Yrot)
     Yvel = torch.as_tensor(Yvel)
     Yang = torch.as_tensor(Yang)
-
-    Qtraj_toe_positions = torch.as_tensor(Qtraj_toe_positions)
 
     nframes = Ypos.shape[0]
     nbones = Ypos.shape[1]
     nextra = contacts.shape[1]
     nfeatures = X.shape[1]
-    nlatent = 35
-    nranges = len(range_starts)
+    nlatent = 32
 
     # Parameters
 
-    foot_height = 0.02
     seed = 1234
     batchsize = 32
     lr = 0.001
@@ -105,8 +94,6 @@ if __name__ == '__main__':
 
     Yextra_scale = Yextra.std()
 
-    Qtraj_toe_positions_scale = Qtraj_toe_positions.std()
-
     decompressor_mean_out = torch.cat((
         torch.ravel(Ypos[:, 1:].mean(dim=0)),
         torch.ravel(Ytxy[:, 1:].mean(dim=0)),
@@ -114,8 +101,7 @@ if __name__ == '__main__':
         torch.ravel(Yang[:, 1:].mean(dim=0)),
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
-        torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Qtraj_toe_positions.mean(dim=0))
+        torch.ravel(Yextra.mean(dim=0))
     ))
     decompressor_std_out = torch.cat((
         torch.ravel(Ypos[:, 1:].std(dim=0)),
@@ -124,8 +110,7 @@ if __name__ == '__main__':
         torch.ravel(Yang[:, 1:].std(dim=0)),
         torch.ravel(Yrvel.std(dim=0)),
         torch.ravel(Yrang.std(dim=0)),
-        torch.ravel(Yextra.std(dim=0)),
-        torch.ravel(Qtraj_toe_positions.std(dim=0))
+        torch.ravel(Yextra.std(dim=0))
     ))
 
     decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
@@ -142,8 +127,7 @@ if __name__ == '__main__':
         torch.ravel(Qang[:, 1:].mean(dim=0)),
         torch.ravel(Yrvel.mean(dim=0)),
         torch.ravel(Yrang.mean(dim=0)),
-        torch.ravel(Yextra.mean(dim=0)),
-        torch.ravel(Qtraj_toe_positions.mean(dim=0))
+        torch.ravel(Yextra.mean(dim=0))
     ))
     compressor_std_in = torch.cat((
         Ypos_scale.repeat((nbones - 1) * 3),
@@ -156,8 +140,7 @@ if __name__ == '__main__':
         Qang_scale.repeat((nbones - 1) * 3),
         Yrvel_scale.repeat(3),
         Yrang_scale.repeat(3),
-        Yextra_scale.repeat(nextra),
-        Qtraj_toe_positions_scale.repeat(3 * 2 * 3)
+        Yextra_scale.repeat(nextra)
     ))
 
     # NN models
@@ -178,18 +161,17 @@ if __name__ == '__main__':
                 Qang[:, 1:].reshape([1, nframes, -1]),
                 Yrvel.reshape([1, nframes, -1]),
                 Yrang.reshape([1, nframes, -1]),
-                Yextra.reshape([1, nframes, -1]),
-                Qtraj_toe_positions.reshape([1, nframes, -1])
+                Yextra.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('train_ris/decompressor/latent.bin', 'wb') as f:
+            with open('./train_ris/plane/decompressor/latent.bin', 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
     def _generate_anim():
         with torch.no_grad():
-            start = range_starts[8]
-            stop = min(start + 1000, range_stops[8])
+            start = range_starts[2]
+            stop = min(start + 1000, range_stops[2])
 
             Ygnd_pos = Ypos[start:stop][np.newaxis]  # (1, stop-start, nbones, 3)
             Ygnd_rot = Yrot[start: stop][np.newaxis]  # (1, stop- start, nbones, 4)
@@ -206,8 +188,6 @@ if __name__ == '__main__':
             Ygnd_rang = Yrang[start:stop][np.newaxis]
             Ygnd_extra = Yextra[start:stop][np.newaxis]
 
-            Qgnd_traj_toe_pos = Qtraj_toe_positions[start:stop][np.newaxis]
-
             Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
 
             Zgnd = compressor((torch.cat([
@@ -221,8 +201,7 @@ if __name__ == '__main__':
                 Qgnd_ang[:, :, 1:].reshape([1, stop - start, -1]),
                 Ygnd_rvel.reshape([1, stop - start, -1]),
                 Ygnd_rang.reshape([1, stop - start, -1]),
-                Ygnd_extra.reshape([1, stop - start, -1]),
-                Qgnd_traj_toe_pos.reshape([1, stop - start, -1])
+                Ygnd_extra.reshape([1, stop - start, -1])
             ], dim=-1) - compressor_mean_in) / compressor_std_in)
 
             Ytil = (decompressor(torch.cat([Xgnd, Zgnd], dim=-1))
@@ -261,7 +240,7 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('train_ris/decompressor/decompressor_Ygnd.bvh', {
+                bvh.save('./train_ris/plane/decompressor/decompressor_Ygnd.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -269,7 +248,7 @@ if __name__ == '__main__':
                     'names': ['joint_%i' % i for i in range(nbones)],
                     'order': 'zyx'
                 })
-                bvh.save('train_ris/decompressor/decompressor_Ytil.bvh', {
+                bvh.save('./train_ris/plane/decompressor/decompressor_Ytil.bvh', {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
@@ -290,7 +269,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor/decompressor_X.png')
+                plt.savefig('./train_ris/plane/decompressor/decompressor_X.png')
             except IOError as e:
                 print(e)
             plt.close()
@@ -305,27 +284,17 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/decompressor/decompressor_Z.png')
+                plt.savefig('./train_ris/plane/decompressor/decompressor_Z.png')
             except IOError as e:
                 print(e)
 
             plt.close()
 
 
-    def database_trajectory_index_clamp(frame, offset):
-        for j in range(nranges):
-            if range_starts[j] <= frame < range_stops[j]:
-                return max(min(frame + offset, range_stops[j] - 1), range_starts[j])
-        assert False
-        return -1
-
-
     # Build batches respecting window size
     indices = []
-
     for i in range(nframes - window + 1):
         indices.append(np.arange(i, i + window))
-
     indices = torch.as_tensor(np.array(indices), dtype=torch.long)
 
     # Train
@@ -349,8 +318,7 @@ if __name__ == '__main__':
         optimizer.zero_grad()
 
         # Extract batch
-        batch_indxs = torch.randint(0, len(indices), size=[batchsize])
-        batch = indices[batch_indxs]  # (batchsize, window)
+        batch = indices[torch.randint(0, len(indices), size=[batchsize])]  # (batchsize, window)
 
         Xgnd = X[batch]  # (batchsize, window, nfeatures)
 
@@ -370,8 +338,6 @@ if __name__ == '__main__':
 
         Ygnd_extra = Yextra[batch]
 
-        Qgnd_traj_toe_pos = Qtraj_toe_positions[batch]
-
         # Encode
         Zgnd = compressor((torch.cat([
             Ygnd_pos[:, :, 1:].reshape([batchsize, window, -1]),  # (batchsize, window, (bones-1)*3)
@@ -384,8 +350,7 @@ if __name__ == '__main__':
             Qgnd_ang[:, :, 1:].reshape([batchsize, window, -1]),
             Ygnd_rvel.reshape([batchsize, window, -1]),
             Ygnd_rang.reshape([batchsize, window, -1]),
-            Ygnd_extra.reshape([batchsize, window, -1]),
-            Qgnd_traj_toe_pos.reshape([batchsize, window, -1])
+            Ygnd_extra.reshape([batchsize, window, -1])
         ], dim=-1) - compressor_mean_in) / compressor_std_in)
 
         # Decode
@@ -401,10 +366,6 @@ if __name__ == '__main__':
         Ytil_rang = Ytil[:, :, 15 * (nbones - 1) + 3:15 * (nbones - 1) + 6].reshape([batchsize, window, 3])
         Ytil_extra = Ytil[:, :, 15 * (nbones - 1) + 6:15 * (nbones - 1) + 6 + nextra].reshape(
             [batchsize, window, nextra])
-
-        Qtil_traj_toe_pos = Ytil[:, :, 15 * (nbones - 1) + 6 + nextra:15 * (nbones - 1) + 6 + nextra + 3 * 2 * 4].reshape(
-            [batchsize, window, 3, 2, 3]
-        )
 
         # Add root bone
         Ytil_pos = torch.cat([Ygnd_pos[:, :, 0:1], Ytil_pos], dim=2)
@@ -438,9 +399,6 @@ if __name__ == '__main__':
 
         dZgnd = (Zgnd[:, 1:] - Zgnd[:, :-1]) / dt
 
-        dQgnd_traj_toe_pos = (Qgnd_traj_toe_pos[:, 1:] - Qgnd_traj_toe_pos[:, :-1]) / dt
-        dQtil_traj_toe_pos = (Qtil_traj_toe_pos[:, 1:] - Qtil_traj_toe_pos[:, :-1]) / dt
-
         # Pose-based losses
         loss_lpos = torch.mean(75.0 * torch.abs(Ygnd_pos - Ytil_pos))
         loss_ltxy = torch.mean(10.0 * torch.abs(Ygnd_txy - Ytil_txy))
@@ -454,15 +412,12 @@ if __name__ == '__main__':
         loss_cxfm = torch.mean(5.0 * torch.abs(Qgnd_xfm - Qtil_xfm))
         loss_cvel = torch.mean(2.0 * torch.abs(Qgnd_vel - Qtil_vel))
         loss_cang = torch.mean(0.75 * torch.abs(Qgnd_ang - Qtil_ang))
-        loss_trajected_toe_positions = torch.mean(15.0 * torch.abs(Qgnd_traj_toe_pos - Qtil_traj_toe_pos))
 
         # Velocity losses
         loss_lvel_pos = torch.mean(10.0 * torch.abs(Ygnd_dpos - Ytil_dpos))
         loss_lvel_txy = torch.mean(0.75 * torch.abs(Ygnd_dtxy - Ytil_dtxy))
         loss_cvel_pos = torch.mean(2.0 * torch.abs(Qgnd_dpos - Qtil_dpos))
         loss_cvel_xfm = torch.mean(0.75 * torch.abs(Qgnd_dxfm - Qtil_dxfm))
-
-        loss_cvel_trajected_toe_pos = torch.mean(2.0 * torch.abs(dQgnd_traj_toe_pos - dQtil_traj_toe_pos))
 
         # Regularization losses
         loss_sreg = torch.mean(0.1 * torch.abs(Zgnd))
@@ -487,9 +442,7 @@ if __name__ == '__main__':
                 loss_cvel_xfm +
                 loss_sreg +
                 loss_lreg +
-                loss_vreg +
-                loss_trajected_toe_positions +
-                loss_cvel_trajected_toe_pos
+                loss_vreg
         )
 
         # Backpropagation
@@ -519,9 +472,7 @@ if __name__ == '__main__':
             'cvel_rot': loss_cvel_xfm.item(),
             'sreg': loss_sreg.item(),
             'lreg': loss_lreg.item(),
-            'vreg': loss_vreg.item(),
-            'traj_toe_positions': loss_trajected_toe_positions.item(),
-            'cvel_traj_toe_pos': loss_cvel_trajected_toe_pos.item()
+            'vreg': loss_vreg.item()
         }, i)
         writer.add_scalars('decompressor/latent', {
             'mean': Zgnd.mean().item(),
@@ -534,12 +485,13 @@ if __name__ == '__main__':
             rolling_loss = rolling_loss * 0.99 + loss.item() * 0.01
 
         if i % 10 == 0:
+            # sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
             sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('train_ris/decompressor/decompressor.bin', [
+            save_network('./train_ris/plane/decompressor/decompressor.bin', [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
@@ -549,8 +501,7 @@ if __name__ == '__main__':
                          )
             save_network_onnx(decompressor,
                               decompressor_mean_in,
-                              'train_ris/decompressor/decompressor.onnx')
-            torch.save(decompressor, 'train_ris/decompressor/decompressor.pth')
+                              './train_ris/plane/decompressor/decompressor.onnx')
 
         if i % 1000 == 0:
             # c_scheduler.step()

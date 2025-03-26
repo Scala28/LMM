@@ -10,19 +10,19 @@ import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
 from train_common import load_database, load_features, load_latent, save_network, save_network_onnx
-
+import main_settings as ms
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('data/terrain_db.bin')
+    database = load_database('./generate/data/{0}/database.bin'.format(ms.settings_type))
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('data/terrain_features.bin')['features'].copy().astype(np.float32)
-    Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].copy().astype(np.float32)
+    X = load_features('./generate/data/{0}/features.bin'.format(ms.settings_type))['features'].copy().astype(np.float32)
+    Z = load_latent('./train_ris/{0}/decompressor/latent.bin'.format(ms.settings_type))['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
     nfeatures = X.shape[1]
@@ -108,7 +108,7 @@ if __name__ == '__main__':
                 axs[j].set_ylim(fmin, fmax)
             plt.tight_layout()
             try:
-                plt.savefig('train_ris/stepper/stepper_X.png')
+                plt.savefig('./train_ris/{0}/stepper/stepper_X.png'.format(ms.settings_type))
             except IOError as e:
                 print(e)
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
                 plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/stepper/stepper_Z.png')
+                plt.savefig('./train_ris/{0}/stepper/stepper_Z.png'.format(ms.settings_type))
             except IOError as e:
                 print(e)
 
@@ -210,7 +210,7 @@ if __name__ == '__main__':
 
         if i % 10000 == 0:
             generate_predictions()
-            save_network('train_ris/stepper/stepper.bin', [
+            save_network('./train_ris/{0}/stepper/stepper.bin'.format(ms.settings_type), [
                 stepper.layer1,
                 stepper.layer2,
                 stepper.predict],
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                          stepper_std_out)
             save_network_onnx(stepper,
                               stepper_mean_in,
-                              'train_ris/stepper/stepper.onnx')
+                              './train_ris/{0}/stepper/stepper.onnx'.format(ms.settings_type))
 
         if i % 1000 == 0:
             scheduler.step()

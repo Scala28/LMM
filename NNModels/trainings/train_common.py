@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import my_modules.NNModels as NNModels
+import main_settings as ms
 
 
 def load_database(filename):
@@ -32,6 +33,18 @@ def load_database(filename):
         nframes, ncontacts = struct.unpack('II', f.read(8))
         contact_states = np.frombuffer(f.read(nframes * ncontacts), dtype=np.int8, count=nframes * ncontacts).reshape(
             [nframes, ncontacts])
+
+        if 'terrain' not in ms.settings_type:
+            return {
+                'bone_positions': bone_positions,
+                'bone_rotations': bone_rotations,
+                'bone_velocities': bone_velocities,
+                'bone_angular_velocities': bone_angular_velocities,
+                'bone_parents': bone_parents,
+                'range_starts': range_starts,
+                'range_stops': range_stops,
+                'contact_states': contact_states
+            }
 
         nframes, nterrain = struct.unpack('II', f.read(8))
         terrain_positions = np.frombuffer(f.read(nframes * nterrain * 4), dtype=np.float32,

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from torch.utils.tensorboard import SummaryWriter
-
+import main_settings as ms
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
@@ -18,13 +18,13 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('data/terrain_db.bin')
+    database = load_database('./generate/data/{0}/database.bin'.format(ms.settings_type))
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('data/terrain_features.bin')['features'].copy().astype(np.float32)
-    Z = load_latent('./train_ris/decompressor/latent.bin')['latent'].copy().astype(np.float32)
+    X = load_features('./generate/data/{0}/features.bin'.format(ms.settings_type))['features'].copy().astype(np.float32)
+    Z = load_latent('./train_ris/{0}/decompressor/latent.bin'.format(ms.settings_type))['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
     nfeatures = X.shape[1]
@@ -105,7 +105,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/projector/projector_X.png')
+                plt.savefig('./train_ris/{0}/projector/projector_X.png'.format(ms.settings_type))
             except IOError as e:
                 print(e)
 
@@ -122,7 +122,7 @@ if __name__ == '__main__':
             plt.tight_layout()
 
             try:
-                plt.savefig('train_ris/projector/projector_Z.png')
+                plt.savefig('./train_ris/{0}/projector/projector_Z.png'.format(ms.settings_type))
             except IOError as e:
                 print(e)
 
@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
         if i % 10000 == 0:
             generate_predictions()
-            save_network('train_ris/projector/projector.bin', [
+            save_network('./train_ris/{0}/projector/projector.bin'.format(ms.settings_type), [
                 projector.layer1,
                 projector.layer2,
                 projector.layer3,
@@ -205,7 +205,7 @@ if __name__ == '__main__':
                          projector_std_out)
             save_network_onnx(projector,
                               projector_mean_in,
-                              'train_ris/projector/projector.onnx')
+                              './train_ris/{0}/projector/projector.onnx'.format(ms.settings_type))
 
         if i % 1000 == 0:
             scheduler.step()

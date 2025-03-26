@@ -1,5 +1,5 @@
 import my_modules.quat as quat
-import bvh
+from my_modules import bvh
 from scipy.interpolate import griddata
 import scipy.signal as signal
 import scipy.ndimage as ndimage

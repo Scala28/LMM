@@ -132,13 +132,15 @@ venv.bak/
 
 # Results
 runs/
+old_runs/
 train_ris/
 
 # Animations
 animations/
+raw_animations/
 
 # Data
-data/
+generate/data/
 
 # Spyder project settings
 .spyderproject
