@@ -100,17 +100,17 @@ def generate_database(filename, start, stop, mirror, root_approach):
     # First compute world space positions/rotations
     global_rotations, global_positions = quat.fk(rotations, positions, bvh_data['parents'])
 
-    if ('root_simple:' in root_approach):
+    if 'root_simple:' in root_approach:
         pos_joint_ref = root_approach.split(':')[1].split('/')[0]
         rot_joint_ref = root_approach.split(':')[1].split('/')[1]
         # Specify joints to use for simulation bone
         sim_position_joint = bvh_data['names'].index(pos_joint_ref)
         sim_rotation_joint = bvh_data['names'].index(rot_joint_ref)
-        if (len(root_approach.split(':')) > 2):
+        if len(root_approach.split(':')) > 2:
             savgol_filter_param = root_approach.split(':')[2]
         else:
             savgol_filter_param = 61
-        # Position comes from hips joint
+
         sim_position = np.array([1.0, 0.0, 1.0]) * global_positions[:, sim_position_joint:sim_position_joint + 1]
         sim_position = signal.savgol_filter(sim_position, savgol_filter_param, 3, axis=0, mode='interp')
 
@@ -125,7 +125,7 @@ def generate_database(filename, start, stop, mirror, root_approach):
 
         # Extract rotation from direction
         sim_rotation = quat.normalize(quat.between(np.array([0, 0, 1]), sim_direction))
-    elif ('root_smoothed:' in root_approach):
+    elif 'root_smoothed:' in root_approach:
         pos_joint_ref = root_approach.split(':')[1].split('/')[0]
         rot_joint_ref = root_approach.split(':')[1].split('/')[1]
         smoothing_type = root_approach.split(':')[2]
@@ -165,7 +165,7 @@ def generate_database(filename, start, stop, mirror, root_approach):
         sim_direction = signal.savgol_filter(sim_direction, 61, 3, axis=0, mode='interp')
         sim_direction = sim_direction / np.sqrt(np.sum(np.square(sim_direction), axis=-1)[..., np.newaxis])
         sim_rotation = quat.normalize(quat.between(np.array([0, 0, 1]), sim_direction))
-    elif ('root_locked:' in root_approach):
+    elif 'root_locked:' in root_approach:
         pos_joint_ref = root_approach.split(':')[1]
         global_target_offset = root_approach.split(':')[-1]
         sim_position_joint = bvh_data['names'].index(pos_joint_ref)
@@ -225,7 +225,7 @@ def generate_database(filename, start, stop, mirror, root_approach):
         angular_velocities,
         bone_parents)
 
-    contact_velocity_threshold = 0.15
+    contact_velocity_threshold = 0.3
 
     contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
         bone_names.index("LeftToe"),
@@ -242,6 +242,52 @@ def generate_database(filename, start, stop, mirror, root_approach):
             size=6,
             mode='nearest')
 
+    """ Append to Database """
+
+    # bone_positions.append(positions)
+    # bone_velocities.append(velocities)
+    # bone_rotations.append(rotations)
+    # bone_angular_velocities.append(angular_velocities)
+
+    # offset = 0 if len(range_starts) == 0 else range_stops[-1]
+
+    # range_starts.append(offset)
+    # range_stops.append(offset + len(positions))
+
+    # contact_states.append(contacts)
+
+    # Identify frames where both LeftToe and RightToe have contact
+    both_feet_contact = contacts[:, 0] & contacts[:, 1]
+
+    # Store the last valid root position and direction
+    sim_position_prev = np.copy(sim_position[0])  # Start with the first frame
+
+    for t in range(len(sim_position)):
+        if both_feet_contact[t]:
+            # Keep previous values when both feet are in contact
+            sim_position[t] = sim_position_prev
+        else:
+            # Update previous values only when movement is allowed
+            sim_position_prev = sim_position[t]
+
+    sim_position = signal.savgol_filter(sim_position, 40, 3, axis=0, mode='interp')
+    """ Compute Velocities """
+    positions[:, 0:1] = sim_position
+    # Compute velocities via central difference
+    velocities = np.empty_like(positions)
+    velocities[1:-1] = (
+            0.5 * (positions[2:] - positions[1:-1]) * 60.0 +
+            0.5 * (positions[1:-1] - positions[:-2]) * 60.0)
+    velocities[0] = velocities[1] - (velocities[3] - velocities[2])
+    velocities[-1] = velocities[-2] + (velocities[-2] - velocities[-3])
+
+    # Same for angular velocities
+    angular_velocities = np.zeros_like(positions)
+    angular_velocities[1:-1] = (
+            0.5 * quat.to_scaled_angle_axis(quat.abs(quat.mul_inv(rotations[2:], rotations[1:-1]))) * 60.0 +
+            0.5 * quat.to_scaled_angle_axis(quat.abs(quat.mul_inv(rotations[1:-1], rotations[:-2]))) * 60.0)
+    angular_velocities[0] = angular_velocities[1] - (angular_velocities[3] - angular_velocities[2])
+    angular_velocities[-1] = angular_velocities[-2] + (angular_velocities[-2] - angular_velocities[-3])
     """ Append to Database """
 
     bone_positions.append(positions)

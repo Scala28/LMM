@@ -135,9 +135,9 @@ def compute_bone_velocity_feature(offset, bone, weight):
 
 def database_trajectory_index_clamp(frame, offset):
     for i in range(nranges):
-        if (frame >= range_starts[i] and frame < range_stops[i]):
+        if range_starts[i] <= frame < range_stops[i]:
             return max(min(frame + offset, range_stops[i] - 1), range_starts[i])
-    assert (False)
+    assert False
     return -1
 
 
@@ -314,7 +314,7 @@ def database_build_matching_features():
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_future_torso_feature(offset, Bone_Spine2,  feature_weight_torso_position)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-
+    print("\n")
     if nfeatures != offset:
         print("\nAssertion error!")
         exit()
@@ -367,6 +367,6 @@ features_offset_32 = features_offset.astype(np.float32)
 features_scale_32 = features_scale.astype(np.float32)
 
 with open('generate/data/fight/{0}/features.bin'.format(ms.settings_animation_type), 'wb') as f:
-    f.write(struct.pack('II', nframes , nfeatures) + features_32.ravel().tobytes())
+    f.write(struct.pack('II', nframes, nfeatures) + features_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_offset_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_scale_32.ravel().tobytes())
