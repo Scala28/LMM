@@ -1,11 +1,8 @@
 using Cinemachine;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
 
 public class ControllerOrchestrator : MonoBehaviour
 {
@@ -31,8 +28,8 @@ public class ControllerOrchestrator : MonoBehaviour
     private PlayerInput player_input;
     private Dictionary<Behaviour, string> action_maps = new Dictionary<Behaviour, string>()
     {
-        {Behaviour.locomotion, "locomotion" },
-        {Behaviour.fight, "combact" },
+        {Behaviour.terrain, "locomotion" },
+        {Behaviour.fight, "fight" },
         {Behaviour.climb, "climb" },
     };
     public enum character
@@ -62,7 +59,6 @@ public class ControllerOrchestrator : MonoBehaviour
         Bone_RightHand = 22
     };
 
-    private Pose pose;
     private Pose global_pose;
 
     [Header("Camera")]
@@ -128,10 +124,10 @@ public class ControllerOrchestrator : MonoBehaviour
             vcam.LookAt = camera_lookAt;
         }
 
-        if(current_controller.behaviour == Behaviour.locomotion)
-        {
-            (current_controller.motion_controller as LocomotionController).whatIsTerrain = whatIsTerrain;
-        }
+        if(current_controller.behaviour == Behaviour.terrain)
+            (current_controller.motion_controller as TerrainController).whatIsTerrain = whatIsTerrain;
+        else if(current_controller.behaviour == Behaviour.fight)
+            (current_controller.motion_controller as FightController).whatIsTerrain = whatIsTerrain;
     }
 
     private void FixedUpdate()
@@ -146,7 +142,15 @@ public class ControllerOrchestrator : MonoBehaviour
         Vector3 gamepad_stickleft = input_handler.StickLeft;
         Vector3 gamepad_stickright = input_handler.StickRight;
 
-        if (current_controller.behaviour == Behaviour.locomotion)
+        if (current_controller.behaviour == Behaviour.terrain)
+        {
+            camera_azimuth = current_controller.motion_controller.camera_azimuth;
+            camera_altitude = current_controller.motion_controller.camera_altitude;
+            camera_distance = current_controller.motion_controller.camera_distance;
+
+            (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle(gamepad_stickleft, gamepad_stickright,
+                input_handler.RightShoulder, input_handler.LeftTrigger);
+        }else if(current_controller.behaviour == Behaviour.fight)
         {
             camera_azimuth = current_controller.motion_controller.camera_azimuth;
             camera_altitude = current_controller.motion_controller.camera_altitude;
@@ -183,20 +187,41 @@ public class ControllerOrchestrator : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        //Debug.Log("display_pose");
-        transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-        transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
-
-        Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
-
-        for (int i = 1; i < nbones; i++)
+        
+        switch (current_controller.behaviour)
         {
-            Transform joint = rigToTransform[i];
-            JointMotionData jdata = global_pose.joints[i - 1];
+            case Behaviour.terrain:
+                // Ubisoft space conversion
+                transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+                transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
-            joint.position = mirrorMatrix.MultiplyPoint3x4(new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z));
-            Quaternion q = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
-            joint.rotation = mirrorMatrix.rotation * q;
+                Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
+
+                for (int i = 1; i < nbones; i++)
+                {
+                    Transform joint = rigToTransform[i];
+                    JointMotionData jdata = global_pose.joints[i - 1];
+
+                    joint.position = mirrorMatrix.MultiplyPoint3x4(new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z));
+                    Quaternion q = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
+                    joint.rotation = mirrorMatrix.rotation * q;
+                }
+                break;
+            case Behaviour.fight:
+                transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+                transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
+
+                for (int i = 1; i < nbones; i++)
+                {
+                    Transform joint = rigToTransform[i];
+                    JointMotionData jdata = global_pose.joints[i - 1];
+
+                    joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
+                    joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
+                }
+                break;
+            default:
+                break;
         }
     }
 
@@ -205,10 +230,10 @@ public class ControllerOrchestrator : MonoBehaviour
         if (Application.isPlaying && gizmos)
             switch (current_controller.behaviour)
             {
-                case Behaviour.locomotion:
+                case Behaviour.terrain:
                     try
                     {
-                        (Vector3[] traj_pos, Vector3[][] terrain_toe_pos) = (current_controller.motion_controller as LocomotionController).Gizmos();
+                        (Vector3[] traj_pos, Vector3[][] terrain_toe_pos) = (current_controller.motion_controller as TerrainController).Gizmos();
                         foreach (Vector3 v in traj_pos)
                         {
                             Gizmos.DrawSphere(v, .15f);
@@ -219,6 +244,17 @@ public class ControllerOrchestrator : MonoBehaviour
                             {
                                 Gizmos.DrawCube(v, new Vector3(.2f, .2f, .2f));
                             }
+                        }
+                    }
+                    catch { }
+                    break;
+                case Behaviour.fight:
+                    try
+                    {
+                        Vector3[] traj_pos = (current_controller.motion_controller as FightController).Gizmos();
+                        foreach (Vector3 v in traj_pos)
+                        {
+                            Gizmos.DrawSphere(v, .15f);
                         }
                     }
                     catch { }
@@ -234,7 +270,8 @@ public class ControllerOrchestrator : MonoBehaviour
 
 }
 public enum Behaviour { 
-    locomotion,
+    terrain,
+    plane,
     fight,
     climb,
 }

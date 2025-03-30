@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1851fe0bf3bfa364aa7ef2863ae891d6, type: 3}
+  m_Name: Fight_boxe1
+  m_EditorClassIdentifier: 
+  stepper: {fileID: 5022602860645237092, guid: 2fe4943919e96b44d90193eed15f3391, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 3b126b32a53a08147b6f9675a85ec957, type: 3}
+  projector: {fileID: 5022602860645237092, guid: 6adaf81711d15c544b8ebba76bb2c3c1, type: 3}
+  stepper_name: fight/boxe1/stepper.bin
+  decompressor_name: fight/boxe1/decompressor.bin
+  projector_name: fight/boxe1/projector.bin
+  search_time: 0.1
+  db_filename: fight/boxe1/database.bin
+  features_filename: fight/boxe1/features.bin
+  latent_filename: fight/boxe1/latent.bin
+  camera_azimuth: 0
+  camera_altitude: 0.4
+  camera_distance: 4
+  simulation_velocity_halflife: 0.27
+  simulation_rotation_halflife: 0.27
+  inertialize_blending_halflife: 0.1
+  ik_enabled: 1
+  adjustment_enabled: 1
+  clamping_enabled: 1
+  simulation_max_fwrd_speed: 1.8
+  simulation_max_side_speed: 0.8
+  simulation_max_back_speed: 0.3
+  simulation_min_fwrd_speed: 0.75
+  simulation_min_side_speed: 0.5
+  simulation_min_back_speed: 0.15
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64

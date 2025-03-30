@@ -226,7 +226,7 @@ public class MotionMatcher : MonoBehaviour
         _sync60Fps = SyncFPS.Instance;
         input_handler = GetComponent<InputHandler>();
 
-        db = DataManager.load_database("Data/terrain/terrain_db.bin");
+        db = DataManager.load_database("Data/terrain/terrain_db.bin", Behaviour.terrain);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain/terrain_features.bin");
 
         ch = DataManager.load_character("Data/character.bin");
@@ -581,7 +581,7 @@ public class MotionMatcher : MonoBehaviour
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts(), Behaviour.terrain);
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();

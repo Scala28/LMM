@@ -15,15 +15,15 @@ MonoBehaviour:
   stepper: {fileID: 5022602860645237092, guid: 66ba6dec1f95a5f40973fbeb5d401e93, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: 647e0991b786e5841b7574413ffcc154, type: 3}
   projector: {fileID: 5022602860645237092, guid: b37f57b22fe17c547a40fe66fefa658f, type: 3}
-  stepper_name: terrain/stepper.bin
-  decompressor_name: terrain/decompressor.bin
-  projector_name: terrain/projector.bin
+  stepper_name: locomotion/terrain/stepper.bin
+  decompressor_name: locomotion/terrain/decompressor.bin
+  projector_name: locomotion/terrain/projector.bin
   search_time: 0.1
-  db_filename: terrain/terrain_db.bin
-  features_filename: terrain/terrain_features.bin
-  latents_filename: terrain/latent.bin
+  db_filename: locomotion/terrain/database.bin
+  features_filename: locomotion/terrain/features.bin
+  latent_filename: locomotion/terrain/latent.bin
   camera_azimuth: 0
-  camera_altitude: 0
+  camera_altitude: 0.4
   camera_distance: 4
   simulation_velocity_halflife: 0.27
   simulation_rotation_halflife: 0.27

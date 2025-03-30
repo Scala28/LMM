@@ -15,13 +15,14 @@ public class Pose
     public Vector4 root_rotation;
     public Vector3 root_velocity;
     public Vector3 root_angular_velocity;
+
+    // Terrain
     // Trajected toe position at 15, 30, 45 frames ahead
     public Vector3[][] traj_toe_position;
 
     public bool[] contact_states;
 
-    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts,
-        Vector3[][] traj_toe_pos)
+    public Pose(Tensor pos, Tensor rot, Tensor vel, Tensor ang, Vector3 root_pos, Vector4 root_rot, Vector3 root_vel, Vector3 root_ang, bool[] contacts)
     {
         root_position = root_pos;
         root_rotation = root_rot;
@@ -47,7 +48,9 @@ public class Pose
 
         contact_states = new bool[contacts.Length];
         Array.Copy(contacts, contact_states, contacts.Length);
-
+    }
+    public void set_traj_toe_pos(Vector3[][] traj_toe_pos)
+    {
         traj_toe_position = new Vector3[3][];
         for (int i = 0; i < traj_toe_pos.Length; i++)
         {

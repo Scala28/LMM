@@ -420,6 +420,25 @@ public static class DataManager
         }
         return array2d;
     }
+    private static Vector2[][] readVec2_toArray2d(BinaryReader reader, int rows, int cols)
+    {
+        byte[] buffer = reader.ReadBytes(rows * cols * 2 * sizeof(float));
+        Vector2[][] array2d = new Vector2[rows][];
+        for (int i = 0; i < rows; i++)
+        {
+            array2d[i] = new Vector2[cols];
+            for (int j = 0; j < cols; j++)
+            {
+                Vector2 vec = new Vector2();
+                float[] temp = new float[4];
+                Buffer.BlockCopy(buffer, index(i, j, 0, 0, new TensorShape(rows, cols, 4, sizeof(float))), temp, 0, 2 * sizeof(float));
+                vec.x = temp[0];
+                vec.y = temp[1];
+                array2d[i][j] = vec;
+            }
+        }
+        return array2d;
+    }
     private static bool[][] readBool_toArray2d(BinaryReader reader, int rows, int cols)
     {
         byte[] buffer = reader.ReadBytes(rows * cols * sizeof(bool));
@@ -501,50 +520,127 @@ public static class DataManager
             return model;
         }
     }
-    public static database load_database(string filename)
+    public static database load_database(string filename, Behaviour behaviour)
     {
         string path = Path.Combine(Application.streamingAssetsPath, filename);
         database db = new database();
         using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
         using (BinaryReader reader = new BinaryReader(fs))
         {
-            int rows = reader.ReadInt32();
-            int cols = reader.ReadInt32();
-            db.bone_positions = readVec3_toArray2d(reader, rows, cols);
+            int rows;
+            int cols;
+            switch (behaviour)
+            {
+                case Behaviour.plane:
+                    plane_read();break;
+                case Behaviour.terrain:
+                    terrain_read(); break;
+                case Behaviour.fight:
+                    fight_read(); break;
+                default:
+                    break;
+            }
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
+            void plane_read()
+            {
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_positions = readVec3_toArray2d(reader, rows, cols);
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.bone_rotations = readVec4_toArray2d(reader, rows, cols);
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.bone_angular_velocities = readVec3_toArray2d(reader, rows, cols);
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_rotations = readVec4_toArray2d(reader, rows, cols);
 
-            int count = reader.ReadInt32();
-            db.bone_parents = readInt_toArray(reader, count);
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_angular_velocities = readVec3_toArray2d(reader, rows, cols);
 
-            count = reader.ReadInt32();
-            db.range_starts = readInt_toArray(reader, count);
+                int count = reader.ReadInt32();
+                db.bone_parents = readInt_toArray(reader, count);
 
-            count = reader.ReadInt32();
-            db.range_stops = readInt_toArray(reader, count);
+                count = reader.ReadInt32();
+                db.range_starts = readInt_toArray(reader, count);
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.contact_states = readBool_toArray2d(reader, rows, cols);
+                count = reader.ReadInt32();
+                db.range_stops = readInt_toArray(reader, count);
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.terrain_positions = readVec3_toArray2d(reader, rows, cols / 3);
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.contact_states = readBool_toArray2d(reader, rows, cols);
+            }
+            void terrain_read() {
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_positions = readVec3_toArray2d(reader, rows, cols);
 
-            rows = reader.ReadInt32();
-            cols = reader.ReadInt32();
-            db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols / 3);
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
 
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_rotations = readVec4_toArray2d(reader, rows, cols);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_angular_velocities = readVec3_toArray2d(reader, rows, cols);
+
+                int count = reader.ReadInt32();
+                db.bone_parents = readInt_toArray(reader, count);
+
+                count = reader.ReadInt32();
+                db.range_starts = readInt_toArray(reader, count);
+
+                count = reader.ReadInt32();
+                db.range_stops = readInt_toArray(reader, count);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.contact_states = readBool_toArray2d(reader, rows, cols);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.terrain_positions = readVec3_toArray2d(reader, rows, cols / 3);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.traj_toe_positions = readVec3_toArray2d(reader, rows, cols / 3);
+            }
+            void fight_read()
+            {
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_positions = readVec3_toArray2d(reader, rows, cols);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_velocities = readVec3_toArray2d(reader, rows, cols);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_rotations = readVec4_toArray2d(reader, rows, cols);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.bone_angular_velocities = readVec3_toArray2d(reader, rows, cols);
+
+                int count = reader.ReadInt32();
+                db.bone_parents = readInt_toArray(reader, count);
+
+                count = reader.ReadInt32();
+                db.range_starts = readInt_toArray(reader, count);
+
+                count = reader.ReadInt32();
+                db.range_stops = readInt_toArray(reader, count);
+
+                rows = reader.ReadInt32();
+                cols = reader.ReadInt32();
+                db.contact_states = readBool_toArray2d(reader, rows, cols);
+            }
         }
         return db;
     }
@@ -667,9 +763,12 @@ public static class DataManager
 
         public bool[][] contact_states;
 
+        // Terrain
         public Vector3[][] terrain_positions;
-
         public Vector3[][] traj_toe_positions;
+
+        // Fight-stance
+        public Vector2[] traj_torso_local;
 
         public float[][] bound_sm_min;
         public float[][] bound_sm_max;

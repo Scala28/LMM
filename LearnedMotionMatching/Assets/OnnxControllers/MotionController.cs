@@ -49,7 +49,7 @@ public abstract class MotionController : ScriptableObject
     [SerializeField]
     private string features_filename;
     [SerializeField]
-    private string latents_filename;
+    private string latent_filename;
     protected DataManager.database db;
     private int frame_index;
     private float[][] latents;
@@ -159,9 +159,9 @@ public abstract class MotionController : ScriptableObject
 
     public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
-        db = DataManager.load_database("Data/" + db_filename);
+        db = DataManager.load_database("Data/" + db_filename, controller.controllers.Find(x => x.motion_controller == this).behaviour);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/" + features_filename);
-        latents = DataManager.load_latent("Data/" + latents_filename);
+        latents = DataManager.load_latent("Data/" + latent_filename);
 
         frame_index = db.range_starts[0];
         initialize_pose();
@@ -355,7 +355,8 @@ public abstract class MotionController : ScriptableObject
         Tensor decompressor_out = decompressor_inference.PeekOutput();
         decompressor_nn.nnLayer_denormalize(decompressor_out);
 
-        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts());
+        target_pose = Parser.parse_decompressor_out(decompressor_out, current_pose, db.nbones(), db.ncontacts(), 
+            controller.controllers.Find(x => x.motion_controller == this).behaviour);
 
         decompressor_in.Dispose();
         decompressor_out.Dispose();

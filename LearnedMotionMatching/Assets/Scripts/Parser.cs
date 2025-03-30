@@ -13,54 +13,138 @@ using UnityEngine.UIElements;
 public static  class Parser 
 {
     private const float dt = 1 / 60f;
-    public static Pose parse_decompressor_out(Tensor decompressor_out, Pose currentPose, int nbones, int nextra)
+    public static Pose parse_decompressor_out(Tensor decompressor_out, Pose currentPose, int nbones, int nextra, Behaviour behaviour)
     {
-        Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
-        Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
-        Tensor vel = SliceAndReshape(decompressor_out, 9 * (nbones - 1), 12 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
-        Tensor ang = SliceAndReshape(decompressor_out, 12 * (nbones - 1), 15 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
-        Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
-        Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
-        Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
-        Tensor traj_toe_pos = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6 + nextra, 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3, 
-            new TensorShape(3, 2, 3, 1));
-
-        //Convert to quat: (nbones-1, 4, 1, 1)
-        Tensor quat = Quat.quat_from_xfm_xy(txy);
-
-        Vector3 root_vel = new Vector3(rVel[0], rVel[1], rVel[2]);
-        Vector3 root_ang = new Vector3(rAng[0], rAng[1], rAng[2]);
-
-        Vector3 world_rVel = Quat.quat_mul_vec(currentPose.root_rotation, root_vel);
-        Vector3 world_rAng = Quat.quat_mul_vec(currentPose.root_rotation, root_ang);
-
-        //Find new root pos/rot and velocities
-        Vector3 root_pos = dt * world_rVel + currentPose.root_position;
-        Vector4 root_rot = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(world_rAng * dt), currentPose.root_rotation);
-
-        //Convert quat to angle axis
-        //Tensor euler_rotations = Quat.quat_toEuler(quat_rotations);
-
-        bool[] contacts = new bool[nextra];
-        for (int i = 0; i < nextra; i++)
-            contacts[i] = extra[i] > .5f;
-
-        // Trajected toe position at 15, 30, 45 frames ahead
-        Vector3[][] trajected_toe_pos = new Vector3[3][];
-        for(int i=0; i<trajected_toe_pos.Length; i++)
+        Pose pose = new Pose();
+        switch (behaviour)
         {
-            trajected_toe_pos[i] = new Vector3[contacts.Length];
-            for(int j=0; j < contacts.Length; j++)
-            {
-                trajected_toe_pos[i][j] = new Vector3(
-                    traj_toe_pos[i, j, 0, 0],
-                    traj_toe_pos[i, j, 1, 0],
-                    traj_toe_pos[i, j, 2, 0]);
-            }
+            case Behaviour.plane:
+                parse_plane();
+                break;
+            case Behaviour.terrain:
+                parse_terrain();
+                break;
+            case Behaviour.fight:
+                parse_fight(); 
+                break;
+            default:
+                break;
         }
+        void parse_plane()
+        {
+            Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
+            Tensor vel = SliceAndReshape(decompressor_out, 9 * (nbones - 1), 12 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor ang = SliceAndReshape(decompressor_out, 12 * (nbones - 1), 15 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
+            Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
+            Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
 
-        // Construct pose for next frame
-        Pose pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts, trajected_toe_pos);
+            //Convert to quat: (nbones-1, 4, 1, 1)
+            Tensor quat = Quat.quat_from_xfm_xy(txy);
+
+            Vector3 root_vel = new Vector3(rVel[0], rVel[1], rVel[2]);
+            Vector3 root_ang = new Vector3(rAng[0], rAng[1], rAng[2]);
+
+            Vector3 world_rVel = Quat.quat_mul_vec(currentPose.root_rotation, root_vel);
+            Vector3 world_rAng = Quat.quat_mul_vec(currentPose.root_rotation, root_ang);
+
+            //Find new root pos/rot and velocities
+            Vector3 root_pos = dt * world_rVel + currentPose.root_position;
+            Vector4 root_rot = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(world_rAng * dt), currentPose.root_rotation);
+
+            //Convert quat to angle axis
+            //Tensor euler_rotations = Quat.quat_toEuler(quat_rotations);
+
+            bool[] contacts = new bool[nextra];
+            for (int i = 0; i < nextra; i++)
+                contacts[i] = extra[i] > .5f;
+
+            // Construct pose for next frame
+            pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts);
+        }
+        void parse_terrain()
+        {
+            Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
+            Tensor vel = SliceAndReshape(decompressor_out, 9 * (nbones - 1), 12 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor ang = SliceAndReshape(decompressor_out, 12 * (nbones - 1), 15 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
+            Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
+            Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
+            Tensor traj_toe_pos = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6 + nextra, 15 * (nbones - 1) + 6 + nextra + 3 * 2 * 3,
+                new TensorShape(3, 2, 3, 1));
+
+            //Convert to quat: (nbones-1, 4, 1, 1)
+            Tensor quat = Quat.quat_from_xfm_xy(txy);
+
+            Vector3 root_vel = new Vector3(rVel[0], rVel[1], rVel[2]);
+            Vector3 root_ang = new Vector3(rAng[0], rAng[1], rAng[2]);
+
+            Vector3 world_rVel = Quat.quat_mul_vec(currentPose.root_rotation, root_vel);
+            Vector3 world_rAng = Quat.quat_mul_vec(currentPose.root_rotation, root_ang);
+
+            //Find new root pos/rot and velocities
+            Vector3 root_pos = dt * world_rVel + currentPose.root_position;
+            Vector4 root_rot = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(world_rAng * dt), currentPose.root_rotation);
+
+            //Convert quat to angle axis
+            //Tensor euler_rotations = Quat.quat_toEuler(quat_rotations);
+
+            bool[] contacts = new bool[nextra];
+            for (int i = 0; i < nextra; i++)
+                contacts[i] = extra[i] > .5f;
+
+            // Trajected toe position at 15, 30, 45 frames ahead
+            Vector3[][] trajected_toe_pos = new Vector3[3][];
+            for (int i = 0; i < trajected_toe_pos.Length; i++)
+            {
+                trajected_toe_pos[i] = new Vector3[contacts.Length];
+                for (int j = 0; j < contacts.Length; j++)
+                {
+                    trajected_toe_pos[i][j] = new Vector3(
+                        traj_toe_pos[i, j, 0, 0],
+                        traj_toe_pos[i, j, 1, 0],
+                        traj_toe_pos[i, j, 2, 0]);
+                }
+            }
+
+            // Construct pose for next frame
+            pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts);
+            pose.set_traj_toe_pos(trajected_toe_pos);
+        }
+        void parse_fight() {
+            Tensor pos = SliceAndReshape(decompressor_out, 0 * (nbones - 1), 3 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor txy = SliceAndReshape(decompressor_out, 3 * (nbones - 1), 9 * (nbones - 1), new TensorShape(nbones - 1, 3, 2, 1));
+            Tensor vel = SliceAndReshape(decompressor_out, 9 * (nbones - 1), 12 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor ang = SliceAndReshape(decompressor_out, 12 * (nbones - 1), 15 * (nbones - 1), new TensorShape(nbones - 1, 3, 1, 1));
+            Tensor rVel = SliceAndReshape(decompressor_out, 15 * (nbones - 1), 15 * (nbones - 1) + 3, new TensorShape(3, 1, 1, 1));
+            Tensor rAng = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 3, 15 * (nbones - 1) + 6, new TensorShape(3, 1, 1, 1));
+            Tensor extra = SliceAndReshape(decompressor_out, 15 * (nbones - 1) + 6, 15 * (nbones - 1) + 6 + nextra, new TensorShape(nextra, 1, 1, 1));
+
+            //Convert to quat: (nbones-1, 4, 1, 1)
+            Tensor quat = Quat.quat_from_xfm_xy(txy);
+
+            Vector3 root_vel = new Vector3(rVel[0], rVel[1], rVel[2]);
+            Vector3 root_ang = new Vector3(rAng[0], rAng[1], rAng[2]);
+
+            Vector3 world_rVel = Quat.quat_mul_vec(currentPose.root_rotation, root_vel);
+            Vector3 world_rAng = Quat.quat_mul_vec(currentPose.root_rotation, root_ang);
+
+            //Find new root pos/rot and velocities
+            Vector3 root_pos = dt * world_rVel + currentPose.root_position;
+            Vector4 root_rot = Quat.quat_mul(Quat.quat_from_scaled_angle_axis(world_rAng * dt), currentPose.root_rotation);
+
+            //Convert quat to angle axis
+            //Tensor euler_rotations = Quat.quat_toEuler(quat_rotations);
+
+            bool[] contacts = new bool[nextra];
+            for (int i = 0; i < nextra; i++)
+                contacts[i] = extra[i] > .5f;
+
+            // Construct pose for next frame
+            pose = new Pose(pos, quat, vel, ang, root_pos, root_rot, root_vel, root_ang, contacts);
+        }
 
         return pose;
     }
