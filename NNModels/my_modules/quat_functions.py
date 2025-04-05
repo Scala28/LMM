@@ -211,7 +211,7 @@ def _log(x, eps=1e-5):
     return halfangle * x[..., 1:]
 
 
-def to_euler(x, order='xyz'):
+def to_euler(x, order='yxz'):
     q0 = x[..., 0:1]
     q1 = x[..., 1:2]
     q2 = x[..., 2:3]
@@ -230,7 +230,12 @@ def to_euler(x, order='xyz'):
             np.arctan2(2 * (q1 * q0 - q2 * q3), -q1 * q1 + q2 * q2 - q3 * q3 + q0 * q0),
             np.arctan2(2 * (q2 * q0 - q1 * q3), q1 * q1 - q2 * q2 - q3 * q3 + q0 * q0),
             np.arcsin((2 * (q1 * q2 + q3 * q0)).clip(-1, 1))], axis=-1)
-
+    elif order == 'yxz':
+        return np.concatenate([
+            np.arcsin((2 * (q0 * q1 - q2 * q3)).clip(-1, 1)),
+            np.arctan2(2 * (q0 * q2 + q1 * q3), 1 - 2 * (q1 * q1 + q2 * q2)),
+            np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q1 * q1 + q3 * q3))
+        ], axis=-1)
     else:
         raise NotImplementedError('Cannot convert from ordering %s' % order)
 
