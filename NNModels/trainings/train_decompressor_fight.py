@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import main_settings as ms
-import my_modules.bvh as bvh
+import my_modules.Bvh as bvh
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
@@ -244,7 +244,7 @@ if __name__ == '__main__':
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
                     'parents': parents,
                     'names': ['joint_%i' % i for i in range(nbones)],
-                    'order': 'zyx'
+                    'order': 'yxz'
                 })
                 bvh.save('./train_ris/fight/{0}/decompressor/decompressor_Ytil.bvh'.format(ms.settings_animation_type), {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
@@ -252,41 +252,10 @@ if __name__ == '__main__':
                     'offsets': 100.0 * Ytil_pos[0],
                     'parents': parents,
                     'names': ['joint_%i' % i for i in range(nbones)],
-                    'order': 'zyx'
+                    'order': 'yxz'
                 })
             except IOError as e:
                 print(e)
-
-            # Write features
-            fmin, fmax = Xgnd.cpu().numpy().min(), Xgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nfeatures, sharex=True, figsize=(12, 2 * nfeatures))
-            for i in range(nfeatures):
-                axs[i].plot(Xgnd[0, :500, i].cpu().numpy())
-                axs[i].set_ylim(fmin, fmax)
-            plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/fight/{0}/decompressor/decompressor_X.png'.format(ms.settings_animation_type))
-            except IOError as e:
-                print(e)
-            plt.close()
-
-            # Write latent
-            lmin, lmax = Zgnd.cpu().numpy().min(), Zgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nlatent, sharex=True, figsize=(12, 2 * nlatent))
-            for i in range(nlatent):
-                axs[i].plot(Zgnd[0, :500, i].cpu().numpy())
-                axs[i].set_ylim(lmin, lmax)
-            plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/fight/{0}/decompressor/decompressor_Z.png'.format(ms.settings_animation_type))
-            except IOError as e:
-                print(e)
-
-            plt.close()
 
 
     # Build batches respecting window size

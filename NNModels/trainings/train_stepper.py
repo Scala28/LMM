@@ -1,28 +1,24 @@
 import sys
-import struct
-
 import numpy as np
 import torch
-
 from torch.utils.tensorboard import SummaryWriter
-
 import my_modules.NNModels as NNModels
-import my_modules.quat_functions as quat
-import my_modules.xform_functions as xform
 from train_common import load_database, load_features, load_latent, save_network, save_network_onnx
 import main_settings as ms
-import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('./generate/data/{0}/database.bin'.format(ms.settings_type))
+    database = load_database('./generate/data/{0}/{1}/database.bin'.
+                             format(ms.settings_type, ms.settings_animation_type))
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('./generate/data/{0}/features.bin'.format(ms.settings_type))['features'].copy().astype(np.float32)
-    Z = load_latent('./train_ris/{0}/decompressor/latent.bin'.format(ms.settings_type))['latent'].copy().astype(np.float32)
+    X = load_features('./generate/data/{0}/{1}/features.bin'.
+                      format(ms.settings_type, ms.settings_animation_type))['features'].copy().astype(np.float32)
+    Z = load_latent('./train_ris/{0}/{1}/decompressor/latent.bin'.
+                    format(ms.settings_type, ms.settings_animation_type))['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
     nfeatures = X.shape[1]
@@ -72,6 +68,7 @@ if __name__ == '__main__':
     # NN Model
     stepper = NNModels.Stepper(nfeatures + nlatent)
 
+
     def generate_predictions():
         with torch.no_grad():
             # Get a clip
@@ -86,51 +83,18 @@ if __name__ == '__main__':
             Ztil = Zgnd.clone()
 
             for k in range(1, stop - start):
-                if (k-1) % window == 0:  # Simulating the Projector's goal
-                    Xtil_prev = Xgnd[:, k-1]
-                    Ztil_prev = Zgnd[:, k-1]
+                if (k - 1) % window == 0:  # Simulating the Projector's goal
+                    Xtil_prev = Xgnd[:, k - 1]
+                    Ztil_prev = Zgnd[:, k - 1]
                 else:
-                    Xtil_prev = Xtil[:, k-1]
-                    Ztil_prev = Ztil[:, k-1]
+                    Xtil_prev = Xtil[:, k - 1]
+                    Ztil_prev = Ztil[:, k - 1]
 
                 delta = (stepper((torch.cat([Xtil_prev, Ztil_prev], dim=-1) -
                                   stepper_mean_in) / stepper_std_in) *
                          stepper_std_out + stepper_mean_out)
                 Xtil[:, k] = Xtil_prev + dt * delta[:, :nfeatures]
                 Ztil[:, k] = Ztil_prev + dt * delta[:, nfeatures:]
-
-            # Write features
-            fmin, fmax = Xgnd.cpu().numpy().min(), Xgnd.cpu().numpy().max()
-            fig, axs = plt.subplots(nfeatures, sharex=True, figsize=(12, 2 * nfeatures))
-            for j in range(nfeatures):
-                axs[j].plot(Xgnd[0, :500, j].cpu().numpy())
-                axs[j].plot(Xtil[0, :500, j].cpu().numpy())
-                axs[j].set_ylim(fmin, fmax)
-            plt.tight_layout()
-            try:
-                plt.savefig('./train_ris/{0}/stepper/stepper_X.png'.format(ms.settings_type))
-            except IOError as e:
-                print(e)
-
-            plt.close()
-
-            # Write latent
-
-            lmin, lmax = Zgnd.cpu().numpy().min(), Zgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nlatent, sharex=True, figsize=(12, 2 * nlatent))
-            for j in range(nlatent):
-                axs[j].plot(Zgnd[0, :500, j].cpu().numpy())
-                axs[j].plot(Ztil[0, :500, j].cpu().numpy())
-                axs[j].set_ylim(lmin, lmax)
-                plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/{0}/stepper/stepper_Z.png'.format(ms.settings_type))
-            except IOError as e:
-                print(e)
-
-            plt.close()
 
 
     # Build batches respecting window size
@@ -209,18 +173,20 @@ if __name__ == '__main__':
             sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
-            generate_predictions()
-            save_network('./train_ris/{0}/stepper/stepper.bin'.format(ms.settings_type), [
-                stepper.layer1,
-                stepper.layer2,
-                stepper.predict],
+            # generate_predictions()
+            save_network('./train_ris/{0}/{1}/stepper/stepper.onnx'.
+                         format(ms.settings_type, ms.settings_animation_type), [
+                             stepper.layer1,
+                             stepper.layer2,
+                             stepper.predict],
                          stepper_mean_in,
                          stepper_std_in,
                          stepper_mean_out,
                          stepper_std_out)
             save_network_onnx(stepper,
                               stepper_mean_in,
-                              './train_ris/{0}/stepper/stepper.onnx'.format(ms.settings_type))
+                              './train_ris/{0}/{1}/stepper/stepper.onnx'.
+                              format(ms.settings_type, ms.settings_animation_type))
 
         if i % 1000 == 0:
             scheduler.step()

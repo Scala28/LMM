@@ -2,7 +2,7 @@ import sys
 import os
 import main_settings as ms
 sys.path.append('my_modules')
-from my_modules import bvh
+from my_modules import Bvh
 import my_modules.quat as quat
 from trainings.train_common import load_database
 import struct
@@ -322,27 +322,27 @@ def database_build_matching_features():
 
 Bone_Entity = 0
 Bone_Hips = 1
-Bone_LeftUpLeg = 2
-Bone_LeftLeg = 3
-Bone_LeftFoot = 4
-Bone_LeftToe = 5
-Bone_RightUpLeg = 6
-Bone_RightLeg = 7
-Bone_RightFoot = 8
-Bone_RightToe = 9
-Bone_Spine = 10
-Bone_Spine1 = 11
-Bone_Spine2 = 12
-Bone_Neck = 13
-Bone_Head = 14
-Bone_LeftShoulder = 15
-Bone_LeftArm = 16
-Bone_LeftForeArm = 17
-Bone_LeftHand = 18
-Bone_RightShoulder = 19
-Bone_RightArm = 20
-Bone_RightForeArm = 21
-Bone_RightHand = 22
+Bone_Spine = 2
+Bone_Spine1 = 3
+Bone_Spine2 = 4
+Bone_Neck = 5
+Bone_Head = 6
+Bone_LeftShoulder = 7
+Bone_LeftArm = 8
+Bone_LeftForeArm = 9
+Bone_LeftHand = 10
+Bone_RightShoulder = 11
+Bone_RightArm = 12
+Bone_RightForeArm = 13
+Bone_RightHand = 14
+Bone_LeftUpLeg = 15
+Bone_LeftLeg = 16
+Bone_LeftFoot = 17
+Bone_LeftToeBase = 18
+Bone_RightUpLeg = 19
+Bone_RightLeg = 20
+Bone_RightFoot = 21
+Bone_RightToeBase = 22
 
 database = load_database('generate/data/fight/{0}/database.bin'.format(ms.settings_animation_type))
 bone_positions = database['bone_positions']

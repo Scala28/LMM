@@ -1,5 +1,5 @@
 import my_modules.quat as quat
-from my_modules import bvh
+from my_modules import Bvh
 from scipy.interpolate import griddata
 import scipy.signal as signal
 import scipy.ndimage as ndimage
@@ -22,6 +22,7 @@ def animation_mirror(lrot, lpos, names, parents):
     grot, gpos = quat.fk(lrot, lpos, parents)
 
     gpos_mirror = mirror_pos * gpos[:, joints_mirror]
+
     grot_mirror = quat.from_xform(mirror_rot * quat.to_xform(grot[:, joints_mirror]))
     
     return quat.ik(grot_mirror, gpos_mirror, parents)
@@ -41,7 +42,7 @@ files = [
     # We just use a small section of this clip for the standing idle
     ('animations/pushAndStumble1_subject5.bvh', 194, 351),
     # Running
-    ('animations/run1_subject5.bvh', 90, 7086),
+    ('animations/run1_ubisoft.bvh', 90, 7086),
     # Walking
     ('animations/walk1_subject5.bvh', 80, 6000),
     # Terrain
@@ -77,7 +78,7 @@ for filename, start, stop in files:
 
         print('Loading "%s" %s...' % (filename, "(Mirrored)" if mirror else ""))
 
-        bvh_data = bvh.load(filename)
+        bvh_data = Bvh.load(filename)
         bvh_data['positions'] = bvh_data['positions'][start:stop]
         bvh_data['rotations'] = bvh_data['rotations'][start:stop]
 

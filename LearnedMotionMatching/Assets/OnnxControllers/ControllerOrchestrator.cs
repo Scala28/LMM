@@ -24,10 +24,11 @@ public class ControllerOrchestrator : MonoBehaviour
     private SyncFPS _sync60Fps;
     private const float dt = 1 / 60f;
 
-    private InputHandler input_handler;
+    public InputHandler input_handler {  get; private set; }
     private PlayerInput player_input;
     private Dictionary<Behaviour, string> action_maps = new Dictionary<Behaviour, string>()
     {
+        {Behaviour.plane, "locomotion" },
         {Behaviour.terrain, "locomotion" },
         {Behaviour.fight, "fight" },
         {Behaviour.climb, "climb" },
@@ -70,7 +71,6 @@ public class ControllerOrchestrator : MonoBehaviour
     private float camera_distance = 4.0f;
 
     [Header("Others")]
-    [SerializeField] private LayerMask whatIsTerrain;
     public bool lock60Fps = false;
     public bool gizmos = false;
     public bool set_vcam = true;
@@ -123,11 +123,6 @@ public class ControllerOrchestrator : MonoBehaviour
             vcam.Follow = camera_follow;
             vcam.LookAt = camera_lookAt;
         }
-
-        if(current_controller.behaviour == Behaviour.terrain)
-            (current_controller.motion_controller as TerrainController).whatIsTerrain = whatIsTerrain;
-        else if(current_controller.behaviour == Behaviour.fight)
-            (current_controller.motion_controller as FightController).whatIsTerrain = whatIsTerrain;
     }
 
     private void FixedUpdate()
@@ -142,23 +137,11 @@ public class ControllerOrchestrator : MonoBehaviour
         Vector3 gamepad_stickleft = input_handler.StickLeft;
         Vector3 gamepad_stickright = input_handler.StickRight;
 
-        if (current_controller.behaviour == Behaviour.terrain)
-        {
-            camera_azimuth = current_controller.motion_controller.camera_azimuth;
-            camera_altitude = current_controller.motion_controller.camera_altitude;
-            camera_distance = current_controller.motion_controller.camera_distance;
+        camera_azimuth = current_controller.motion_controller.camera_azimuth;
+        camera_altitude = current_controller.motion_controller.camera_altitude;
+        camera_distance = current_controller.motion_controller.camera_distance;
 
-            (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle(gamepad_stickleft, gamepad_stickright,
-                input_handler.RightShoulder, input_handler.LeftTrigger);
-        }else if(current_controller.behaviour == Behaviour.fight)
-        {
-            camera_azimuth = current_controller.motion_controller.camera_azimuth;
-            camera_altitude = current_controller.motion_controller.camera_altitude;
-            camera_distance = current_controller.motion_controller.camera_distance;
-
-            (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle(gamepad_stickleft, gamepad_stickright,
-                input_handler.RightShoulder, input_handler.LeftTrigger);
-        }
+        (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle();
 
         if (render_mesh)
             deform_character_mesh();
@@ -187,41 +170,17 @@ public class ControllerOrchestrator : MonoBehaviour
     }
     private void display_frame_pose()
     {
-        
-        switch (current_controller.behaviour)
+
+        transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
+        transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
+
+        for (int i = 1; i < nbones; i++)
         {
-            case Behaviour.terrain:
-                // Ubisoft space conversion
-                transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-                transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
+            Transform joint = rigToTransform[i];
+            JointMotionData jdata = global_pose.joints[i - 1];
 
-                Matrix4x4 mirrorMatrix = Matrix4x4.Scale(new Vector3(-1, 1, -1));
-
-                for (int i = 1; i < nbones; i++)
-                {
-                    Transform joint = rigToTransform[i];
-                    JointMotionData jdata = global_pose.joints[i - 1];
-
-                    joint.position = mirrorMatrix.MultiplyPoint3x4(new Vector3(-jdata.position.x, jdata.position.y, -jdata.position.z));
-                    Quaternion q = new Quaternion(-jdata.rotation.y, jdata.rotation.z, -jdata.rotation.w, jdata.rotation.x);
-                    joint.rotation = mirrorMatrix.rotation * q;
-                }
-                break;
-            case Behaviour.fight:
-                transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
-                transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
-
-                for (int i = 1; i < nbones; i++)
-                {
-                    Transform joint = rigToTransform[i];
-                    JointMotionData jdata = global_pose.joints[i - 1];
-
-                    joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
-                    joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
-                }
-                break;
-            default:
-                break;
+            joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
+            joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
         }
     }
 
@@ -230,10 +189,21 @@ public class ControllerOrchestrator : MonoBehaviour
         if (Application.isPlaying && gizmos)
             switch (current_controller.behaviour)
             {
+                case Behaviour.plane:
+                    try
+                    {
+                        (Vector3[] traj_pos, Vector4[] traj_rot) = (current_controller.motion_controller as PlaneController).Gizmos();
+                        foreach (Vector3 v in traj_pos)
+                        {
+                            Gizmos.DrawSphere(v, .15f);
+                        }
+                    }
+                    catch { }
+                    break;
                 case Behaviour.terrain:
                     try
                     {
-                        (Vector3[] traj_pos, Vector3[][] terrain_toe_pos) = (current_controller.motion_controller as TerrainController).Gizmos();
+                        (Vector3[] traj_pos, Vector4[] traj_rot, Vector3[][] terrain_toe_pos) = (current_controller.motion_controller as TerrainController).Gizmos();
                         foreach (Vector3 v in traj_pos)
                         {
                             Gizmos.DrawSphere(v, .15f);
@@ -251,7 +221,7 @@ public class ControllerOrchestrator : MonoBehaviour
                 case Behaviour.fight:
                     try
                     {
-                        Vector3[] traj_pos = (current_controller.motion_controller as FightController).Gizmos();
+                        (Vector3[] traj_pos, Vector4[] traj_rot) = (current_controller.motion_controller as FightController).Gizmos();
                         foreach (Vector3 v in traj_pos)
                         {
                             Gizmos.DrawSphere(v, .15f);

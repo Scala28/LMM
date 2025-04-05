@@ -1,39 +1,29 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "FightController", menuName = "OnnxMotionController/Fight")]
-public class FightController : MotionController
+[CreateAssetMenu(fileName = "PlaneController", menuName = "OnnxMotionController/Plane")]
+public class PlaneController : MotionController
 {
-    [Header("Fight-stance")]
+    [Header("Locomotion")]
     // All speeds in m/s
-    public float simulation_max_fwrd_speed = 1.8f;
-    public float simulation_max_side_speed = .8f;
-    public float simulation_max_back_speed = .3f;
+    public float simulation_run_fwrd_speed = 3.3f;
+    public float simulation_run_side_speed = 2.8f;
+    public float simulation_run_back_speed = 2.3f;
 
-    public float simulation_min_fwrd_speed = .75f;
-    public float simulation_min_side_speed = .5f;
-    public float simulation_min_back_speed = .15f;
+    public float simulation_walk_fwrd_speed = 1.75f;
+    public float simulation_walk_side_speed = 1.5f;
+    public float simulation_walk_back_speed = 1.25f;
 
     float simulation_fwrd_speed;
     float simulation_side_speed;
     float simulation_back_speed;
 
-    private float desired_gait = 0.0f;
-    private float desired_gait_velocity = 0.0f;
-
     public LayerMask whatIsTerrain;
 
-    [Header("Fight")]
-    private Transform Target;
-
-    public override void Setup(ControllerOrchestrator controller)
-    {
-        base.Setup(controller);
-        Target = GameObject.FindGameObjectWithTag("target").transform;
-    }
+    private float desired_gait = 0.0f;
+    private float desired_gait_velocity = 0.0f;
 
     #region Trajectory & Gameplay Data
     public void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
@@ -63,10 +53,13 @@ public class FightController : MotionController
 
         return Quat.quat_mul_vec(simulation_rotation, local_desired_velocity);
     }
-    public Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, Vector3 gamepad_stickright, float camera_azimuth, Vector3 desired_velocity)
+    public Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, Vector3 gamepad_stickright, float camera_azimuth, bool desired_strafe, Vector3 desired_velocity)
     {
         Vector4 desired_rotation_curr = desired_rotation;
-        if (Target != null)
+        // If strafe is active then desired direction is coming from right
+        // stick as long as that stick is being used, otherwise we assume
+        // forward facing
+        if (desired_strafe)
         {
             Vector3 desired_dir = Quat.quat_mul_vec(Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0f, 1f, 0f)), new Vector3(0f, 0f, 1f));
             if (length(gamepad_stickright) > 0.01f)
@@ -122,6 +115,7 @@ public class FightController : MotionController
                 gamepadstick_left,
                 gamepadstick_right,
                 orbit_camera_azimuth(camera_azimuth, gamepadstick_right, desired_strafe, i * dt),
+                desired_strafe,
                 trajectory_desired_velocities[i]);
         }
     }
@@ -175,7 +169,7 @@ public class FightController : MotionController
                 dt);
         }
     }
-    public (float[], int) compute_query_vector(Vector3 rightStick)
+    public (float[], int) compute_query_vector(bool gait_input)
     {
         float[] query = new float[db.nfeatures()];
         int offset = 0;
@@ -244,58 +238,12 @@ public class FightController : MotionController
 
         offset += 6;
 
-        // Compute torso local position
-        if (rightStick.x == 0 && rightStick.z == 0)
-        {
-            query[offset + 0] = feature_curr[offset + 0] * db.features_scale[offset + 0] + db.features_offset[offset + 0];
-            query[offset + 1] = feature_curr[offset + 1] * db.features_scale[offset + 1] + db.features_offset[offset + 1];
-            query[offset + 2] = feature_curr[offset + 2] * db.features_scale[offset + 2] + db.features_offset[offset + 2];
-            query[offset + 3] = feature_curr[offset + 3] * db.features_scale[offset + 3] + db.features_offset[offset + 3];
-            query[offset + 4] = feature_curr[offset + 4] * db.features_scale[offset + 4] + db.features_offset[offset + 4];
-            query[offset + 5] = feature_curr[offset + 5] * db.features_scale[offset + 5] + db.features_offset[offset + 5];
-        }
-        else
-        {
-            Vector3 offset_busto_zero = new Vector3(0, 0, 0.05f);
-            Vector3 input_torso = rightStick / 5f + offset_busto_zero;
-            Vector3 hips_gp = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].position;
-            Vector4 hips_gr = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].rotation;
-            Vector3 spine2_gp = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Spine2 - 1].position;
-            hips_gp.y = 0f;
-            spine2_gp.y = 0f;
-            Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, spine2_gp - hips_gp);
-            Vector3 input_torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, input_torso);
-
-            query[offset + 0] = torso_relative_position.x;
-            query[offset + 1] = torso_relative_position.z;
-            query[offset + 2] = torso_relative_position.x + (input_torso_relative_position.x - torso_relative_position.x) * 2f / 3f;
-            query[offset + 3] = torso_relative_position.z + (input_torso_relative_position.z - torso_relative_position.z) * 2f / 3f;
-            query[offset + 4] = input_torso_relative_position.x;
-            query[offset + 5] = input_torso_relative_position.z;
-        }
-
-        offset += 6;
-
         return (query, offset);
     }
     private float orbit_camera_azimuth(float azimuth, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
-        if(Target == null)
-        {
-            Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
-            return azimuth + 2.0f * dt * gamepadaxis.x;
-        }
-        // Compute the vector from camera to target
-        Vector3 direction = (Target.position - controller.vcam.transform.position);
-        direction.y = 0; // Project onto the XZ plane to get the azimuthal direction
-
-        if (direction.sqrMagnitude > 0.0001f) // Avoid division by zero
-        {
-            direction = direction.normalized;
-            azimuth = Mathf.Atan2(direction.x, direction.z); // Compute azimuth angle
-        }
-
-        return azimuth;
+        Vector3 gamepadaxis = desired_strafe ? Vector3.zero : gamepadstick_right;
+        return azimuth + 2.0f * dt * gamepadaxis.x;
     }
     private float orbit_camera_altitude(float altitude, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
@@ -310,7 +258,7 @@ public class FightController : MotionController
     public (Vector3, Vector3) orbit_camera_update(Vector3 target, Vector3 gamepadstick_right, bool desired_strafe, float dt)
     {
         camera_azimuth = orbit_camera_azimuth(camera_azimuth, gamepadstick_right, desired_strafe, dt);
-        // camera_altitude = orbit_camera_altitude(camera_altitude, gamepadstick_right, desired_strafe, dt);
+        camera_altitude = orbit_camera_altitude(camera_altitude, gamepadstick_right, desired_strafe, dt);
         camera_distance = orbit_camera_distance(camera_distance, dt);
 
         Vector4 rotation_azimuth = Quat.quat_from_angle_axis(camera_azimuth, new Vector3(0, 1f, 0));
@@ -333,15 +281,15 @@ public class FightController : MotionController
 
         desired_gait_update(gait);
 
-        simulation_fwrd_speed = lerpf(simulation_min_fwrd_speed, simulation_max_fwrd_speed, desired_gait);
-        simulation_side_speed = lerpf(simulation_min_side_speed, simulation_max_side_speed, desired_gait);
-        simulation_back_speed = lerpf(simulation_min_back_speed, simulation_max_back_speed, desired_gait);
+        simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait);
+        simulation_side_speed = lerpf(simulation_walk_side_speed, simulation_run_side_speed, desired_gait);
+        simulation_back_speed = lerpf(simulation_walk_back_speed, simulation_run_back_speed, desired_gait);
 
         // Get the desired velocity
         Vector3 desired_velocity_curr = desired_velocity_update(stickLeft, camera_azimuth, simulation_rotation);
 
         // Get the desired rotation/direction
-        Vector4 desired_rotation_curr = desired_rotation_update(desired_rotation, stickLeft, stickRight, camera_azimuth, desired_velocity_curr); 
+        Vector4 desired_rotation_curr = desired_rotation_update(desired_rotation, stickLeft, stickRight, camera_azimuth, strafe, desired_velocity_curr); ;
 
         desired_velocity_change_prev = desired_velocity_change_curr;
         desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
@@ -375,7 +323,7 @@ public class FightController : MotionController
         if (force_search || search_timer <= 0.0f)
         {
             // Compute the features of the query vector
-            (float[] query, int offset) = compute_query_vector(stickRight);
+            (float[] query, int offset) = compute_query_vector(gait);
 
             Debug.Assert(offset == db.nfeatures());
 
@@ -434,7 +382,7 @@ public class FightController : MotionController
             Vector3 adjusted_position = pose.root_position;
             Vector4 adjusted_rotation = pose.root_rotation;
 
-            adjusted_position = clamp_character_position(
+            adjusted_position = base.clamp_character_position(
                 adjusted_position,
                 simulation_position,
                 clamping_max_distance);
@@ -456,10 +404,9 @@ public class FightController : MotionController
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
         (Vector3 eye, Vector3 target) = orbit_camera_update(pose.root_position + Vector3.up, stickRight, strafe, dt);
-        controller.SetVcam(eye, Target.position);
+        controller.SetVcam(eye, target);
 
         return (global_pose, feature_curr, latent_curr);
     }
-
     public (Vector3[], Vector4[]) Gizmos() => (trajectory_positions, trajectory_rotations);
 }

@@ -384,8 +384,13 @@ public class TerrainController : MotionController
     }
     #endregion
 
-    public override (Pose, float[], float[]) perform_cycle(Vector3 stickLeft, Vector3 stickRight, bool gait, bool strafe)
+    public override (Pose, float[], float[]) perform_cycle()
     {
+        Vector3 stickLeft = controller.input_handler.StickLeft;
+        Vector3 stickRight = controller.input_handler.StickRight;
+        bool gait = controller.input_handler.RightShoulder;
+        bool strafe = controller.input_handler.LeftTrigger;
+
         desired_gait_update(gait);
 
         simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
@@ -543,7 +548,7 @@ public class TerrainController : MotionController
         }
     }
     #endregion
-    public (Vector3[], Vector3[][]) Gizmos() => (trajectory_positions, terrain_toe_positions);
+    public (Vector3[], Vector4[], Vector3[][]) Gizmos() => (trajectory_positions, trajectory_rotations, terrain_toe_positions);
 
 
 }

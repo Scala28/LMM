@@ -1,36 +1,18 @@
 import subprocess
-import my_modules.parser_default_to_ubisoft as parser_def
-import my_modules.parser_mixamo_to_ubisoft as parser_mix
+import my_modules.parser_mixamo as parser
 import shutil
 from datetime import datetime
 import os
 import main_settings as settings
-import logging
-
-logging.basicConfig(
-    filename='bvh_filter.log',  # Log file name
-    level=logging.INFO,  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 
 def parse_input_animations(animations_list):
-    pth = ''
-    if settings.settings_animation_type == 'move':
-        pth = 'animations/{0}/move/'.format(settings.settings_type)
-    elif settings.settings_animation_type == 'action':
-        pth = 'animations/{0}/action/'.format(settings.settings_type)
+    pth = 'animations/{0}/{1}/'.format(settings.settings_type, settings.settings_animation_type)
+    for anim in animations_list:
+        anim_name = anim[0].split('/')[-1]
 
-    for i in range(len(animations_list)):
-        anim_name = animations_list[i][0].split('/')[-1]
-        add_toe = animations_list[i][4]
-
-        if settings.bvh_type == 'default':
-            print("processing default format ...")
-            parser_def.process_bvh(animations_list[i][0], pth + anim_name)
-        elif settings.bvh_type == 'mixamo':
-            print("processing mixamo format ...")
-            parser_mix.process_bvh(animations_list[i][0], pth + anim_name, add_toe)
+        print("processing mixamo format ...")
+        parser.process_bvh(anim[0], pth + anim_name)
 
 
 def backup_old_executions_settings():
@@ -75,16 +57,16 @@ if __name__ == "__main__":
 
         if 'train_projector' in settings.settings_run_components:
             print("Starting projector training ...")
-            subprocess.run([venv_path, "trainings/train_projector_{0}.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "trainings/train_projector.py"])
 
         if 'train_stepper' in settings.settings_run_components:
             print("Starting stepper training ...")
-            subprocess.run([venv_path, "trainings/train_stepper_{0}.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "trainings/train_stepper.py"])
 
         if 'train_stepper_projector' in settings.settings_run_components:
             print("Starting stepper and projector training ...")
-            process1 = subprocess.Popen([venv_path, "trainings/train_stepper_{0}.py".format(settings.settings_type)])
-            process2 = subprocess.Popen([venv_path, "trainings/train_projector_{0}.py".format(settings.settings_type)])
+            process1 = subprocess.Popen([venv_path, "trainings/train_stepper.py"])
+            process2 = subprocess.Popen([venv_path, "trainings/train_projector.py"])
             process1.wait()
             process2.wait()
 

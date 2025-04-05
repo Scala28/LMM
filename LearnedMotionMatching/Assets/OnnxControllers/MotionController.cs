@@ -279,7 +279,7 @@ public abstract class MotionController : ScriptableObject
     }
     #endregion
 
-    public abstract (Pose, float[], float[]) perform_cycle(Vector3 stickLeft, Vector3 stickRight, bool gait, bool strafe);
+    public abstract (Pose, float[], float[]) perform_cycle();
 
     #region NNet inference
     public virtual bool compute_projection_distance(float[] query, float transition_cost = 0.0f)

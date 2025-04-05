@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import main_settings as ms
-import my_modules.bvh as bvh
+import my_modules.Bvh as bvh
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
@@ -14,14 +14,14 @@ from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
     # Load data
-    database = load_database('./generate/data/plane/database.bin')
+    database = load_database('./generate/data/plane/{0}/database.bin'.format(ms.settings_animation_type))
 
     parents = database['bone_parents']
     contacts = database['contact_states']
     range_starts = database['range_starts']
     range_stops = database['range_stops']
 
-    X = load_features('./generate/data/plane/features.bin')['features'].astype(np.float32)
+    X = load_features('./generate/data/plane/{0}/features.bin'.format(ms.settings_animation_type))['features'].astype(np.float32)
     Ypos = database['bone_positions'].astype(np.float32)
     Yrot = database['bone_rotations'].astype(np.float32)
     Yvel = database['bone_velocities'].astype(np.float32)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
                 Yextra.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('./train_ris/plane/decompressor/latent.bin', 'wb') as f:
+            with open('./train_ris/plane/{0}/decompressor/latent.bin'.format(ms.settings_animation_type), 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -240,55 +240,24 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('./train_ris/plane/decompressor/decompressor_Ygnd.bvh', {
+                bvh.save('./train_ris/plane/{0}/decompressor/decompressor_Ygnd.bvh'.format(ms.settings_animation_type), {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
                     'parents': parents,
                     'names': ['joint_%i' % i for i in range(nbones)],
-                    'order': 'zyx'
+                    'order': 'yxz'
                 })
-                bvh.save('./train_ris/plane/decompressor/decompressor_Ytil.bvh', {
+                bvh.save('./train_ris/plane/{0}/decompressor/decompressor_Ytil.bvh'.format(ms.settings_animation_type), {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
                     'parents': parents,
                     'names': ['joint_%i' % i for i in range(nbones)],
-                    'order': 'zyx'
+                    'order': 'yxz'
                 })
             except IOError as e:
                 print(e)
-
-            # Write features
-            fmin, fmax = Xgnd.cpu().numpy().min(), Xgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nfeatures, sharex=True, figsize=(12, 2 * nfeatures))
-            for i in range(nfeatures):
-                axs[i].plot(Xgnd[0, :500, i].cpu().numpy())
-                axs[i].set_ylim(fmin, fmax)
-            plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/plane/decompressor/decompressor_X.png')
-            except IOError as e:
-                print(e)
-            plt.close()
-
-            # Write latent
-            lmin, lmax = Zgnd.cpu().numpy().min(), Zgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nlatent, sharex=True, figsize=(12, 2 * nlatent))
-            for i in range(nlatent):
-                axs[i].plot(Zgnd[0, :500, i].cpu().numpy())
-                axs[i].set_ylim(lmin, lmax)
-            plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/plane/decompressor/decompressor_Z.png')
-            except IOError as e:
-                print(e)
-
-            plt.close()
 
 
     # Build batches respecting window size
@@ -491,7 +460,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('./train_ris/plane/decompressor/decompressor.bin', [
+            save_network('./train_ris/plane/{0}/decompressor/decompressor.bin'.format(ms.settings_animation_type), [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
@@ -501,7 +470,7 @@ if __name__ == '__main__':
                          )
             save_network_onnx(decompressor,
                               decompressor_mean_in,
-                              './train_ris/plane/decompressor/decompressor.onnx')
+                              './train_ris/plane/{0}/decompressor/decompressor.onnx'.format(ms.settings_animation_type))
 
         if i % 1000 == 0:
             # c_scheduler.step()

@@ -1,14 +1,9 @@
 import sys
-import struct
-
 import numpy as np
 import torch
-
 from torch.utils.tensorboard import SummaryWriter
 import main_settings as ms
 import my_modules.NNModels as NNModels
-import my_modules.quat_functions as quat
-import my_modules.xform_functions as xform
 from train_common import load_database, load_features, load_latent, save_network, save_network_onnx
 
 from sklearn.neighbors import BallTree
@@ -18,13 +13,16 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__':
 
     # Load data
-    database = load_database('./generate/data/{0}/database.bin'.format(ms.settings_type))
+    database = load_database('./generate/data/{0}/{1}/database.bin'.
+                             format(ms.settings_type, ms.settings_animation_type))
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
-    X = load_features('./generate/data/{0}/features.bin'.format(ms.settings_type))['features'].copy().astype(np.float32)
-    Z = load_latent('./train_ris/{0}/decompressor/latent.bin'.format(ms.settings_type))['latent'].copy().astype(np.float32)
+    X = load_features('./generate/data/{0}/{1}/features.bin'.
+                      format(ms.settings_type, ms.settings_animation_type))['features'].copy().astype(np.float32)
+    Z = load_latent('./train_ris/{0}/{1}/decompressor/latent.bin'.
+                    format(ms.settings_type, ms.settings_animation_type))['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
     nfeatures = X.shape[1]
@@ -69,6 +67,7 @@ if __name__ == '__main__':
 
     projector = NNModels.Projector(nfeatures, nfeatures + nlatent)
 
+
     def generate_predictions():
         with torch.no_grad():
             # Get slice of database for first clip
@@ -104,29 +103,6 @@ if __name__ == '__main__':
                 axs[i].set_ylim(fmin, fmax)
             plt.tight_layout()
 
-            try:
-                plt.savefig('./train_ris/{0}/projector/projector_X.png'.format(ms.settings_type))
-            except IOError as e:
-                print(e)
-
-            plt.close()
-
-            # Write latent
-            lmin, lmax = Zgnd.cpu().numpy().min(), Zgnd.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nlatent, sharex=True, figsize=(12, 2 * nlatent))
-            for i in range(nlatent):
-                axs[i].plot(Zgnd[:500:4, i].cpu().numpy(), marker='.', linestyle='None')
-                axs[i].plot(Ztil[:500:4, i].cpu().numpy(), marker='.', linestyle='None')
-                axs[i].set_ylim(lmin, lmax)
-            plt.tight_layout()
-
-            try:
-                plt.savefig('./train_ris/{0}/projector/projector_Z.png'.format(ms.settings_type))
-            except IOError as e:
-                print(e)
-
-            plt.close()
 
     # Train
     writer = SummaryWriter()
@@ -193,19 +169,21 @@ if __name__ == '__main__':
 
         if i % 10000 == 0:
             generate_predictions()
-            save_network('./train_ris/{0}/projector/projector.bin'.format(ms.settings_type), [
-                projector.layer1,
-                projector.layer2,
-                projector.layer3,
-                projector.layer4,
-                projector.predict],
+            save_network('./train_ris/{0}/{1}/projector/projector.bin'.
+                         format(ms.settings_type, ms.settings_animation_type), [
+                             projector.layer1,
+                             projector.layer2,
+                             projector.layer3,
+                             projector.layer4,
+                             projector.predict],
                          projector_mean_in,
                          projector_std_in,
                          projector_mean_out,
                          projector_std_out)
             save_network_onnx(projector,
                               projector_mean_in,
-                              './train_ris/{0}/projector/projector.onnx'.format(ms.settings_type))
+                              './train_ris/{0}/{1}/projector/projector.onnx'.
+                              format(ms.settings_type, ms.settings_animation_type))
 
         if i % 1000 == 0:
             scheduler.step()
