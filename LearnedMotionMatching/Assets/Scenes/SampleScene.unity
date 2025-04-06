@@ -6862,7 +6862,7 @@ MonoBehaviour:
   - {fileID: 3948475987637517873}
   - {fileID: 595940672540330697}
   controllers:
-  - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
+  - motion_controller: {fileID: 11400000, guid: ff231d5f41f2aaa48b8815d2d74370b9, type: 2}
     behaviour: 1
   - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
     behaviour: 0

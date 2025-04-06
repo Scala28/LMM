@@ -6,7 +6,7 @@ def is_closing_brace_line(line):
     return re.match(r'^\s*}\s*$', line) is not None
 
 
-def remove_joints_hierarchy(lines, joints_to_remove):
+def parse_hierarchy(lines, joints_to_remove, add_toe):
     """Parse BVH hierarchy and remove unwanted joints."""
     new_lines = []
     joint_stack = []  # Keeps track of nested joints
@@ -16,6 +16,8 @@ def remove_joints_hierarchy(lines, joints_to_remove):
     joint_channel_counts = []  # Stores number of channels per joint
     end_site = False
     joint_index = -1  # Keeps track of joint index in motion data
+    toe_indices = []
+    toe_offsets = []
 
     for i, line in enumerate(lines):
         stripped_line = line.lstrip()
@@ -47,8 +49,20 @@ def remove_joints_hierarchy(lines, joints_to_remove):
             if not remove_mode:
                 new_lines.append(line)
         elif "OFFSET" in trimmed:
-            if not remove_mode and not end_site:
-                new_lines.append(line)
+            if add_toe:
+                if not remove_mode and not end_site:
+                    new_lines.append(line)
+                elif not remove_mode:
+                    if joint_stack[-1] == "LeftFoot":
+                        toe_indices.append(joint_index + 1)
+                        toe_offsets.append(trimmed)
+                    elif joint_stack[-1] == "RightFoot":
+                        toe_indices.append(joint_index + 2)
+                        toe_offsets.append(trimmed)
+            else:
+                if not remove_mode and not end_site:
+                    new_lines.append(line)
+
         else:
             if not remove_mode and not end_site:
                 new_lines.append(line)
@@ -64,7 +78,16 @@ def remove_joints_hierarchy(lines, joints_to_remove):
                             if len(removed_stack) == 0:
                                 remove_mode = False
     print("joints removed")
-    return add_end_site(new_lines), removed_indices, joint_channel_counts
+
+    if add_toe:
+        new_lines, joint_channel_counts = add_toe_hierachy(new_lines, toe_indices, toe_offsets, joint_channel_counts)
+        for i, idx in enumerate(removed_indices):
+            if idx > toe_indices[0]:
+                removed_indices[i] = idx + 1
+            if idx > toe_indices[1]:
+                removed_indices[i] = idx + 1
+        print("added toe joints")
+    return add_end_site(new_lines), removed_indices, joint_channel_counts, toe_indices
 
 
 def add_end_site(lines):
@@ -106,24 +129,72 @@ def add_end_site(lines):
     return new_lines
 
 
-def filter_motion(lines, removed_indices, joint_channel_counts):
+def add_toe_hierachy(lines, toe_indices, toe_offsets, joints_channel_count):
+    new_lines = []
+    i = 0
+    joint_index = -1  # Track joint indices for motion data
+    while i < len(lines):
+        line = lines[i]
+        stripped_line = line.strip()
+        new_lines.append(line)
+        # Track joint index for motion updates
+        if "JOINT" in stripped_line or "ROOT" in stripped_line:
+            joint_index += 1
+        is_channel = "CHANNELS" in stripped_line
+
+        if joint_index == (toe_indices[0] - 1) and is_channel:  # LeftFoot
+            indent = line[:len(line) - len(line.lstrip())]  # Extract indentation
+            new_lines.append(f"{indent}JOINT LeftToe\n")
+            new_lines.append(f"{indent}{{\n")
+            new_lines.append(f"{indent}\t{toe_offsets[0]}\n")
+            new_lines.append(f"{indent}\tCHANNELS	3	Yrotation	Xrotation	Zrotation\n")
+            new_lines.append(f"{indent}}}\n")
+            joint_index += 1
+        elif joint_index == (toe_indices[1] - 1) and is_channel:  # RightFoot
+            indent = line[:len(line) - len(line.lstrip())]  # Extract indentation
+            new_lines.append(f"{indent}JOINT RighToe\n")
+            new_lines.append(f"{indent}{{\n")
+            new_lines.append(f"{indent}\t{toe_offsets[1]}\n")
+            new_lines.append(f"{indent}\tCHANNELS	3	Yrotation	Xrotation	Zrotation\n")
+            new_lines.append(f"{indent}}}\n")
+            joint_index += 1
+
+        i += 1  # Move to the next line
+
+    joints_channel_count.insert(toe_indices[0], 3)
+    joints_channel_count.insert(toe_indices[1], 3)
+
+    return new_lines, joints_channel_count
+
+
+def process_motion(lines, removed_indices, joint_channel_counts, add_toe, toe_indices):
+    print("processing motion")
     """Modify motion data by removing corresponding channels."""
     new_lines = []
+    print(toe_indices)
+    print(removed_indices)
     for i, line in enumerate(lines):
-        if i < 2:  # First two lines contain 'MOTION' and 'Frames:'
+        if i < 3:  # First two lines contain 'MOTION' and 'Frames:'
             new_lines.append(line)
             continue
         values = line.split()
         # Compute indices of columns to remove based on varying channel counts
         column_indices_to_remove = []
         column_index = 0
+        values_index = 0
+        updated_values = []
         for joint_idx, num_channels in enumerate(joint_channel_counts):
             if joint_idx in removed_indices:
                 column_indices_to_remove.extend(range(column_index, column_index + num_channels))
+            if add_toe and (joint_idx == toe_indices[0] or joint_idx == toe_indices[1]):
+                updated_values.extend(["0.000", "0.000", "0.000"])
+            else:
+                updated_values.extend(values[values_index: values_index + num_channels])
+                values_index += num_channels
             column_index += num_channels
-
-        filtered_values = [val for idx, val in enumerate(values) if idx not in column_indices_to_remove]
+        filtered_values = [val for idx, val in enumerate(updated_values) if idx not in column_indices_to_remove]
         new_lines.append(" ".join(filtered_values) + "\n")
+
     return new_lines
 
 
@@ -138,11 +209,11 @@ def process_bvh(input_bvh, output_bvh, add_toe=False):
 
     # Process hierarchy
     joints_to_remove = ["HandPinky", "HandIndex", "HandRing", "HandMiddle", "HandThumb", "_End"]
-    new_hierarchy, removed_indices, joint_channel_counts = (
-        remove_joints_hierarchy(hierarchy_lines, joints_to_remove))
+    new_hierarchy, removed_indices, joint_channel_counts, toe_indices = (
+        parse_hierarchy(hierarchy_lines, joints_to_remove, add_toe))
 
     # Process motion
-    new_motion = filter_motion(motion_lines, removed_indices, joint_channel_counts)
+    new_motion = process_motion(motion_lines, removed_indices, joint_channel_counts, add_toe, toe_indices)
 
     print("Writing file")
     # Write new BVH file
