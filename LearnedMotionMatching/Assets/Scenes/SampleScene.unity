@@ -1227,9 +1227,6 @@ MonoBehaviour:
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1135148370}
   camera_lookAt: {fileID: 995607495}
-  whatIsTerrain:
-    serializedVersion: 2
-    m_Bits: 64
   lock60Fps: 1
   gizmos: 1
   set_vcam: 1
@@ -2087,9 +2084,6 @@ MonoBehaviour:
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 693160731}
   camera_lookAt: {fileID: 1763617454}
-  whatIsTerrain:
-    serializedVersion: 2
-    m_Bits: 64
   lock60Fps: 1
   gizmos: 1
   set_vcam: 1
@@ -6339,7 +6333,7 @@ Transform:
   m_GameObject: {fileID: 4174267669520158762}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.3346808, y: -0.00000011920929, z: -0.025100827}
+  m_LocalPosition: {x: 1.3346808, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6846,38 +6840,37 @@ MonoBehaviour:
   rigToTransform:
   - {fileID: 3649651796388203152}
   - {fileID: 9141808153067206414}
-  - {fileID: 3807903662397645675}
-  - {fileID: 1279323464104140064}
-  - {fileID: 3948475987637517873}
-  - {fileID: 595940672540330697}
-  - {fileID: 3618642197207770309}
-  - {fileID: 6558739358775963260}
-  - {fileID: 8422490755255635650}
-  - {fileID: 3716613232736367085}
   - {fileID: 4254779706455431719}
   - {fileID: 3524960787269391959}
   - {fileID: 6054437577065489230}
-  - {fileID: 8575609361545670859}
-  - {fileID: 5755339630343879840}
-  - {fileID: 1426497882810596149}
-  - {fileID: 7624081820171688423}
   - {fileID: 2517044316620425701}
   - {fileID: 6882173078499684186}
   - {fileID: 5786245982159316590}
   - {fileID: 6737630774563828880}
   - {fileID: 2439396092362998542}
   - {fileID: 6836191081866420845}
+  - {fileID: 8575609361545670859}
+  - {fileID: 5755339630343879840}
+  - {fileID: 1426497882810596149}
+  - {fileID: 7624081820171688423}
+  - {fileID: 3618642197207770309}
+  - {fileID: 6558739358775963260}
+  - {fileID: 8422490755255635650}
+  - {fileID: 3716613232736367085}
+  - {fileID: 3807903662397645675}
+  - {fileID: 1279323464104140064}
+  - {fileID: 3948475987637517873}
+  - {fileID: 595940672540330697}
   controllers:
-  - motion_controller: {fileID: 11400000, guid: 886d67497ab1002439c0a619970335e9, type: 2}
-    behaviour: 2
+  - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
+    behaviour: 1
   - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
     behaviour: 0
+  - motion_controller: {fileID: 11400000, guid: 886d67497ab1002439c0a619970335e9, type: 2}
+    behaviour: 2
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 693160731}
   camera_lookAt: {fileID: 1763617454}
-  whatIsTerrain:
-    serializedVersion: 2
-    m_Bits: 64
   lock60Fps: 1
   gizmos: 1
   set_vcam: 1

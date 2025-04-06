@@ -174,7 +174,7 @@ if __name__ == '__main__':
 
         if i % 10000 == 0:
             # generate_predictions()
-            save_network('./train_ris/{0}/{1}/stepper/stepper.onnx'.
+            save_network('./train_ris/{0}/{1}/stepper/stepper.bin'.
                          format(ms.settings_type, ms.settings_animation_type), [
                              stepper.layer1,
                              stepper.layer2,
