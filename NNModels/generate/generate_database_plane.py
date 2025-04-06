@@ -206,7 +206,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
             angular_velocities,
             bone_parents)
 
-        contact_velocity_threshold = 0.15
+        contact_velocity_threshold = 0.2
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
             bone_names.index("LeftToeBase"),

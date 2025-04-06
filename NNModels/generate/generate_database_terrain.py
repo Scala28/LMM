@@ -215,11 +215,11 @@ for filename, start, stop, root_approach, toe_info, action in files:
             angular_velocities,
             bone_parents)
 
-        contact_velocity_threshold = 0.15
+        contact_velocity_threshold = 0.2
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
-            bone_names.index("LeftToe"),
-            bone_names.index("RightToe")])] ** 2, axis=-1))
+            bone_names.index("LeftToeBase"),
+            bone_names.index("RightToeBase")])] ** 2, axis=-1))
 
         # Contacts are given for when contact bones are below velocity threshold
         contacts = contact_velocity < contact_velocity_threshold
@@ -255,15 +255,15 @@ for filename, start, stop, root_approach, toe_info, action in files:
         count_left = 0
         count_right = 0
 
-        n_contacts = 2 if filename != 'animations/pushAndStumble1_subject5.bvh' else n_neighbors + 1
+        n_contacts = 2 if anim != 'animations/terrain/move/push-and-stumble_ubisoft.bvh' else n_neighbors + 1
 
         for i in range(len(global_positions)):
 
             if contacts[i][0] and i != (len(global_positions) - 1):
                 if is_first_left or contacts[i + 1][0] is False:
-                    contacts_xz.append((global_positions[i][bone_names.index("LeftToe")][0],
-                                        global_positions[i][bone_names.index("LeftToe")][2]))
-                    contacts_y.append(global_positions[i][bone_names.index("LeftToe")][1] - 0.02)
+                    contacts_xz.append((global_positions[i][bone_names.index("LeftToeBase")][0],
+                                        global_positions[i][bone_names.index("LeftToeBase")][2]))
+                    contacts_y.append(global_positions[i][bone_names.index("LeftToeBase")][1] - 0.02)
                     count_left += 1
 
                     if count_left >= n_contacts:
@@ -274,9 +274,9 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
             if contacts[i][1] and i != (len(global_positions) - 1):
                 if is_first_right or contacts[i + 1][1] is False:
-                    contacts_xz.append((global_positions[i][bone_names.index("RightToe")][0],
-                                        global_positions[i][bone_names.index("RightToe")][2]))
-                    contacts_y.append(global_positions[i][bone_names.index("RightToe")][1] - 0.02)
+                    contacts_xz.append((global_positions[i][bone_names.index("RightToeBase")][0],
+                                        global_positions[i][bone_names.index("RightToeBase")][2]))
+                    contacts_y.append(global_positions[i][bone_names.index("RightToeBase")][1] - 0.02)
 
                     count_right += 1
                     if count_right >= n_contacts:
@@ -286,11 +286,11 @@ for filename, start, stop, root_approach, toe_info, action in files:
                 is_first_right = True
 
             root_xz.append((global_positions[i][0][0], global_positions[i][0][2]))
-            leftFoot_xz.append((global_positions[i][bone_names.index("LeftToe")][0],
-                                global_positions[i][bone_names.index("LeftToe")][2]))
+            leftFoot_xz.append((global_positions[i][bone_names.index("LeftToeBase")][0],
+                                global_positions[i][bone_names.index("LeftToeBase")][2]))
 
-            rightFoot_xz.append((global_positions[i][bone_names.index("RightToe")][0],
-                                 global_positions[i][bone_names.index("RightToe")][2]))
+            rightFoot_xz.append((global_positions[i][bone_names.index("RightToeBase")][0],
+                                 global_positions[i][bone_names.index("RightToeBase")][2]))
 
         knn_regressor = KNeighborsRegressor(n_neighbors=n_neighbors)
         # Fit the nearest neighbor regression for terrain height
@@ -326,10 +326,10 @@ for filename, start, stop, root_approach, toe_info, action in files:
                 t = database_trajectory_index_clamp(i, indx)
 
                 chr_toe_left = quat.inv_mul_vec(global_rotations[t][0],
-                                                global_positions[t][bone_names.index("LeftToe")] -
+                                                global_positions[t][bone_names.index("LeftToeBase")] -
                                                 global_positions[t][0])
                 chr_toe_right = quat.inv_mul_vec(global_rotations[t][0],
-                                                 global_positions[t][bone_names.index("RightToe")] -
+                                                 global_positions[t][bone_names.index("RightToeBase")] -
                                                  global_positions[t][0])
                 toe_positions[i][k][0] = chr_toe_left
                 toe_positions[i][k][1] = chr_toe_right

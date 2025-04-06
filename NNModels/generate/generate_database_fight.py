@@ -199,8 +199,8 @@ for filename, start, stop, root_approach, toe_info, action in files:
         contact_velocity_threshold = 0.3
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
-            bone_names.index("LeftToe"),
-            bone_names.index("RightToe")])] ** 2, axis=-1))
+            bone_names.index("LeftToeBase"),
+            bone_names.index("RightToeBase")])] ** 2, axis=-1))
 
         # Contacts are given for when contact bones are below velocity threshold
         contacts = contact_velocity < contact_velocity_threshold

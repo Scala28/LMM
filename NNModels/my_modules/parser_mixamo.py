@@ -171,8 +171,6 @@ def process_motion(lines, removed_indices, joint_channel_counts, add_toe, toe_in
     print("processing motion")
     """Modify motion data by removing corresponding channels."""
     new_lines = []
-    print(toe_indices)
-    print(removed_indices)
     for i, line in enumerate(lines):
         if i < 3:  # First two lines contain 'MOTION' and 'Frames:'
             new_lines.append(line)
