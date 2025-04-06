@@ -214,7 +214,7 @@ def database_build_matching_features():
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_direction_feature(offset, feature_weight_trajectory_directions)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-
+    print("\n")
     if nfeatures != offset:
         print("\nAssertion error!")
         exit()

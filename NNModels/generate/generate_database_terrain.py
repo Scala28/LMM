@@ -215,7 +215,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
             angular_velocities,
             bone_parents)
 
-        contact_velocity_threshold = 0.2
+        contact_velocity_threshold = 0.15
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
             bone_names.index("LeftToeBase"),
@@ -389,6 +389,6 @@ Bvh.save('generate/data/terrain/{0}/database.bvh'.format(ms.settings_animation_t
     'offsets': 100.0 * bone_positions[0],
     'parents': bone_parents,
     'names': ['joint_%i' % i for i in range(nbones)],
-    'order': 'xyz'
+    'order': 'yxz'
 })
 

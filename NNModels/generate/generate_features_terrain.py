@@ -250,7 +250,7 @@ def database_build_matching_features():
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_future_terrain_feature(offset, feature_weight_terrain_position)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-
+    print("\n")
     if nfeatures != offset:
         print("\nAssertion error!")
         exit()

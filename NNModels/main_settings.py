@@ -14,10 +14,10 @@ settings_animations = [
 
 settings_run_components = [
     # 'parse_bvh',
-    'generate_database',
+    # 'generate_database',
     'generate_features',
     'train_decompressor',
-    'train_stepper_projector',  # in parallel
+    # 'train_stepper_projector',  # in parallel
     # 'train_stepper',  # individually
     # 'train_projector',  # individually
 ]
