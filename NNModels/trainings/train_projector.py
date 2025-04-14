@@ -14,15 +14,15 @@ if __name__ == '__main__':
 
     # Load data
     database = load_database('./generate/data/{0}/{1}/database.bin'.
-                             format(ms.settings_type, ms.settings_animation_type))
+                             format(ms.controller_type, ms.animation_type))
     range_starts = database['range_starts']
     range_stops = database['range_stops']
     del database
 
     X = load_features('./generate/data/{0}/{1}/features.bin'.
-                      format(ms.settings_type, ms.settings_animation_type))['features'].copy().astype(np.float32)
+                      format(ms.controller_type, ms.animation_type))['features'].copy().astype(np.float32)
     Z = load_latent('./train_ris/{0}/{1}/decompressor/latent.bin'.
-                    format(ms.settings_type, ms.settings_animation_type))['latent'].copy().astype(np.float32)
+                    format(ms.controller_type, ms.animation_type))['latent'].copy().astype(np.float32)
 
     nframes = X.shape[0]
     nfeatures = X.shape[1]
@@ -170,7 +170,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             generate_predictions()
             save_network('./train_ris/{0}/{1}/projector/projector.bin'.
-                         format(ms.settings_type, ms.settings_animation_type), [
+                         format(ms.controller_type, ms.animation_type), [
                              projector.layer1,
                              projector.layer2,
                              projector.layer3,
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             save_network_onnx(projector,
                               projector_mean_in,
                               './train_ris/{0}/{1}/projector/projector.onnx'.
-                              format(ms.settings_type, ms.settings_animation_type))
+                              format(ms.controller_type, ms.animation_type))
 
         if i % 1000 == 0:
             scheduler.step()

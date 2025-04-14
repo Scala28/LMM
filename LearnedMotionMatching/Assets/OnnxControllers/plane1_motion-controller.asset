@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0395bab5739c33d40948ee8e8b3cd008, type: 3}
   m_Name: plane1_motion-controller
   m_EditorClassIdentifier: 
-  stepper: {fileID: 0}
+  stepper: {fileID: 5022602860645237092, guid: d5bbec7b733eeb947acef35ee362ad4e, type: 3}
   decompressor: {fileID: 5022602860645237092, guid: 7dbd8494814dc634ba9ef84a3d0011ef, type: 3}
   projector: {fileID: 5022602860645237092, guid: 8d9025de58d6e464c9f5cbe53dc88265, type: 3}
   stepper_name: plane/stepper.bin

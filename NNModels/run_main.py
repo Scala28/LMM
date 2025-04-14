@@ -7,7 +7,7 @@ import main_settings as settings
 
 
 def parse_input_animations(animations_list):
-    pth = 'animations/{0}/{1}/'.format(settings.settings_type, settings.settings_animation_type)
+    pth = 'animations/{0}/{1}/'.format(settings.controller_type, settings.animation_type)
     for anim in animations_list:
         anim_name = anim[0].split('/')[-1]
 
@@ -40,20 +40,20 @@ if __name__ == "__main__":
 
     venv_path = "C:/Users/lucas/AppData/Local/Programs/Python/Python39/python.exe"
 
-    if settings.settings_animation_type == 'move':
+    if settings.animation_type == 'move':
         if 'generate_database' in settings.settings_run_components:
             print("Generating database ...")
-            subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.controller_type)])
             print("Generating root direction bvh ...")
-            subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.controller_type)])
 
         if 'generate_features' in settings.settings_run_components:
             print("Generating features ...")
-            subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.controller_type)])
 
         if 'train_decompressor' in settings.settings_run_components:
             print("Starting decompressor training ...")
-            subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.settings_type)])
+            subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.controller_type)])
 
         if 'train_projector' in settings.settings_run_components:
             print("Starting projector training ...")

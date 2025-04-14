@@ -8,7 +8,7 @@ import struct
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-anim_path = 'animations/fight/{0}/'.format(ms.settings_animation_type)
+anim_path = 'animations/fight/{0}/'.format(ms.animation_type)
 files = ms.settings_animations
 
 
@@ -240,9 +240,9 @@ range_stops = np.array(range_stops).astype(np.int32)
 contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
 
 """ Write Database """
-print('Generating Database generate/data/fight/{0}/database.bin ...'.format(ms.settings_animation_type))
+print('Generating Database generate/data/fight/{0}/database.bin ...'.format(ms.animation_type))
 
-with open('generate/data/fight/{0}/database.bin'.format(format(ms.settings_animation_type)), 'wb') as f:
+with open('generate/data/fight/{0}/database.bin'.format(format(ms.animation_type)), 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
@@ -260,7 +260,7 @@ with open('generate/data/fight/{0}/database.bin'.format(format(ms.settings_anima
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
 
 
-Bvh.save('generate/data/fight/{0}/database.bvh'.format(ms.settings_animation_type), {
+Bvh.save('generate/data/fight/{0}/database.bvh'.format(ms.animation_type), {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),
     'positions': 100.0 * bone_positions,
     'offsets': 100.0 * bone_positions[0],

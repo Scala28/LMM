@@ -244,7 +244,7 @@ Bone_RightLeg = 20
 Bone_RightFoot = 21
 Bone_RightToeBase = 22
 
-database = load_database('generate/data/plane/{0}/database.bin'.format(ms.settings_animation_type))
+database = load_database('generate/data/plane/{0}/database.bin'.format(ms.animation_type))
 bone_positions = database['bone_positions']
 bone_rotations = database['bone_rotations']
 bone_velocities = database['bone_velocities']
@@ -259,14 +259,14 @@ features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)
 features_scale = np.zeros(nfeatures)
 
-print("Writing features generate/data/plane/{0}/features.bin ...".format(ms.settings_animation_type))
+print("Writing features generate/data/plane/{0}/features.bin ...".format(ms.animation_type))
 database_build_matching_features()
 
 features_32 = np.concatenate(features, axis=0).astype(np.float32)
 features_offset_32 = features_offset.astype(np.float32)
 features_scale_32 = features_scale.astype(np.float32)
 
-with open('generate/data/plane/{0}/features.bin'.format(ms.settings_animation_type), 'wb') as f:
+with open('generate/data/plane/{0}/features.bin'.format(ms.animation_type), 'wb') as f:
     f.write(struct.pack('II', nframes, nfeatures) + features_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_offset_32.ravel().tobytes())
     f.write(struct.pack('I', nfeatures) + features_scale_32.ravel().tobytes())

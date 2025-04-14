@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public class ControllerOrchestrator : MonoBehaviour
 {
@@ -71,12 +72,13 @@ public class ControllerOrchestrator : MonoBehaviour
     private float camera_distance = 4.0f;
 
     [Header("Others")]
-    public bool lock60Fps = false;
+    public bool lock60Fps = true;
     public bool gizmos = false;
     public bool set_vcam = true;
-    public bool render_mesh = false;
+    public bool rigged = true;
     [SerializeField] private string ch_filename;
     private DataManager.character ch;
+    public bool read_database = false;
     private Mesh mesh;
 
     int nbones = Enum.GetValues(typeof(character)).Length;
@@ -84,10 +86,11 @@ public class ControllerOrchestrator : MonoBehaviour
     {
         Application.targetFrameRate = 60;
         _sync60Fps = SyncFPS.Instance;
+
         input_handler = GetComponent<InputHandler>();
         player_input = GetComponent<PlayerInput>();
 
-        if (render_mesh)
+        if (!rigged)
         {
             ch = DataManager.load_character("Data/" + ch_filename);
             Debug.Assert(ch.nbones() == nbones);
@@ -96,17 +99,16 @@ public class ControllerOrchestrator : MonoBehaviour
             transform.GetComponent<MeshFilter>().mesh = mesh;
         }
         else
-            Debug.Assert(rigToTransform.Length == nbones);
+            Debug.Assert(rigToTransform.Length + 1 == nbones);
 
         current_controller = controllers[0];
         current_controller.motion_controller.Setup(this);
 
         current_db = current_controller.motion_controller.getDB();
 
-        if (render_mesh)
-            Debug.Assert(ch.nbones() == current_db.nbones());
-        else
-            Debug.Assert(current_db.nbones() == rigToTransform.Length);
+        Debug.Assert(current_db.nbones() == nbones);
+
+
 
         feature_curr = new float[current_db.nfeatures()];
         feature_proj = new float[current_db.nfeatures()];
@@ -130,12 +132,12 @@ public class ControllerOrchestrator : MonoBehaviour
         if (lock60Fps && !_sync60Fps.isSyncFrame)
             return;
 
-        camera_distance = current_controller.motion_controller.camera_distance;
-        camera_azimuth = current_controller.motion_controller.camera_azimuth;
-        camera_altitude = current_controller.motion_controller.camera_altitude;
-
-        Vector3 gamepad_stickleft = input_handler.StickLeft;
-        Vector3 gamepad_stickright = input_handler.StickRight;
+        if (read_database)
+        {
+            global_pose = current_controller.motion_controller.GetNextFrame();
+            display_frame_pose();
+            return;
+        }
 
         camera_azimuth = current_controller.motion_controller.camera_azimuth;
         camera_altitude = current_controller.motion_controller.camera_altitude;
@@ -143,7 +145,7 @@ public class ControllerOrchestrator : MonoBehaviour
 
         (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle();
 
-        if (render_mesh)
+        if (!rigged)
             deform_character_mesh();
         else
             display_frame_pose();
@@ -174,12 +176,12 @@ public class ControllerOrchestrator : MonoBehaviour
         transform.position = new Vector3(global_pose.root_position.x, global_pose.root_position.y, global_pose.root_position.z);
         transform.rotation = new Quaternion(global_pose.root_rotation.y, global_pose.root_rotation.z, global_pose.root_rotation.w, global_pose.root_rotation.x);
 
-        for (int i = 1; i < nbones; i++)
+        for (int i = 0; i < global_pose.joints.Length; i++)
         {
             Transform joint = rigToTransform[i];
-            JointMotionData jdata = global_pose.joints[i - 1];
+            JointMotionData jdata = global_pose.joints[i];
 
-            joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
+            //joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
             joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
         }
     }
@@ -240,8 +242,8 @@ public class ControllerOrchestrator : MonoBehaviour
 
 }
 public enum Behaviour { 
-    terrain,
     plane,
+    terrain,
     fight,
     climb,
 }

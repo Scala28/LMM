@@ -357,8 +357,11 @@ public static class Quat
                 Mathf.Asin(Mathf.Min(Mathf.Max(2f * (q0 * q2 - q3 * q1), min), max)),
                 Mathf.Atan2(2f * (q0 * q3 + q1 * q2), 1f - 2f * (q2 * q2 + q3 * q3)));
         }
+        else if (order == "yxz")
+            return new Vector3(Mathf.Asin(Mathf.Min(Mathf.Max(2f * (q0 * q1 - q2 * q3)))),
+                Mathf.Atan2(2f * (q0 * q2 + q1 * q3), 1f - 2f * (q1 * q1 + q2 * q2)),
+                Mathf.Atan2(2f * (q0 * q3 + q1 * q2), 1f - 2f * (q1 * q1 + q3 * q3)));
         else
-            //TODO: order zyx
             return Vector3.zero;
     }
     #endregion

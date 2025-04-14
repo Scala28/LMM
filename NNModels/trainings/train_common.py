@@ -34,7 +34,7 @@ def load_database(filename):
         contact_states = np.frombuffer(f.read(nframes * ncontacts), dtype=np.int8, count=nframes * ncontacts).reshape(
             [nframes, ncontacts])
 
-        if 'terrain' not in ms.settings_type:
+        if 'terrain' not in ms.controller_type:
             return {
                 'bone_positions': bone_positions,
                 'bone_rotations': bone_rotations,

@@ -10,7 +10,7 @@ import main_settings as ms
 from scipy.ndimage import gaussian_filter1d
 
 
-anim_path = 'animations/terrain/{0}/'.format(ms.settings_animation_type)
+anim_path = 'animations/terrain/{0}/'.format(ms.animation_type)
 files = ms.settings_animations
 
 """ Basic function for mirroring animation data with this particular skeleton structure """
@@ -362,9 +362,9 @@ range_stops = np.array(range_stops).astype(np.int32)
 
 """ Write Database """
 
-print("Writing Database generate/data/terrain/{0}/database.bin ...".format(ms.settings_animation_type))
+print("Writing Database generate/data/terrain/{0}/database.bin ...".format(ms.animation_type))
 
-with open('generate/data/terrain/{0}/database.bin'.format(ms.settings_animation_type), 'wb') as f:
+with open('generate/data/terrain/{0}/database.bin'.format(ms.animation_type), 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
@@ -383,7 +383,7 @@ with open('generate/data/terrain/{0}/database.bin'.format(ms.settings_animation_
     f.write(struct.pack('II', nframes, nterrain) + terrain_positions.ravel().tobytes())
     f.write(struct.pack('II', nframes, ntoe_trajectory) + trajectory_toe_positions.ravel().tobytes())
 
-Bvh.save('generate/data/terrain/{0}/database.bvh'.format(ms.settings_animation_type), {
+Bvh.save('generate/data/terrain/{0}/database.bvh'.format(ms.animation_type), {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),
     'positions': 100.0 * bone_positions,
     'offsets': 100.0 * bone_positions[0],

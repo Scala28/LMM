@@ -13,14 +13,14 @@ from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
     # Load data
-    database = load_database('./generate/data/fight/{0}/database.bin'.format(ms.settings_animation_type))
+    database = load_database('./generate/data/fight/{0}/database.bin'.format(ms.animation_type))
 
     parents = database['bone_parents']
     contacts = database['contact_states']
     range_starts = database['range_starts']
     range_stops = database['range_stops']
 
-    X = load_features('./generate/data/fight/{0}/features.bin'.format(ms.settings_animation_type))['features'].astype(np.float32)
+    X = load_features('./generate/data/fight/{0}/features.bin'.format(ms.animation_type))['features'].astype(np.float32)
     Ypos = database['bone_positions'].astype(np.float32)
     Yrot = database['bone_rotations'].astype(np.float32)
     Yvel = database['bone_velocities'].astype(np.float32)
@@ -162,7 +162,7 @@ if __name__ == '__main__':
                 Yextra.reshape([1, nframes, -1])
             ), dim=-1) - compressor_mean_in) / compressor_std_in)
 
-            with open('./train_ris/fight/{0}/decompressor/latent.bin'.format(ms.settings_animation_type), 'wb') as f:
+            with open('./train_ris/fight/{0}/decompressor/latent.bin'.format(ms.animation_type), 'wb') as f:
                 f.write(struct.pack('II', nframes, nlatent) + Z.cpu().numpy().astype(np.float32).ravel().tobytes())
 
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
 
             # Write BVH
             try:
-                bvh.save('./train_ris/fight/{0}/decompressor/decompressor_Ygnd.bvh'.format(ms.settings_animation_type), {
+                bvh.save('./train_ris/fight/{0}/decompressor/decompressor_Ygnd.bvh'.format(ms.animation_type), {
                     'rotations': np.degrees(quat.to_euler(Ygnd_rot[0].cpu().numpy())),
                     'positions': 100.0 * Ygnd_pos[0].cpu().numpy(),
                     'offsets': 100.0 * Ygnd_pos[0, 0].cpu().numpy(),
@@ -246,7 +246,7 @@ if __name__ == '__main__':
                     'names': ['joint_%i' % i for i in range(nbones)],
                     'order': 'yxz'
                 })
-                bvh.save('./train_ris/fight/{0}/decompressor/decompressor_Ytil.bvh'.format(ms.settings_animation_type), {
+                bvh.save('./train_ris/fight/{0}/decompressor/decompressor_Ytil.bvh'.format(ms.animation_type), {
                     'rotations': np.degrees(quat.to_euler(Ytil_rot)),
                     'positions': 100.0 * Ytil_pos,
                     'offsets': 100.0 * Ytil_pos[0],
@@ -458,7 +458,7 @@ if __name__ == '__main__':
         if i % 10000 == 0:
             _generate_anim()
             _save_compressed_database()
-            save_network('./train_ris/fight/{0}/decompressor/decompressor.bin'.format(ms.settings_animation_type), [
+            save_network('./train_ris/fight/{0}/decompressor/decompressor.bin'.format(ms.animation_type), [
                 decompressor.layer1,
                 decompressor.predict],
                          decompressor_mean_in,
@@ -468,7 +468,7 @@ if __name__ == '__main__':
                          )
             save_network_onnx(decompressor,
                               decompressor_mean_in,
-                              './train_ris/fight/{0}/decompressor/decompressor.onnx'.format(ms.settings_animation_type))
+                              './train_ris/fight/{0}/decompressor/decompressor.onnx'.format(ms.animation_type))
 
         if i % 1000 == 0:
             # c_scheduler.step()

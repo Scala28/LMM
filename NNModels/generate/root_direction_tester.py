@@ -40,6 +40,6 @@ def extract_root_joint_bvh(input_bvh, output_bvh):
         file.writelines(motion)
 
 
-anim_target_dir = "generate/data/{0}/{1}/".format(ms.settings_type, ms.settings_animation_type)
-extract_root_joint_bvh(anim_target_dir + "database.bvh".format(ms.settings_type),
-                       (anim_target_dir + "root_direction.bvh").format(ms.settings_type))
+anim_target_dir = "generate/data/{0}/{1}/".format(ms.controller_type, ms.animation_type)
+extract_root_joint_bvh(anim_target_dir + "database.bvh".format(ms.controller_type),
+                       (anim_target_dir + "root_direction.bvh").format(ms.controller_type))
