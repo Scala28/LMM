@@ -181,7 +181,7 @@ public class ControllerOrchestrator : MonoBehaviour
             Transform joint = rigToTransform[i];
             JointMotionData jdata = global_pose.joints[i];
 
-            //joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
+            joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
             joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
         }
     }

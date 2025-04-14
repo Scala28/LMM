@@ -9,7 +9,7 @@ public class AnimationDataExporter : EditorWindow
 {
     GameObject modelPrefab;
     AnimationClip animationClip;
-    float sampleRate = 30f;
+    float sampleRate = 60f;
 
     [MenuItem("Tools/Export Animation Data")]
     static void Init()

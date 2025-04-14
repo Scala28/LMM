@@ -40,7 +40,7 @@ def parse_motion(lines, joints):
     for (i, l) in enumerate(lines):
         data = l.split(',')
         frame_pose = data[1:]
-        for k in range(len(joints)-1):
+        for k in range(len(joints)):
             joint_pos = frame_pose[k*7:k*7+3]
             joint_rot = frame_pose[k*7+3:k*7+7]
 

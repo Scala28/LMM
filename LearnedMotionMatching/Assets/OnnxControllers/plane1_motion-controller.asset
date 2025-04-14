@@ -19,7 +19,7 @@ MonoBehaviour:
   decompressor_name: plane/decompressor.bin
   projector_name: plane/projector.bin
   search_time: 0.1
-  db_filename: plane/database.bin
+  db_filename: database.bin
   features_filename: plane/features.bin
   latent_filename: plane/latent.bin
   camera_azimuth: 0

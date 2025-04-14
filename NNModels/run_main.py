@@ -7,7 +7,7 @@ import main_settings as settings
 
 
 def parse_input_animations(animations_list):
-    pth = 'animations/{0}/{1}/'.format(settings.controller_type, settings.animation_type)
+    pth = 'animations/{0}/{1}/{2}/'.format(settings.recording_format, settings.controller_type, settings.animation_type)
     for anim in animations_list:
         anim_name = anim[0].split('/')[-1]
 
