@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
-
 public class ControllerOrchestrator : MonoBehaviour
 {
     public Transform[] rigToTransform;
@@ -16,9 +14,7 @@ public class ControllerOrchestrator : MonoBehaviour
 
     #region LMM
     private float[] feature_curr;
-    private float[] feature_proj;
     private float[] latent_curr;
-    private float[] latent_proj;
 
     #endregion
 
@@ -101,22 +97,17 @@ public class ControllerOrchestrator : MonoBehaviour
         else
             Debug.Assert(rigToTransform.Length + 1 == nbones);
 
+
+        foreach (Controller controller in controllers) {
+            controller.motion_controller.Setup(this);
+        }
+
         current_controller = controllers[0];
-        current_controller.motion_controller.Setup(this);
-
         current_db = current_controller.motion_controller.getDB();
-
         Debug.Assert(current_db.nbones() == nbones);
 
-
-
         feature_curr = new float[current_db.nfeatures()];
-        feature_proj = new float[current_db.nfeatures()];
-
-        float[][] latents = current_controller.motion_controller.getLatents();
-
-        latent_curr = new float[latents[0].Length];
-        latent_proj = new float[latents[0].Length];
+        latent_curr = new float[current_controller.motion_controller.getLatents()[0].Length];
 
         player_input.SwitchCurrentActionMap(action_maps[current_controller.behaviour]);
 
@@ -126,7 +117,33 @@ public class ControllerOrchestrator : MonoBehaviour
             vcam.LookAt = camera_lookAt;
         }
     }
+    private void switchCurrentController(Controller controller)
+    {
+        Debug.Assert(controller.motion_controller.getDB().nbones() == nbones);
 
+        float[] x_pass = new float[controller.motion_controller.getDB().nfeatures()];
+        float[] z_pass = new float[controller.motion_controller.getLatents()[0].Length];
+
+        Array.Copy(latent_curr, z_pass, latent_curr.Length); 
+
+        //TODO: set x_pass based on current behaviour and new behaviour
+        // First 27 values (plane locomotion) are in common
+        switch (current_controller.behaviour)
+        {
+            case Behaviour.plane: // Add terrain/fight features
+                break;
+            case Behaviour.terrain: // Remove terrain features; add fight features if controller.behav is Fight
+                break;
+            case Behaviour.fight: // Remove fight features; add terrain features if controller.behav is Terrain
+                break;
+            default: break;
+        }
+        current_controller = controller;
+        current_db = current_controller.motion_controller.getDB();
+        current_controller.motion_controller.SetFeatureCurr(x_pass);
+        current_controller.motion_controller.SetLatentCurr(z_pass);
+        player_input.SwitchCurrentActionMap(action_maps[current_controller.behaviour]);
+    }
     private void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)

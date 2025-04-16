@@ -42,6 +42,9 @@ public abstract class MotionController : ScriptableObject
     protected float[] latent_proj;
     #endregion
 
+    public void SetFeatureCurr(float[] new_x) { Array.Copy(new_x, feature_curr, feature_curr.Length); }
+    public void SetLatentCurr(float[] new_z) { Array.Copy(new_z, latent_curr, latent_curr.Length); }
+
     #region Data
     [Header("Data")]
     [SerializeField]
@@ -54,7 +57,6 @@ public abstract class MotionController : ScriptableObject
     private int frame_index;
     private float[][] latents;
     public DataManager.database getDB() => db;
-    public int getFrameIndex() => frame_index;
     public float[][] getLatents() => latents;
 
     #endregion

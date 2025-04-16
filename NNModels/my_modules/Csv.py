@@ -35,7 +35,7 @@ def parse_motion(lines, joints):
     positions = np.zeros([len(lines), len(joints), 3])
     rotations = np.zeros([len(lines), len(joints), 4])
 
-    dt = lines[0].split(',')[0]
+    dt = lines[1].split(',')[0]
 
     for (i, l) in enumerate(lines):
         data = l.split(',')
@@ -55,7 +55,7 @@ def parse_motion(lines, joints):
         'positions': positions,
         'rotations': rotations,
         'offsets': positions[0],
-        'dt': dt
+        'frame_time': dt
     }
 
 
