@@ -1,6 +1,7 @@
 import main_settings as ms
 from my_modules import quat as quat
 from my_modules import Bvh
+from my_modules import Csv
 from scipy.interpolate import griddata
 import scipy.signal as signal
 import scipy.ndimage as ndimage
@@ -8,7 +9,7 @@ import struct
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-anim_path = 'animations/fight/{0}/'.format(ms.animation_type)
+anim_path = 'animations/{0}/fight/{1}/'.format(ms.recording_format, ms.animation_type)
 files = ms.settings_animations
 
 
@@ -43,25 +44,30 @@ range_stops = []
 
 contact_states = []
 
-
 for filename, start, stop, root_approach, toe_info, action in files:
     for mirror in [False, True]:
         """ Load Data """
         anim = anim_path + filename.split('/')[-1]
         print('Loading "%s" %s...' % (anim, "(Mirrored)" if mirror else ""))
 
-        bvh_data = Bvh.load(anim)
-        bvh_data['positions'] = bvh_data['positions'][start:stop]
-        bvh_data['rotations'] = bvh_data['rotations'][start:stop]
+        if ms.recording_format == 'bvh':
+            data = Bvh.load(anim)
+        else:
+            data = Csv.load_csv(anim)
+        data['positions'] = data['positions'][start:stop]
+        data['rotations'] = data['rotations'][start:stop]
 
-        positions = bvh_data['positions']
-        rotations = quat.unroll(quat.from_euler(np.radians(bvh_data['rotations']), order=bvh_data['order']))
+        positions = data['positions']
 
         # Convert from cm to m
-        positions *= 0.01
+        if ms.recording_format == 'bvh':
+            positions *= 0.01
+            rotations = quat.unroll(quat.from_euler(np.radians(data['rotations']), order=data['order']))
+        else:
+            rotations = data['rotations']
 
         if mirror:
-            rotations, positions = animation_mirror(rotations, positions, bvh_data['names'], bvh_data['parents'])
+            rotations, positions = animation_mirror(rotations, positions, data['names'], data['parents'])
             rotations = quat.unroll(rotations)
             # positions[:,0,2] = -positions[:,0,2]
 
@@ -86,13 +92,13 @@ for filename, start, stop, root_approach, toe_info, action in files:
         """ Extract Simulation Bone """
 
         # First compute world space positions/rotations
-        global_rotations, global_positions = quat.fk(rotations, positions, bvh_data['parents'])
+        global_rotations, global_positions = quat.fk(rotations, positions, data['parents'])
 
         pos_joint_ref = root_approach.split(':')[1].split('/')[0]
         rot_joint_ref = root_approach.split(':')[1].split('/')[1]
         # Specify joints to use for simulation bone
-        sim_position_joint = bvh_data['names'].index(pos_joint_ref)
-        sim_rotation_joint = bvh_data['names'].index(rot_joint_ref)
+        sim_position_joint = data['names'].index(pos_joint_ref)
+        sim_rotation_joint = data['names'].index(rot_joint_ref)
 
         sim_position = np.array([1.0, 0.0, 1.0]) * global_positions[:, sim_position_joint:sim_position_joint + 1]
         sim_direction = np.array([1.0, 0.0, 1.0]) * quat.mul_vec(
@@ -141,7 +147,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
             sim_direction = sim_direction / np.sqrt(np.sum(np.square(sim_direction), axis=-1)[..., np.newaxis])
         elif 'root_locked:' in root_approach:
             global_target_offset = root_approach.split(':')[-1]
-            sim_position_joint = bvh_data['names'].index(pos_joint_ref)
+            sim_position_joint = data['names'].index(pos_joint_ref)
             sim_position = signal.savgol_filter(sim_position, 61, 3, axis=0, mode='interp')
             nframes = sim_position.shape[0]
             smoothed = np.zeros((nframes, 1, 3))
@@ -165,9 +171,9 @@ for filename, start, stop, root_approach, toe_info, action in files:
         positions = np.concatenate([sim_position, positions], axis=1)
         rotations = np.concatenate([sim_rotation, rotations], axis=1)
 
-        bone_parents = np.concatenate([[-1], bvh_data['parents'] + 1])
+        bone_parents = np.concatenate([[-1], np.array(data['parents']) + 1])
 
-        bone_names = ['Simulation'] + bvh_data['names']
+        bone_names = ['Simulation'] + data['names']
 
         """ Compute Velocities """
 
@@ -268,4 +274,6 @@ Bvh.save('generate/data/fight/{0}/database.bvh'.format(ms.animation_type), {
     'names': ['joint_%i' % i for i in range(nbones)],
     'order': 'yxz'
 })
+
+
 

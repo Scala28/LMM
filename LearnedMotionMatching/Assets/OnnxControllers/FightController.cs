@@ -456,7 +456,9 @@ public class FightController : MotionController
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
         (Vector3 eye, Vector3 target) = orbit_camera_update(pose.root_position + Vector3.up, stickRight, strafe, dt);
-        controller.SetVcam(eye, Target.position);
+
+        if (controller.set_vcam)
+            controller.SetVcam(eye, target);
 
         return (global_pose, feature_curr, latent_curr);
     }

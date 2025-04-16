@@ -92,17 +92,6 @@ if __name__ == '__main__':
             Xtil = output[:, :nfeatures]
             Ztil = output[:, nfeatures:]
 
-            # Write features
-            fmin, fmax = Xhat.cpu().numpy().min(), Xhat.cpu().numpy().max()
-
-            fig, axs = plt.subplots(nfeatures, sharex=True, figsize=(12, 2 * nfeatures))
-            for i in range(nfeatures):
-                axs[i].plot(Xgnd[:500:4, i].cpu().numpy(), marker='.', linestyle='None')
-                axs[i].plot(Xtil[:500:4, i].cpu().numpy(), marker='.', linestyle='None')
-                axs[i].plot(Xhat[:500:4, i].cpu().numpy(), marker='.', linestyle='None')
-                axs[i].set_ylim(fmin, fmax)
-            plt.tight_layout()
-
 
     # Train
     writer = SummaryWriter()
@@ -168,7 +157,7 @@ if __name__ == '__main__':
             sys.stdout.write('\rIter: %7i Loss: %5.3f' % (i, rolling_loss))
 
         if i % 10000 == 0:
-            generate_predictions()
+            # generate_predictions()
             save_network('./train_ris/{0}/{1}/projector/projector.bin'.
                          format(ms.controller_type, ms.animation_type), [
                              projector.layer1,

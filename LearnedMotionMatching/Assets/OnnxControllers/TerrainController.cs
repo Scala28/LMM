@@ -389,7 +389,7 @@ public class TerrainController : MotionController
         Vector3 stickLeft = controller.input_handler.StickLeft;
         Vector3 stickRight = controller.input_handler.StickRight;
         bool gait = controller.input_handler.RightShoulder;
-        bool strafe = controller.input_handler.LeftTrigger;
+        bool strafe = false;//controller.input_handler.LeftTrigger;
 
         desired_gait_update(gait);
 
@@ -527,7 +527,9 @@ public class TerrainController : MotionController
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
         (Vector3 eye, Vector3 target) = orbit_camera_update(pose.root_position + Vector3.up, stickRight, strafe, dt);
-        controller.SetVcam(eye, target);
+
+        if (controller.set_vcam)
+            controller.SetVcam(eye, target);
 
         return (global_pose, feature_curr, latent_curr);
     }

@@ -64,8 +64,7 @@ public class AnimationDataExporter : EditorWindow
         string filePath = EditorUtility.SaveFilePanel("Save Animation Data", "", animationClip.name + "_joint_data.csv", "csv");
         if (string.IsNullOrEmpty(filePath)) return;
 
-        float clipLength = animationClip.length;
-        int frameCount = Mathf.CeilToInt(sampleRate * clipLength);
+        int frameCount = Mathf.CeilToInt(sampleRate * animationClip.length);
         StringBuilder csv = new StringBuilder();
 
         csv.AppendLine("HIERARCHY");
@@ -84,11 +83,13 @@ public class AnimationDataExporter : EditorWindow
         csv.AppendLine("FrameCount: " + frameCount);
 
         // Frame data
-        for (int i = 0; i <= frameCount; i++)
+        float time_elapsed = 0f;
+        int i = 0;
+        while (time_elapsed < animationClip.length)
         {
-            float time = i / sampleRate;
-            animationClip.SampleAnimation(instance, time);
-            csv.Append($"{time:0.000}");
+            time_elapsed = i / sampleRate;
+            animationClip.SampleAnimation(instance, time_elapsed);
+            csv.Append($"{time_elapsed:0.000}");
 
             foreach (Transform bone in jointTransforms)
             {
@@ -99,6 +100,7 @@ public class AnimationDataExporter : EditorWindow
                 csv.AppendFormat(",{0},{1},{2},{3}", rot.x, rot.y, rot.z, rot.w);
             }
             csv.AppendLine();
+            i++;
         }
 
         File.WriteAllText(filePath, csv.ToString());

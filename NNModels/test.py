@@ -16,8 +16,8 @@ range_stops = database['range_stops']
 X = load_features('generate/data/plane/move/features.bin')['features'].astype(np.float32)
 Z = load_latent('train_ris/plane/move/decompressor/latent.bin')['latent'].astype(np.float32)
 
-start = database['range_starts'][2]
-stop = min(database['range_stops'][2], start + 1000)
+start = database['range_starts'][3]
+stop = min(database['range_stops'][3], start + 1000)
 
 Ypos = database['bone_positions'].astype(np.float32)
 Yrot = database['bone_rotations'].astype(np.float32)

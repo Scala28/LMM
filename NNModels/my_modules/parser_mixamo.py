@@ -217,3 +217,4 @@ def process_bvh(input_bvh, output_bvh, add_toe=False):
     # Write new BVH file
     with open(output_bvh, 'w') as f:
         f.writelines(new_hierarchy + new_motion)
+
