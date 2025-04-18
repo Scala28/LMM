@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0395bab5739c33d40948ee8e8b3cd008, type: 3}
   m_Name: plane1_motion-controller
   m_EditorClassIdentifier: 
-  stepper: {fileID: 5022602860645237092, guid: dfa4d156bc0422140a206077c17f9719, type: 3}
-  decompressor: {fileID: 5022602860645237092, guid: b76bebdc6b0251345b9ff3eb317bf426, type: 3}
-  projector: {fileID: 5022602860645237092, guid: cd2034c8e07455a4393b4b69c790a630, type: 3}
+  stepper: {fileID: 5022602860645237092, guid: b5ead8334f17c654f9caf998fa4b91d0, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: ead56db292a1d364ab756752e8822e31, type: 3}
+  projector: {fileID: 5022602860645237092, guid: df6610faa4408e141b5f4d5682302da1, type: 3}
   stepper_name: plane/plane1/stepper.bin
   decompressor_name: plane/plane1/decompressor.bin
   projector_name: plane/plane1/projector.bin
@@ -22,18 +22,18 @@ MonoBehaviour:
   db_filename: plane/plane1/database.bin
   features_filename: plane/plane1/features.bin
   latent_filename: plane/plane1/latent.bin
-  camera_azimuth: 3.3333306
+  camera_azimuth: -9.333344
   camera_altitude: 0.4
   camera_distance: 4
   simulation_velocity_halflife: 0.27
   simulation_rotation_halflife: 0.27
   inertialize_blending_halflife: 0.1
-  ik_enabled: 0
-  adjustment_enabled: 0
+  ik_enabled: 1
+  adjustment_enabled: 1
   clamping_enabled: 1
-  simulation_run_fwrd_speed: 3
-  simulation_run_side_speed: 2.5
-  simulation_run_back_speed: 1.8
+  simulation_run_fwrd_speed: 3.3
+  simulation_run_side_speed: 2.8
+  simulation_run_back_speed: 2
   simulation_walk_fwrd_speed: 1.75
   simulation_walk_side_speed: 1.7
   simulation_walk_back_speed: 1.2

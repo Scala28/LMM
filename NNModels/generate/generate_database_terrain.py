@@ -11,7 +11,7 @@ import main_settings as ms
 from scipy.ndimage import gaussian_filter1d
 
 
-anim_path = 'animations/terrain/{0}/'.format(ms.animation_type)
+anim_path = 'animations/{0}/terrain/{1}/'.format(ms.recording_format, ms.animation_type)
 files = ms.settings_animations
 
 """ Basic function for mirroring animation data with this particular skeleton structure """

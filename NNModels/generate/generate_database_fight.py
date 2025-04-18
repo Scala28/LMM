@@ -95,7 +95,11 @@ for filename, start, stop, root_approach, toe_info, action in files:
         global_rotations, global_positions = quat.fk(rotations, positions, data['parents'])
 
         pos_joint_ref = root_approach.split(':')[1].split('/')[0]
-        rot_joint_ref = root_approach.split(':')[1].split('/')[1]
+        if 'root_locked' not in root_approach:
+            rot_joint_ref = root_approach.split(':')[1].split('/')[1]
+        else:
+            rot_joint_ref = pos_joint_ref
+
         # Specify joints to use for simulation bone
         sim_position_joint = data['names'].index(pos_joint_ref)
         sim_rotation_joint = data['names'].index(rot_joint_ref)
@@ -150,7 +154,6 @@ for filename, start, stop, root_approach, toe_info, action in files:
             sim_position_joint = data['names'].index(pos_joint_ref)
             sim_position = signal.savgol_filter(sim_position, 61, 3, axis=0, mode='interp')
             nframes = sim_position.shape[0]
-            smoothed = np.zeros((nframes, 1, 3))
             target_position = np.copy(sim_position[0][0])
             target_position[0] += float(global_target_offset.split(',')[0])
             target_position[1] += float(global_target_offset.split(',')[1])
@@ -158,11 +161,10 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
             for t in range(nframes):
                 direction = target_position - sim_position[t, 0, :]
-                direction /= np.linalg.norm(direction)
-                yaw = np.arctan2(direction[0], direction[2])
-                pitch = np.arcsin(-direction[1])
-                roll = 0.0
-                smoothed[t, 0, :] = target_position - sim_position[t, 0, :]
+                if np.linalg.norm(direction) != 0:
+                    direction /= np.linalg.norm(direction)
+                sim_direction[t, 0, :] = direction
+
         sim_rotation = quat.normalize(quat.between(np.array([0, 0, 1]), sim_direction))
 
         positions[:, 0:1] = quat.mul_vec(quat.inv(sim_rotation), positions[:, 0:1] - sim_position)

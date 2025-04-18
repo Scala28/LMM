@@ -5682,6 +5682,8 @@ MonoBehaviour:
   - {fileID: 6364630152257095250}
   - {fileID: 7177859795516888915}
   controllers:
+  - motion_controller: {fileID: 11400000, guid: bfaabb96171a5f541ae3b8bbbf771887, type: 2}
+    behaviour: 2
   - motion_controller: {fileID: 11400000, guid: ff231d5f41f2aaa48b8815d2d74370b9, type: 2}
     behaviour: 0
   vcam: {fileID: 769392282}

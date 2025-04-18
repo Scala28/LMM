@@ -124,17 +124,19 @@ public class ControllerOrchestrator : MonoBehaviour
         float[] x_pass = new float[controller.motion_controller.getDB().nfeatures()];
         float[] z_pass = new float[controller.motion_controller.getLatents()[0].Length];
 
-        Array.Copy(latent_curr, z_pass, latent_curr.Length); 
+        Array.Copy(latent_curr, z_pass, latent_curr.Length);
+
+        // First 27 values (plane locomotion) are in common
+        Array.Copy(feature_curr, x_pass, 27);
 
         //TODO: set x_pass based on current behaviour and new behaviour
-        // First 27 values (plane locomotion) are in common
         switch (current_controller.behaviour)
         {
             case Behaviour.plane: // Add terrain/fight features
                 break;
-            case Behaviour.terrain: // Remove terrain features; add fight features if controller.behav is Fight
+            case Behaviour.terrain: // add fight features if controller.behav is Fight
                 break;
-            case Behaviour.fight: // Remove fight features; add terrain features if controller.behav is Terrain
+            case Behaviour.fight: // add terrain features if controller.behav is Terrain
                 break;
             default: break;
         }
