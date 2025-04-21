@@ -65,8 +65,7 @@ public abstract class MotionController : ScriptableObject
     [HideInInspector] public float camera_azimuth = 0.0f;
     [HideInInspector] public float camera_altitude = .4f;
     [Header("Animation")]
-    public float camera_distance = 4.0f;
-
+    public int FPS = 60;
     #region Animation
     protected Pose pose;
     protected Pose current_pose;
@@ -157,10 +156,13 @@ public abstract class MotionController : ScriptableObject
     protected float clamping_max_angle = .5f * Mathf.PI;
     #endregion
 
-    protected const float dt = 1 / 60f;
+    public float camera_distance = 4.0f;
+
+    protected float dt;
 
     public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
+        dt = 1f / FPS;
         db = DataManager.load_database("Data/" + db_filename, controller.controllers.Find(x => x.motion_controller == this).behaviour);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/" + features_filename);
         latents = DataManager.load_latent("Data/" + latent_filename);
@@ -597,7 +599,7 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region Read database
-    public Pose GetNextFrame()
+    public (Pose, List<Vector3>) GetNextFrame()
     {
         pose.root_position = db.bone_positions[frame_index][0];
         pose.root_rotation = db.bone_rotations[frame_index][0];
@@ -615,8 +617,37 @@ public abstract class MotionController : ScriptableObject
         adjusted_bones_pose = pose.DeepClone();
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
+        List<Vector3> traj_positions = new List<Vector3>();
+        for (int i = 0; i < 4; i++)
+            traj_positions.Add(db.bone_positions[frame_index + i * 20][0]);
+        traj_positions = LinearizePoints(traj_positions);
+
         frame_index++;
-        return global_pose;
+        return (global_pose, traj_positions);
+    }
+    List<Vector3> LinearizePoints(List<Vector3> points)
+    {
+        if (points.Count < 2) return points;
+
+        // Step 1: Compute the centroid
+        Vector3 centroid = Vector3.zero;
+        foreach (var pt in points) centroid += pt;
+        centroid /= points.Count;
+
+        // Step 2: Estimate line direction (here: from first to last as a simple heuristic)
+        Vector3 dir = (points[points.Count - 1] - points[0]).normalized;
+
+        // Step 3: Project each point onto the line defined by (centroid, dir)
+        List<Vector3> result = new List<Vector3>();
+        foreach (var pt in points)
+        {
+            Vector3 toPoint = pt - centroid;
+            float projectionLength = Vector3.Dot(toPoint, dir);
+            Vector3 projected = centroid + dir * projectionLength;
+            result.Add(projected);
+        }
+
+        return result;
     }
     #endregion
 

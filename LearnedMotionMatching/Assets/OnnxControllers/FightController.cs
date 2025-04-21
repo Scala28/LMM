@@ -9,14 +9,16 @@ public class FightController : MotionController
 {
     [Header("Fight-stance")]
     // All speeds in m/s
-    public float simulation_max_fwrd_speed = 1.8f;
-    public float simulation_min_fwrd_speed = .75f;
-    public float simulation_std_side_speed = .5f;
-    public float simulation_std_back_speed = .15f;
+    public float simulation_std_frwd_speed = 1.0f;
+    public float simulation_std_side_speed = .8f;
+    public float simulation_std_back_speed = .5f;
 
     float simulation_fwrd_speed;
     float simulation_side_speed;
     float simulation_back_speed;
+
+    public ControllerOrchestrator.character busto_bone;
+    private Vector3 offset_busto_zero = new Vector3(.02f, 0, .04f);
 
     private float lock_target = 0.0f;
     private float lock_target_velocity = 0.0f;
@@ -24,13 +26,12 @@ public class FightController : MotionController
     public LayerMask whatIsTerrain;
 
     [Header("Fight")]
-    public float std_altitude = .4f;
+    public float std_camera_altitude = .4f;
     private Transform Target;
 
 
-
     #region Trajectory & Gameplay Data
-    public void desired_gait_update(bool target_lock, float lock_velocity = 0.1f)
+    public void lock_spring(bool target_lock, float lock_velocity = 0.1f)
     {
         Spring.simple_spring_damper_exact(
             ref lock_target,
@@ -109,7 +110,7 @@ public class FightController : MotionController
             trajectory_desired_rotations[i] = desired_rotation_update(
                 trajectory_desired_rotations[i - 1],
                 gamepadstick_left,
-                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, 0),
+                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, dt),
                 target_lock,
                 trajectory_desired_velocities[i]);
         }
@@ -139,7 +140,7 @@ public class FightController : MotionController
         {
             trajectory_desired_velocities[i] = desired_velocity_update(
                 gamepadstick_left,
-                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, 0),
+                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, dt),
                 trajectory_rotations[i]);
         }
     }
@@ -236,37 +237,26 @@ public class FightController : MotionController
         // Compute torso local position
         Vector3 hips_gp = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].position;
         Vector4 hips_gr = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].rotation;
-        Vector3 spine2_gp = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Spine2 - 1].position;
+        Vector3 busto_gp = global_pose.joints[(int)busto_bone - 1].position;
         hips_gp.y = 0f;
-        spine2_gp.y = 0f;
-        Vector3 offset_busto_zero = new Vector3(0, 0, 0.00f);
+        busto_gp.y = 0f;
+
+        Vector3 offset_busto_zero = new Vector3(0, 0, 0.02f);
+        Vector3 input_torso;
         if (!target_lock)
-        {
-            Vector3 input_torso = Quat.quat_mul_vec(hips_gr, Vector3.zero / 5f + offset_busto_zero);
-            Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, spine2_gp - hips_gp);
-            Vector3 input_torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, input_torso);
-
-            query[offset + 0] = torso_relative_position.x;
-            query[offset + 1] = torso_relative_position.z;
-            query[offset + 2] = torso_relative_position.x + (input_torso_relative_position.x - torso_relative_position.x) * 2f / 3f;
-            query[offset + 3] = torso_relative_position.z + (input_torso_relative_position.z - torso_relative_position.z) * 2f / 3f;
-            query[offset + 4] = input_torso_relative_position.x;
-            query[offset + 5] = input_torso_relative_position.z;
-        }
+            input_torso = Quat.quat_mul_vec(hips_gr, offset_busto_zero);
         else
-        {
-            Vector3 input_torso = Quat.quat_mul_vec(hips_gr, rightStick / 5f + offset_busto_zero);
-            Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, spine2_gp - hips_gp);
-            Vector3 input_torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, input_torso);
+            input_torso = Quat.quat_mul_vec(hips_gr, rightStick / 5f + offset_busto_zero);
 
-            query[offset + 0] = torso_relative_position.x;
-            query[offset + 1] = torso_relative_position.z;
-            query[offset + 2] = torso_relative_position.x + (input_torso_relative_position.x - torso_relative_position.x) * 2f / 3f;
-            query[offset + 3] = torso_relative_position.z + (input_torso_relative_position.z - torso_relative_position.z) * 2f / 3f;
-            query[offset + 4] = input_torso_relative_position.x;
-            query[offset + 5] = input_torso_relative_position.z;
-        }
+        Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, busto_gp - hips_gp);
+        Vector3 input_torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, input_torso);
 
+        query[offset + 0] = torso_relative_position.x;
+        query[offset + 1] = torso_relative_position.z;
+        query[offset + 2] = torso_relative_position.x + (input_torso_relative_position.x - torso_relative_position.x) * 2f / 3f;
+        query[offset + 3] = torso_relative_position.z + (input_torso_relative_position.z - torso_relative_position.z) * 2f / 3f;
+        query[offset + 4] = input_torso_relative_position.x;
+        query[offset + 5] = input_torso_relative_position.z;
         offset += 6;
 
         return (query, offset);
@@ -298,7 +288,7 @@ public class FightController : MotionController
         if(target_lock)
         {
             Vector3 gamepadaxis = gamepadstick_right;
-            return clampf(std_altitude + 2.0f * dt * gamepadaxis.z, 0.0f, 0.4f * Mathf.PI);
+            return clampf(std_camera_altitude + 2.0f * dt * gamepadaxis.z, 0.0f, 0.4f * Mathf.PI);
         }
         else
         {
@@ -328,6 +318,7 @@ public class FightController : MotionController
     }
     #endregion
 
+
     public override (Pose, float[], float[]) perform_cycle()
     {
         Vector3 stickLeft = controller.input_handler.StickLeft;
@@ -342,9 +333,9 @@ public class FightController : MotionController
             }
             catch { }
 
-        desired_gait_update(target_lock);
+        lock_spring(target_lock);
 
-        simulation_fwrd_speed = lerpf(simulation_max_fwrd_speed, simulation_min_fwrd_speed, lock_target);
+        simulation_fwrd_speed = simulation_std_frwd_speed;
         simulation_side_speed = simulation_std_side_speed;
         simulation_back_speed = simulation_std_back_speed;
 
@@ -376,10 +367,10 @@ public class FightController : MotionController
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
 
-        trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, target_lock, 20.0f * dt);
+        trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, target_lock, 0);
         trajectory_rotations_predict(20.0f * dt);
 
-        trajectory_desired_velocities_predict(stickLeft, stickLeft, camera_azimuth, target_lock, 20.0f * dt);
+        trajectory_desired_velocities_predict(stickLeft, stickLeft, camera_azimuth, target_lock, 0);
         trajectory_positions_predict(20.0f * dt);
 
         // Do we need to search?

@@ -22,20 +22,21 @@ MonoBehaviour:
   db_filename: fight/boxe/database.bin
   features_filename: fight/boxe/features.bin
   latent_filename: fight/boxe/latent.bin
-  camera_azimuth: -0.4955131
+  camera_azimuth: 2.1635602
   camera_altitude: 0.4
-  camera_distance: 4
-  simulation_velocity_halflife: 0.15
-  simulation_rotation_halflife: 0.15
+  FPS: 60
+  simulation_velocity_halflife: 0.27
+  simulation_rotation_halflife: 0.1
   inertialize_blending_halflife: 0.1
   ik_enabled: 0
-  adjustment_enabled: 1
-  clamping_enabled: 1
-  simulation_max_fwrd_speed: 0.95
-  simulation_min_fwrd_speed: 0.95
-  simulation_std_side_speed: 0.85
-  simulation_std_back_speed: 0.8
+  adjustment_enabled: 0
+  clamping_enabled: 0
+  camera_distance: 4
+  simulation_std_frwd_speed: 1.1
+  simulation_std_side_speed: 1
+  simulation_std_back_speed: 0.7
+  busto_bone: 12
   whatIsTerrain:
     serializedVersion: 2
     m_Bits: 64
-  std_altitude: 0.4
+  std_camera_altitude: 0.4

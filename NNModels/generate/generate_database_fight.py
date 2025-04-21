@@ -78,7 +78,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
         # Supersample data to 60 fps
         original_times = np.linspace(0, nframes - 1, nframes)
-        sample_times = np.linspace(0, nframes - 1, int(0.45 * (nframes - 1)))  # Speed up data by 10%
+        sample_times = np.linspace(0, nframes - 1, int(0.45 * (nframes - 1)))
 
         # This does a cubic interpolation of the data for supersampling and also speeding up by 10%
         positions = griddata(original_times, positions.reshape([nframes, -1]), sample_times, method='cubic').reshape(
@@ -204,7 +204,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
             angular_velocities,
             bone_parents)
 
-        contact_velocity_threshold = 0.3
+        contact_velocity_threshold = 0.15
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
             bone_names.index("LeftToeBase"),
