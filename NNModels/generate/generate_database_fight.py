@@ -167,11 +167,11 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
         sim_rotation = quat.normalize(quat.between(np.array([0, 0, 1]), sim_direction))
 
-        """positions[:, 0:1] = quat.mul_vec(quat.inv(sim_rotation), positions[:, 0:1] - sim_position)
+        positions[:, 0:1] = quat.mul_vec(quat.inv(sim_rotation), positions[:, 0:1] - sim_position)
         rotations[:, 0:1] = quat.mul(quat.inv(sim_rotation), rotations[:, 0:1])
 
         positions = np.concatenate([sim_position, positions], axis=1)
-        rotations = np.concatenate([sim_rotation, rotations], axis=1)"""
+        rotations = np.concatenate([sim_rotation, rotations], axis=1)
 
         bone_parents = np.concatenate([[-1], np.array(data['parents']) + 1])
 
@@ -220,45 +220,6 @@ for filename, start, stop, root_approach, toe_info, action in files:
                 contacts[:, ci],
                 size=6,
                 mode='nearest')
-
-        """Fix simulation position"""
-        sim_pos_fix = sim_position[0]
-        grounded = False
-        for (i, frame) in enumerate(sim_position):
-            if i == 0:
-                continue
-            if contacts[i, 0] > 0.5 and contacts[i, 1] > 0.5:
-                grounded = True
-            else:
-                grounded = False
-                sim_pos_fix = sim_position[i]
-
-            if grounded:
-                sim_position[i] = sim_pos_fix
-
-        positions[:, 0:1] = quat.mul_vec(quat.inv(sim_rotation), positions[:, 0:1] - sim_position)
-        rotations[:, 0:1] = quat.mul(quat.inv(sim_rotation), rotations[:, 0:1])
-
-        positions = np.concatenate([sim_position, positions], axis=1)
-        rotations = np.concatenate([sim_rotation, rotations], axis=1)
-
-        """ Re-Compute Velocities """
-
-        # Compute velocities via central difference
-        velocities = np.empty_like(positions)
-        velocities[1:-1] = (
-                0.5 * (positions[2:] - positions[1:-1]) * 60.0 +
-                0.5 * (positions[1:-1] - positions[:-2]) * 60.0)
-        velocities[0] = velocities[1] - (velocities[3] - velocities[2])
-        velocities[-1] = velocities[-2] + (velocities[-2] - velocities[-3])
-
-        # Same for angular velocities
-        angular_velocities = np.zeros_like(positions)
-        angular_velocities[1:-1] = (
-                0.5 * quat.to_scaled_angle_axis(quat.abs(quat.mul_inv(rotations[2:], rotations[1:-1]))) * 60.0 +
-                0.5 * quat.to_scaled_angle_axis(quat.abs(quat.mul_inv(rotations[1:-1], rotations[:-2]))) * 60.0)
-        angular_velocities[0] = angular_velocities[1] - (angular_velocities[3] - angular_velocities[2])
-        angular_velocities[-1] = angular_velocities[-2] + (angular_velocities[-2] - angular_velocities[-3])
 
         """ Append to Database """
 

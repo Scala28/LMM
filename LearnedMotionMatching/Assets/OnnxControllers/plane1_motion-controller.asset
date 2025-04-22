@@ -22,13 +22,15 @@ MonoBehaviour:
   db_filename: plane/plane1/database.bin
   features_filename: plane/plane1/features.bin
   latent_filename: plane/plane1/latent.bin
-  camera_azimuth: -9.333344
+  camera_azimuth: 0
   camera_altitude: 0.4
   camera_distance: 4
+  FPS: 60
   simulation_velocity_halflife: 0.27
   simulation_rotation_halflife: 0.27
   inertialize_blending_halflife: 0.1
   ik_enabled: 1
+  controller_oriented: 1
   adjustment_enabled: 1
   clamping_enabled: 1
   simulation_run_fwrd_speed: 3.3

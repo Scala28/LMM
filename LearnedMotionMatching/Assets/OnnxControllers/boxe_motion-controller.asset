@@ -19,24 +19,26 @@ MonoBehaviour:
   decompressor_name: fight/boxe/decompressor.bin
   projector_name: fight/boxe/projector.bin
   search_time: 0.1
-  db_filename: fight/boxe/database1.bin
-  features_filename: fight/boxe/features1.bin
+  db_filename: fight/boxe/database.bin
+  features_filename: fight/boxe/features.bin
   latent_filename: fight/boxe/latent.bin
-  camera_azimuth: 2.3428915
+  camera_azimuth: 0.6814812
   camera_altitude: 0.4
+  camera_distance: 4
   FPS: 60
   simulation_velocity_halflife: 0.1
-  simulation_rotation_halflife: 0.1
+  simulation_rotation_halflife: 0.05
   inertialize_blending_halflife: 0.1
   ik_enabled: 0
+  controller_oriented: 0
   adjustment_enabled: 0
   clamping_enabled: 1
-  camera_distance: 4
-  simulation_std_frwd_speed: 1.4
-  simulation_std_side_speed: 1.3
-  simulation_std_back_speed: 1
+  simulation_std_frwd_speed: 2.3
+  simulation_std_side_speed: 2
+  simulation_std_back_speed: 1.5
   busto_bone: 12
   whatIsTerrain:
     serializedVersion: 2
     m_Bits: 64
   std_camera_altitude: 0.4
+  torso_speed_penalizer_min: 0.65

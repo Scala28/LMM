@@ -69,14 +69,17 @@ public class ControllerOrchestrator : MonoBehaviour
 
     [Header("Others")]
     public bool lock60Fps = true;
-    public bool gizmos = false;
     public bool set_vcam = true;
+
     public bool rigged = true;
     [ConditionalField("rigged", false)]
     [SerializeField] private string ch_filename;
-    private DataManager.character ch;
-    public bool read_database = false;
     private Mesh mesh;
+
+    public bool read_database = false;
+    private DataManager.character ch;
+
+    public bool gizmos = false;
 
     int nbones = Enum.GetValues(typeof(character)).Length;
     private void Awake()

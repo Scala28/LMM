@@ -1228,11 +1228,11 @@ MonoBehaviour:
   camera_follow: {fileID: 1135148370}
   camera_lookAt: {fileID: 995607495}
   lock60Fps: 1
-  gizmos: 1
   set_vcam: 1
   rigged: 1
   ch_filename: character.bin
   read_database: 0
+  gizmos: 1
 --- !u!114 &619851156
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2086,11 +2086,11 @@ MonoBehaviour:
   camera_follow: {fileID: 693160731}
   camera_lookAt: {fileID: 1763617454}
   lock60Fps: 1
-  gizmos: 1
   set_vcam: 1
   rigged: 1
   ch_filename: character.bin
   read_database: 0
+  gizmos: 1
 --- !u!114 &852832055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5690,11 +5690,11 @@ MonoBehaviour:
   camera_follow: {fileID: 4679961807489525841}
   camera_lookAt: {fileID: 536774741496980935}
   lock60Fps: 1
-  gizmos: 1
   set_vcam: 1
   rigged: 1
   ch_filename: 
   read_database: 0
+  gizmos: 1
 --- !u!1 &2066386692105713107
 GameObject:
   m_ObjectHideFlags: 0
