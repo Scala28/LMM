@@ -141,7 +141,7 @@ if __name__ == '__main__':
         dZtil = (Ztil[:, 1:] - Ztil[:, :-1]) / dt
 
         # Compute value Losses
-        loss_xval = torch.mean(2.0 * torch.abs(Xgnd - Xtil))
+        loss_xval = torch.mean(3.5 * torch.abs(Xgnd - Xtil))
         loss_zval = torch.mean(7.5 * torch.abs(Zgnd - Ztil))
 
         # Compute velocity losses

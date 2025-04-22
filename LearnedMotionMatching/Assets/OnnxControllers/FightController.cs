@@ -18,7 +18,6 @@ public class FightController : MotionController
     float simulation_back_speed;
 
     public ControllerOrchestrator.character busto_bone;
-    private Vector3 offset_busto_zero = new Vector3(.02f, 0, .04f);
 
     private float lock_target = 0.0f;
     private float lock_target_velocity = 0.0f;
@@ -27,6 +26,8 @@ public class FightController : MotionController
 
     [Header("Fight")]
     public float std_camera_altitude = .4f;
+    public float torso_speed_penalizer_min = .65f;
+    private float torso_speed_multiplier;
     private Transform Target;
 
 
@@ -40,7 +41,15 @@ public class FightController : MotionController
             lock_velocity,
             dt);
     }
-
+    public void compute_torso_multiplier(bool target_lock, Vector3 rightStick)
+    {
+        if (target_lock)
+        {
+            torso_speed_multiplier = clampf(1f - rightStick.sqrMagnitude, torso_speed_penalizer_min, 1f);
+        }
+        else
+            torso_speed_multiplier = 1f;
+    }
     public Vector3 desired_velocity_update(Vector3 gamepad_stickleft, float camera_azimuth, Vector3 simulation_rotation)
     {
         // Find stick position in world space by rotating using camera azimuth
@@ -335,9 +344,11 @@ public class FightController : MotionController
 
         lock_spring(target_lock);
 
-        simulation_fwrd_speed = simulation_std_frwd_speed;
-        simulation_side_speed = simulation_std_side_speed;
-        simulation_back_speed = simulation_std_back_speed;
+        compute_torso_multiplier(target_lock, stickRight);
+
+        simulation_fwrd_speed = simulation_std_frwd_speed * torso_speed_multiplier;
+        simulation_side_speed = simulation_std_side_speed * torso_speed_multiplier;
+        simulation_back_speed = simulation_std_back_speed * torso_speed_multiplier;
 
         // Get the desired velocity
         Vector3 desired_velocity_curr = desired_velocity_update(stickLeft, camera_azimuth, simulation_rotation);
@@ -406,47 +417,54 @@ public class FightController : MotionController
         simulation_rotation_update(ref simulation_rotation, ref simulation_angular_velocity,
             desired_rotation, simulation_rotation_halflife, dt);
 
-        //Adjustment
-        if (adjustment_enabled)
+        if (controller_oriented)
         {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            if (adjustment_by_velocity)
+            //Adjustment
+            if (adjustment_enabled)
             {
-                adjusted_position = adjust_character_position_by_velocity(
-                    pose.root_position,
-                    pose.root_velocity,
-                    simulation_position,
-                    adjustment_position_halflife,
-                    dt);
-                adjusted_rotation = adjust_character_rotation_by_velocity(
-                    pose.root_rotation,
-                    pose.root_angular_velocity,
-                    simulation_rotation,
-                    adjustment_rotation_halflife,
-                    dt);
+                Vector3 adjusted_position = pose.root_position;
+                Vector4 adjusted_rotation = pose.root_rotation;
+
+                if (adjustment_by_velocity)
+                {
+                    adjusted_position = adjust_character_position_by_velocity(
+                        pose.root_position,
+                        pose.root_velocity,
+                        simulation_position,
+                        adjustment_position_halflife,
+                        dt);
+                    adjusted_rotation = adjust_character_rotation_by_velocity(
+                        pose.root_rotation,
+                        pose.root_angular_velocity,
+                        simulation_rotation,
+                        adjustment_rotation_halflife,
+                        dt);
+                }
+                Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    adjusted_position, adjusted_rotation);
             }
-            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-                adjusted_position, adjusted_rotation);
+            //Clamping
+            if (clamping_enabled)
+            {
+                Vector3 adjusted_position = pose.root_position;
+                Vector4 adjusted_rotation = pose.root_rotation;
+
+                adjusted_position = clamp_character_position(
+                    adjusted_position,
+                    simulation_position,
+                    clamping_max_distance);
+                adjusted_rotation = clamp_character_rotation(
+                    adjusted_rotation,
+                    simulation_rotation,
+                    clamping_max_angle);
+
+                Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    adjusted_position, adjusted_rotation);
+            }
         }
-        //Clamping
-        if (clamping_enabled)
+        else
         {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            adjusted_position = clamp_character_position(
-                adjusted_position,
-                simulation_position,
-                clamping_max_distance);
-            adjusted_rotation = clamp_character_rotation(
-                adjusted_rotation,
-                simulation_rotation,
-                clamping_max_angle);
-
-            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-                adjusted_position, adjusted_rotation);
+            simulation_position = pose.root_position;
         }
 
         adjusted_bones_pose = pose.DeepClone();

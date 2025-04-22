@@ -373,7 +373,7 @@ if __name__ == '__main__':
         loss_lang = torch.mean(1.25 * torch.abs(Ygnd_ang - Ytil_ang))
         loss_lrvel = torch.mean(2.0 * torch.abs(Ygnd_rvel - Ytil_rvel))
         loss_lrang = torch.mean(2.0 * torch.abs(Ygnd_rang - Ytil_rang))
-        loss_lextra = torch.mean(2.0 * torch.abs(Ygnd_extra - Ytil_extra))
+        loss_lextra = torch.mean(5.0 * torch.abs(Ygnd_extra - Ytil_extra))
 
         loss_cpos = torch.mean(15.0 * torch.abs(Qgnd_pos - Qtil_pos))
         loss_cxfm = torch.mean(5.0 * torch.abs(Qgnd_xfm - Qtil_xfm))

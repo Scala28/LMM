@@ -72,6 +72,7 @@ public class ControllerOrchestrator : MonoBehaviour
     public bool gizmos = false;
     public bool set_vcam = true;
     public bool rigged = true;
+    [ConditionalField("rigged", false)]
     [SerializeField] private string ch_filename;
     private DataManager.character ch;
     public bool read_database = false;
@@ -146,7 +147,6 @@ public class ControllerOrchestrator : MonoBehaviour
         current_controller.motion_controller.SetLatentCurr(z_pass);
         player_input.SwitchCurrentActionMap(action_maps[current_controller.behaviour]);
     }
-    List<Vector3> traj_pos;
     private void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)
@@ -154,8 +154,9 @@ public class ControllerOrchestrator : MonoBehaviour
 
         if (read_database)
         {
-            (global_pose, traj_pos) = current_controller.motion_controller.GetNextFrame();
+            global_pose = current_controller.motion_controller.GetFrameDatabase();
             display_frame_pose();
+            current_controller.motion_controller.NextFrame();
             return;
         }
 
@@ -254,15 +255,18 @@ public class ControllerOrchestrator : MonoBehaviour
                 default:
                     break;
             }
-        else if(read_database)
+        else if (read_database)
+        {
             try
             {
+                List<Vector3> traj_pos = current_controller.motion_controller.GetFrameFeatures_trajPositions();
                 foreach (Vector3 v in traj_pos)
                 {
                     Gizmos.DrawSphere(v, .15f);
                 }
             }
             catch { }
+        }
     }
     private void OnDestroy()
     {

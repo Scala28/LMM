@@ -133,53 +133,6 @@ def compute_bone_velocity_feature(offset, bone, weight):
     return offset + 3
 
 
-def soft_linearize_and_space(points, alpha=0.5, eps=1e-8):
-    """
-    Softly linearizes and spaces 3D points without completely losing their original shape.
-
-    Args:
-        points (List[np.ndarray]): List of 3D points (as numpy arrays)
-        alpha (float): Blend factor between original (0.0) and fully adjusted (1.0)
-
-    Returns:
-        List[np.ndarray]: Adjusted points
-    """
-    if len(points) < 2:
-        return points
-
-    # Step 1: Compute centroid
-    centroid = np.mean(points, axis=0)
-
-    # Step 2: Estimate direction
-    direction = points[-1] - points[0]
-    direction = direction / (np.linalg.norm(direction)+eps)
-
-    # Step 3: Project original points to get projection lengths
-    projection_lengths = [np.dot(pt - centroid, direction) for pt in points]
-
-    # Step 4: Sort and space evenly
-    sorted_indices = np.argsort(projection_lengths)
-    projection_lengths_sorted = np.array(projection_lengths)[sorted_indices]
-
-    min_proj, max_proj = projection_lengths_sorted[0], projection_lengths_sorted[-1]
-    num_points = len(points)
-    evenly_spaced_lengths = np.linspace(min_proj, max_proj, num_points)
-
-    # Step 5: Generate adjusted points and blend
-    adjusted_points = []
-    for i, idx in enumerate(sorted_indices):
-        ideal_pt = centroid + evenly_spaced_lengths[i] * direction
-        blended_pt = (1 - alpha) * points[idx] + alpha * ideal_pt
-        adjusted_points.append(blended_pt)
-
-    # Reorder to match original input order
-    reordered = [None] * num_points
-    for i, idx in enumerate(sorted_indices):
-        reordered[idx] = adjusted_points[i]
-
-    return reordered
-
-
 def database_trajectory_index_clamp(frame, offset):
     for i in range(nranges):
         if range_starts[i] <= frame < range_stops[i]:
@@ -199,13 +152,6 @@ def compute_trajectory_position_feature(offset, weight):
         trajectory_pos0 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_positions[t0, 0] - bone_positions[i, 0])
         trajectory_pos1 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_positions[t1, 0] - bone_positions[i, 0])
         trajectory_pos2 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_positions[t2, 0] - bone_positions[i, 0])
-
-        points = [trajectory_pos0, trajectory_pos1, trajectory_pos2]
-        points = soft_linearize_and_space(points)
-
-        trajectory_pos0 = points[0]
-        trajectory_pos1 = points[1]
-        trajectory_pos2 = points[2]
 
         features[i, offset + 0] = trajectory_pos0[0]
         features[i, offset + 1] = trajectory_pos0[2]

@@ -64,8 +64,11 @@ public abstract class MotionController : ScriptableObject
 
     [HideInInspector] public float camera_azimuth = 0.0f;
     [HideInInspector] public float camera_altitude = .4f;
+    [HideInInspector] public float camera_distance = 4.0f;
+
     [Header("Animation")]
     public int FPS = 60;
+
     #region Animation
     protected Pose pose;
     protected Pose current_pose;
@@ -141,7 +144,10 @@ public abstract class MotionController : ScriptableObject
     protected Vector3[] contact_offset_velocities;
     #endregion
 
+    public bool controller_oriented = true;
+
     #region Adjustments
+    [ConditionalField("controller_oriented", true)]
     public bool adjustment_enabled = true;
     protected bool adjustment_by_velocity = true;
     protected float adjustment_position_halflife = 0.1f;
@@ -151,12 +157,13 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region Clamping
+    [ConditionalField("controller_oriented", true)]
     public bool clamping_enabled = true;
     protected float clamping_max_distance = .15f;
     protected float clamping_max_angle = .5f * Mathf.PI;
     #endregion
 
-    public float camera_distance = 4.0f;
+
 
     protected float dt;
 
@@ -599,7 +606,7 @@ public abstract class MotionController : ScriptableObject
     #endregion
 
     #region Read database
-    public (Pose, List<Vector3>) GetNextFrame()
+    public Pose GetFrameDatabase()
     {
         pose.root_position = db.bone_positions[frame_index][0];
         pose.root_rotation = db.bone_rotations[frame_index][0];
@@ -613,42 +620,26 @@ public abstract class MotionController : ScriptableObject
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
-
+        Debug.Log(db.contact_states[frame_index][0] && db.contact_states[frame_index][1]);
         adjusted_bones_pose = pose.DeepClone();
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
-        List<Vector3> traj_positions = new List<Vector3>();
-        for (int i = 0; i < 4; i++)
-            traj_positions.Add(db.bone_positions[frame_index + i * 20][0]);
-        traj_positions = LinearizePoints(traj_positions);
-
-        frame_index++;
-        return (global_pose, traj_positions);
+        return global_pose;
     }
-    List<Vector3> LinearizePoints(List<Vector3> points)
+    public List<Vector3> GetFrameFeatures_trajPositions()
     {
-        if (points.Count < 2) return points;
-
-        // Step 1: Compute the centroid
-        Vector3 centroid = Vector3.zero;
-        foreach (var pt in points) centroid += pt;
-        centroid /= points.Count;
-
-        // Step 2: Estimate line direction (here: from first to last as a simple heuristic)
-        Vector3 dir = (points[points.Count - 1] - points[0]).normalized;
-
-        // Step 3: Project each point onto the line defined by (centroid, dir)
-        List<Vector3> result = new List<Vector3>();
-        foreach (var pt in points)
+        List<Vector3> _out = new List<Vector3>();
+        int offset = 15;
+        for(int i=0; i<6; i+=2)
         {
-            Vector3 toPoint = pt - centroid;
-            float projectionLength = Vector3.Dot(toPoint, dir);
-            Vector3 projected = centroid + dir * projectionLength;
-            result.Add(projected);
+            float x = db.features[frame_index][offset + i];
+            float z = db.features[frame_index][offset + i + 1];
+            Vector3 loc_pos = new Vector3(x, 0, z);
+            _out.Add(Quat.quat_mul_vec(db.bone_rotations[frame_index][0], loc_pos) + db.bone_positions[frame_index][0]);
         }
-
-        return result;
+        return _out;
     }
+    public void NextFrame() => frame_index += 1;
     #endregion
 
 
