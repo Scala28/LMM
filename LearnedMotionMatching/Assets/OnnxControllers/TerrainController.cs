@@ -23,7 +23,7 @@ public class TerrainController : MotionController
 
     private Vector2[][] trajectory_toe_position = new Vector2[3][];
 
-    public float terrain_speed_multiplier = 1.0f;
+    private float terrain_speed_multiplier = 1.0f;
     private Vector3[] terrain_root_positions;
     private Vector4[] terrain_root_rotations;
     private Vector3[][] terrain_toe_positions = new Vector3[3][];
@@ -33,6 +33,7 @@ public class TerrainController : MotionController
     private float desired_gait = 0.0f;
     private float desired_gait_velocity = 0.0f;
 
+    [ConditionalField("controller_oriented", true)]
     public bool clamp_character_y = true;
 
     #region Trajectory & Gameplay Data
@@ -469,53 +470,60 @@ public class TerrainController : MotionController
         Debug.Assert(Physics.Raycast(new Vector3(simulation_position.x, 100f, simulation_position.z), -Vector3.up, out hit, float.MaxValue, whatIsTerrain));
         simulation_position.y = hit.point.y;
 
-        //Adjustment
-        if (adjustment_enabled)
+        if (controller_oriented)
         {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            if (adjustment_by_velocity)
+            //Adjustment
+            if (adjustment_enabled)
             {
-                adjusted_position = adjust_character_position_by_velocity(
-                    pose.root_position,
-                    pose.root_velocity,
-                    simulation_position,
-                    adjustment_position_halflife,
-                    dt);
-                adjusted_rotation = adjust_character_rotation_by_velocity(
-                    pose.root_rotation,
-                    pose.root_angular_velocity,
-                    simulation_rotation,
-                    adjustment_rotation_halflife,
-                    dt);
+                Vector3 adjusted_position = pose.root_position;
+                Vector4 adjusted_rotation = pose.root_rotation;
+
+                if (adjustment_by_velocity)
+                {
+                    adjusted_position = adjust_character_position_by_velocity(
+                        pose.root_position,
+                        pose.root_velocity,
+                        simulation_position,
+                        adjustment_position_halflife,
+                        dt);
+                    adjusted_rotation = adjust_character_rotation_by_velocity(
+                        pose.root_rotation,
+                        pose.root_angular_velocity,
+                        simulation_rotation,
+                        adjustment_rotation_halflife,
+                        dt);
+                }
+                Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    adjusted_position, adjusted_rotation);
             }
-            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-                adjusted_position, adjusted_rotation);
+            //Clamping
+            if (clamping_enabled)
+            {
+                Vector3 adjusted_position = pose.root_position;
+                Vector4 adjusted_rotation = pose.root_rotation;
+
+                if (!clamp_character_y)
+                    adjusted_position = this.clamp_character_position(
+                    adjusted_position,
+                    simulation_position,
+                    clamping_max_distance);
+                else
+                    adjusted_position = base.clamp_character_position(
+                    adjusted_position,
+                    simulation_position,
+                    clamping_max_distance);
+                adjusted_rotation = clamp_character_rotation(
+                    adjusted_rotation,
+                    simulation_rotation,
+                    clamping_max_angle);
+
+                Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    adjusted_position, adjusted_rotation);
+            }
         }
-        //Clamping
-        if (clamping_enabled)
+        else
         {
-            Vector3 adjusted_position = pose.root_position;
-            Vector4 adjusted_rotation = pose.root_rotation;
-
-            if(!clamp_character_y)
-                adjusted_position = this.clamp_character_position(
-                adjusted_position,
-                simulation_position,
-                clamping_max_distance);
-            else
-                adjusted_position = base.clamp_character_position(
-                adjusted_position,
-                simulation_position,
-                clamping_max_distance);
-            adjusted_rotation = clamp_character_rotation(
-                adjusted_rotation,
-                simulation_rotation,
-                clamping_max_angle);
-
-            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-                adjusted_position, adjusted_rotation);
+            simulation_position = pose.root_position;
         }
 
         adjusted_bones_pose = pose.DeepClone();

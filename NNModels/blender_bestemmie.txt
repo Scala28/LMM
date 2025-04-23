@@ -1,58 +1,59 @@
 import bpy
+import os
 from bpy import context
 
+bvh_folder = "C:/Users/John/Desktop/path to files"
 remove_constraints = True
-scene = context.scene
-scene.frame_set(1) # TPOSE frame
-rig1 = context.object
-# copy the rig and armature
-rig2 = rig1.copy()
-rig2.data = rig2.data.copy()
-bpy.context.collection.objects.link(rig2)
-bpy.context.view_layer.objects.active = rig2
-bpy.ops.object.mode_set(mode='POSE')
-# apply the pose in frame 1
-bpy.ops.pose.armature_apply()
-if not rig2.animation_data:
-    rig2.animation_data_create()
+frame_start = 1
 
-# remove animation from dupe
-rig2.animation_data.action = None
-# add copy transform constraint to each bone
-for pb in rig2.pose.bones:
-    ct = pb.constraints.get(pb.name)    
-    if ct is not None:
-        ct.influence = 1
-        continue
-    ct = pb.constraints.new('COPY_TRANSFORMS')
-    ct.name = pb.name
-    ct.target = rig1
-    ct.subtarget = pb.name
-
-action = rig1.animation_data.action
-f = int(action.frame_range.x)
-# add a keyframe to each frame of new rig
-while f < action.frame_range.y:
-    scene.frame_set(f)
+def bake_rig_animation(rig1, remove_constraints=True):
+    scene = bpy.context.scene
+    scene.frame_set(1)
+    rig2 = rig1.copy()
+    rig2.data = rig2.data.copy()
+    bpy.context.collection.objects.link(rig2)
+    bpy.context.view_layer.objects.active = rig2
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.pose.armature_apply()
+    if not rig2.animation_data:
+        rig2.animation_data_create()
+    rig2.animation_data.action = None
     for pb in rig2.pose.bones:
-        #pb2 = rig1.pose.bones.get(pb.name)
-        m = rig2.convert_space(pose_bone=pb, matrix=pb.matrix, to_space='LOCAL')
-        if pb.rotation_mode == 'QUATERNION':
-            pb.rotation_quaternion = m.to_quaternion()
-            pb.keyframe_insert("rotation_quaternion", frame=f)
-        else:
-        # add rot mode checking 
-            pb.rotation_euler = m.to_euler(pb.rotation_mode)
-            pb.keyframe_insert("rotation_euler", frame=f)
-        pb.location = m.to_translation()
-        pb.keyframe_insert("location", frame=f)
-    f += 1
+        ct = pb.constraints.get(pb.name)
+        if ct:
+            ct.influence = 1
+            continue
+        ct = pb.constraints.new('COPY_TRANSFORMS')
+        ct.name = pb.name
+        ct.target = rig1
+        ct.subtarget = pb.name
+    action = rig1.animation_data.action
+    f = int(action.frame_range.x)
+    while f < action.frame_range.y:
+        scene.frame_set(f)
+        for pb in rig2.pose.bones:
+            m = rig2.convert_space(pose_bone=pb, matrix=pb.matrix, to_space='LOCAL')
+            if pb.rotation_mode == 'QUATERNION':
+                pb.rotation_quaternion = m.to_quaternion()
+                pb.keyframe_insert("rotation_quaternion", frame=f)
+            else:
+                pb.rotation_euler = m.to_euler(pb.rotation_mode)
+                pb.keyframe_insert("rotation_euler", frame=f)
+            pb.location = m.to_translation()
+            pb.keyframe_insert("location", frame=f)
+        f += 1
+    for pb in rig2.pose.bones:
+        ct = pb.constraints.get(pb.name)
+        if ct:
+            if remove_constraints:
+                pb.constraints.remove(ct)
+            else:
+                ct.influence = 0
 
-# set constraints to zero or remove entirely.
-for pb in rig2.pose.bones:
-    ct = pb.constraints.get(pb.name)    
-    if ct is not None:
-        if remove_constraints:
-            pb.constraints.remove(ct)
-        else:
-            ct.influence = 0
+# --- MAIN LOOP ---
+for filename in os.listdir(bvh_folder):
+    if filename.lower().endswith(".bvh"):
+        filepath = os.path.join(bvh_folder, filename)
+        bpy.ops.import_anim.bvh(filepath=filepath)
+        rig1 = bpy.context.object  # Imported armature
+        bake_rig_animation(rig1, remove_constraints=remove_constraints)

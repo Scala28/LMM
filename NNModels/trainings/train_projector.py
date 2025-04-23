@@ -129,7 +129,7 @@ if __name__ == '__main__':
         Dtil = torch.sqrt(torch.sum(torch.square(Xhat - Xtil), dim=-1))
 
         # Compute Losses
-        loss_xval = torch.mean(1.4 * torch.abs(Xgnd - Xtil))
+        loss_xval = torch.mean(1.0 * torch.abs(Xgnd - Xtil))
         loss_zval = torch.mean(5.0 * torch.abs(Zgnd - Ztil))
         loss_dist = torch.mean(0.3 * torch.abs(Dgnd - Dtil))
         loss = loss_xval + loss_zval + loss_dist

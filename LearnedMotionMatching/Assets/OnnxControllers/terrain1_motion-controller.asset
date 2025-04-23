@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 422060b3ea79598489c0229fb7039289, type: 3}
+  m_Name: terrain1_motion-controller
+  m_EditorClassIdentifier: 
+  stepper: {fileID: 0}
+  decompressor: {fileID: 0}
+  projector: {fileID: 0}
+  stepper_name: terrain/terrin1/stepper.bin
+  decompressor_name: terrain/terrin1/decompressor.bin
+  projector_name: terrain/terrin1/projector.bin
+  search_time: 0.1
+  db_filename: terrain/terrin1/database.bin
+  features_filename: terrain/terrin1/features.bin
+  latent_filename: terrain/terrin1/latent.bin
+  camera_azimuth: 0
+  camera_altitude: 0.4
+  camera_distance: 4
+  FPS: 60
+  simulation_velocity_halflife: 0.27
+  simulation_rotation_halflife: 0.27
+  inertialize_blending_halflife: 0.1
+  ik_enabled: 1
+  controller_oriented: 1
+  adjustment_enabled: 1
+  clamping_enabled: 1
+  simulation_run_fwrd_speed: 3.3
+  simulation_run_side_speed: 2.8
+  simulation_run_back_speed: 2
+  simulation_walk_fwrd_speed: 1.75
+  simulation_walk_side_speed: 1.7
+  simulation_walk_back_speed: 1.2
+  whatIsTerrain:
+    serializedVersion: 2
+    m_Bits: 64
+  clamp_character_y: 1

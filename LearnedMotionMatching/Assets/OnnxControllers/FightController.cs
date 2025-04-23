@@ -19,9 +19,6 @@ public class FightController : MotionController
 
     public ControllerOrchestrator.character busto_bone;
 
-    private float lock_target = 0.0f;
-    private float lock_target_velocity = 0.0f;
-
     public LayerMask whatIsTerrain;
 
     [Header("Fight")]
@@ -32,15 +29,6 @@ public class FightController : MotionController
 
 
     #region Trajectory & Gameplay Data
-    public void lock_spring(bool target_lock, float lock_velocity = 0.1f)
-    {
-        Spring.simple_spring_damper_exact(
-            ref lock_target,
-            ref lock_target_velocity,
-            target_lock ? 1.0f : 0.0f,
-            lock_velocity,
-            dt);
-    }
     public void compute_torso_multiplier(bool target_lock, Vector3 rightStick)
     {
         if (target_lock)
@@ -341,8 +329,6 @@ public class FightController : MotionController
 
             }
             catch { }
-
-        lock_spring(target_lock);
 
         compute_torso_multiplier(target_lock, stickRight);
 
