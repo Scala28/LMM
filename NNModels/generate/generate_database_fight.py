@@ -9,8 +9,8 @@ import struct
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-anim_path = 'animations/{0}/fight/{1}/'.format(ms.recording_format, ms.animation_type)
 files = ms.settings_animations
+anim_path = 'animations/{0}/fight/{1}/'.format(ms.recording_format, ms.animation_type)
 
 
 def animation_mirror(lrot, lpos, names, parents):
@@ -38,16 +38,23 @@ bone_rotations = []
 bone_angular_velocities = []
 bone_parents = []
 bone_names = []
-torso_info = []
 range_starts = []
 range_stops = []
 
 contact_states = []
 
-for filename, start, stop, root_approach, toe_info, action in files:
+action_tags = []
+
+for filename, start, stop, root_approach, toe_info, action_params, speed_up_factor in files:
     for mirror in [False, True]:
         """ Load Data """
-        anim = anim_path + filename.split('/')[-1]
+        if ms.animation_type == 'move':
+            anim = anim_path + filename.split('/')[-1]
+        else:
+            actionFolder = filename.split('/')[-2]
+            anim = anim_path + actionFolder + '/' + filename.split('/')[-1]
+            actionTag = int(actionFolder)
+
         print('Loading "%s" %s...' % (anim, "(Mirrored)" if mirror else ""))
 
         if ms.recording_format == 'bvh':
@@ -78,7 +85,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
         # Supersample data to 60 fps
         original_times = np.linspace(0, nframes - 1, nframes)
-        sample_times = np.linspace(0, nframes - 1, int(0.45 * (nframes - 1)))
+        sample_times = np.linspace(0, nframes - 1, int(speed_up_factor * (nframes - 1)))
 
         # This does a cubic interpolation of the data for supersampling and also speeding up by 10%
         positions = griddata(original_times, positions.reshape([nframes, -1]), sample_times, method='cubic').reshape(
@@ -123,8 +130,7 @@ for filename, start, stop, root_approach, toe_info, action in files:
         elif 'root_smoothed:' in root_approach:
             smoothing_type = root_approach.split(':')[2]
             window_size = int(root_approach.split(':')[-1])
-
-            sim_position = signal.savgol_filter(sim_position, 31, 3, axis=0, mode='interp')
+            sim_position = signal.savgol_filter(sim_position, window_size, 3, axis=0, mode='interp')
 
             smoothed = np.copy(sim_direction)
             if smoothing_type == 'ma':
@@ -145,9 +151,9 @@ for filename, start, stop, root_approach, toe_info, action in files:
                 for i in range(3):  # Process each Euler axis separately
                     smoothed[:, 0, i] = gaussian_filter1d(sim_direction[:, 0, i].flatten(), sigma=window_size,
                                                           mode="nearest")
-
+            savgol_filter_param = 61 if ms.animation_type == 'move' else 20
             sim_direction = smoothed / np.sqrt(np.sum(np.square(smoothed), axis=-1))[..., np.newaxis]
-            sim_direction = signal.savgol_filter(sim_direction, 61, 3, axis=0, mode='interp')
+            sim_direction = signal.savgol_filter(sim_direction, savgol_filter_param, 3, axis=0, mode='interp')
             sim_direction = sim_direction / np.sqrt(np.sum(np.square(sim_direction), axis=-1)[..., np.newaxis])
         elif 'root_locked:' in root_approach:
             global_target_offset = root_approach.split(':')[-1]
@@ -221,6 +227,17 @@ for filename, start, stop, root_approach, toe_info, action in files:
                 size=6,
                 mode='nearest')
 
+        if ms.animation_type == 'actions':
+            tags = []
+            action_start_tag = action_params[0]
+            action_end_tag = positions.shape[0] - action_params[1]
+            for frame in range(positions.shape[0]):
+                if action_start_tag <= frame < action_end_tag:
+                    tags.append(actionTag)
+                else:
+                    tags.append(0)
+            tags = np.array(tags)
+
         """ Append to Database """
 
         bone_positions.append(positions)
@@ -235,6 +252,9 @@ for filename, start, stop, root_approach, toe_info, action in files:
 
         contact_states.append(contacts)
 
+        if ms.animation_type == 'actions':
+            action_tags.append(tags)
+
 """ Concatenate Data """
 bone_positions = np.concatenate(bone_positions, axis=0).astype(np.float32)
 bone_velocities = np.concatenate(bone_velocities, axis=0).astype(np.float32)
@@ -246,6 +266,8 @@ range_starts = np.array(range_starts).astype(np.int32)
 range_stops = np.array(range_stops).astype(np.int32)
 
 contact_states = np.concatenate(contact_states, axis=0).astype(np.uint8)
+
+action_tags = np.concatenate(action_tags, axis=0).astype(np.uint8)
 
 """ Write Database """
 print('Generating Database generate/data/fight/{0}/database.bin ...'.format(ms.animation_type))
@@ -266,6 +288,8 @@ with open('generate/data/fight/{0}/database.bin'.format(format(ms.animation_type
     f.write(struct.pack('I', nranges) + range_stops.ravel().tobytes())
 
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
+
+    f.write(struct.pack('I', nframes) + action_tags.ravel().tobytes())
 
 Bvh.save('generate/data/fight/{0}/database.bvh'.format(ms.animation_type), {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),

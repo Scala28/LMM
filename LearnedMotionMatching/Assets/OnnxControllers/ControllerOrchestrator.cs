@@ -59,13 +59,14 @@ public class ControllerOrchestrator : MonoBehaviour
 
     private Pose global_pose;
 
+
     [Header("Camera")]
+    [ConditionalField("set_vcam", true)]
     public CinemachineVirtualCamera vcam;
+    [ConditionalField("set_vcam", true)]
     [SerializeField] private Transform camera_follow;
+    [ConditionalField("set_vcam", true)]
     [SerializeField] private Transform camera_lookAt;
-    private float camera_azimuth = 0.0f;
-    private float camera_altitude = .4f;
-    private float camera_distance = 4.0f;
 
     [Header("Others")]
     public bool lock60Fps = true;
@@ -144,6 +145,11 @@ public class ControllerOrchestrator : MonoBehaviour
                 break;
             default: break;
         }
+
+        controller.motion_controller.camera_azimuth = current_controller.motion_controller.camera_azimuth;
+        controller.motion_controller.camera_altitude = current_controller.motion_controller.camera_altitude;
+        controller.motion_controller.camera_distance = current_controller.motion_controller.camera_distance;
+
         current_controller = controller;
         current_db = current_controller.motion_controller.getDB();
         current_controller.motion_controller.SetFeatureCurr(x_pass);
@@ -162,10 +168,6 @@ public class ControllerOrchestrator : MonoBehaviour
             current_controller.motion_controller.NextFrame();
             return;
         }
-
-        camera_azimuth = current_controller.motion_controller.camera_azimuth;
-        camera_altitude = current_controller.motion_controller.camera_altitude;
-        camera_distance = current_controller.motion_controller.camera_distance;
 
         (global_pose, feature_curr, latent_curr) = current_controller.motion_controller.perform_cycle();
 
