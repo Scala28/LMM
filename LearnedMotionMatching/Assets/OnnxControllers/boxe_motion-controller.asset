@@ -22,12 +22,12 @@ MonoBehaviour:
   db_filename: fight/boxe/database.bin
   features_filename: fight/boxe/features.bin
   latent_filename: fight/boxe/latent.bin
-  camera_azimuth: 0.6814812
+  camera_azimuth: -1.0742836
   camera_altitude: 0.4
   camera_distance: 4
   FPS: 60
-  simulation_velocity_halflife: 0.1
-  simulation_rotation_halflife: 0.05
+  simulation_velocity_halflife: 0.27
+  simulation_rotation_halflife: 0.1
   inertialize_blending_halflife: 0.1
   ik_enabled: 0
   controller_oriented: 0
@@ -41,4 +41,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   std_camera_altitude: 0.4
-  torso_speed_penalizer_min: 0.65
+  rightStick_speed_penalizer_min: 0.65

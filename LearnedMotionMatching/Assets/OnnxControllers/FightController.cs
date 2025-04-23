@@ -23,8 +23,8 @@ public class FightController : MotionController
 
     [Header("Fight")]
     public float std_camera_altitude = .4f;
-    public float torso_speed_penalizer_min = .65f;
-    private float torso_speed_multiplier;
+    public float rightStick_speed_penalizer_min = .65f;
+    private float rightStick_speed_multiplier;
     private Transform Target;
 
 
@@ -33,10 +33,14 @@ public class FightController : MotionController
     {
         if (target_lock)
         {
-            torso_speed_multiplier = clampf(1f - rightStick.sqrMagnitude, torso_speed_penalizer_min, 1f);
+            rightStick_speed_multiplier = clampf(1f - rightStick.sqrMagnitude, rightStick_speed_penalizer_min, 1f);
         }
         else
-            torso_speed_multiplier = 1f;
+        {
+            Vector3 turn_factor = rightStick;
+            turn_factor.z = 0;
+            rightStick_speed_multiplier = clampf(1f - turn_factor.sqrMagnitude, rightStick_speed_penalizer_min, 1f);
+        }
     }
     public Vector3 desired_velocity_update(Vector3 gamepad_stickleft, float camera_azimuth, Vector3 simulation_rotation)
     {
@@ -107,7 +111,7 @@ public class FightController : MotionController
             trajectory_desired_rotations[i] = desired_rotation_update(
                 trajectory_desired_rotations[i - 1],
                 gamepadstick_left,
-                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, dt),
+                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, i * dt),
                 target_lock,
                 trajectory_desired_velocities[i]);
         }
@@ -137,7 +141,7 @@ public class FightController : MotionController
         {
             trajectory_desired_velocities[i] = desired_velocity_update(
                 gamepadstick_left,
-                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, dt),
+                orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, i * dt),
                 trajectory_rotations[i]);
         }
     }
@@ -263,7 +267,8 @@ public class FightController : MotionController
         if (target_lock)
         {
             // Compute the vector from camera to target
-            Vector3 direction = (Target.position - controller.vcam.transform.position);
+            Vector3 dist = (Target.position - controller.vcam.transform.position);
+            Vector3 direction = dist;
             direction.y = 0; // Project onto the XZ plane to get the azimuthal direction
 
             if (direction.sqrMagnitude > 0.0001f) // Avoid division by zero
@@ -332,9 +337,9 @@ public class FightController : MotionController
 
         compute_torso_multiplier(target_lock, stickRight);
 
-        simulation_fwrd_speed = simulation_std_frwd_speed * torso_speed_multiplier;
-        simulation_side_speed = simulation_std_side_speed * torso_speed_multiplier;
-        simulation_back_speed = simulation_std_back_speed * torso_speed_multiplier;
+        simulation_fwrd_speed = simulation_std_frwd_speed * rightStick_speed_multiplier;
+        simulation_side_speed = simulation_std_side_speed * rightStick_speed_multiplier;
+        simulation_back_speed = simulation_std_back_speed * rightStick_speed_multiplier;
 
         // Get the desired velocity
         Vector3 desired_velocity_curr = desired_velocity_update(stickLeft, camera_azimuth, simulation_rotation);
@@ -364,10 +369,10 @@ public class FightController : MotionController
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
 
-        trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, target_lock, 0);
+        trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, target_lock, 20f * dt);
         trajectory_rotations_predict(20.0f * dt);
 
-        trajectory_desired_velocities_predict(stickLeft, stickLeft, camera_azimuth, target_lock, 0);
+        trajectory_desired_velocities_predict(stickLeft, stickRight, camera_azimuth, target_lock, dt);
         trajectory_positions_predict(20.0f * dt);
 
         // Do we need to search?
@@ -450,7 +455,10 @@ public class FightController : MotionController
         }
         else
         {
+            Vector4 adjusted_rotation = simulation_rotation;
             simulation_position = pose.root_position;
+            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    simulation_position, adjusted_rotation);
         }
 
         adjusted_bones_pose = pose.DeepClone();

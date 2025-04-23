@@ -24,10 +24,10 @@ settings_run_components = [
     # 'parse_bvh',
     # 'generate_database',
     # 'generate_features',
-    'train_decompressor',
-    'train_stepper_projector',  # in parallel
-    # 'train_stepper',  # individually
-    # 'train_projector',  # individually
+    # 'train_decompressor',
+    # 'train_stepper_projector',  # in parallel
+    'train_stepper',  # individually
+    'train_projector',  # individually
 ]
 
 

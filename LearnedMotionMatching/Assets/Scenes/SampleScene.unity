@@ -5693,7 +5693,7 @@ MonoBehaviour:
   set_vcam: 1
   rigged: 1
   ch_filename: 
-  read_database: 0
+  read_database: 1
   gizmos: 1
 --- !u!1 &2066386692105713107
 GameObject:
