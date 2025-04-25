@@ -1,9 +1,6 @@
 import sys
 import os
 import main_settings as ms
-
-sys.path.append('my_modules')
-from my_modules import Bvh
 import my_modules.quat as quat
 from trainings.train_common import load_database
 import struct
@@ -328,7 +325,7 @@ if ms.animation_type == 'actions':
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]
 
-nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6 + 3 + 3 + 3 + 3 + 1 if ms.animation_type == 'actions' else 0
+nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6 + 3 + 3 + 3 + 3 + (1 if ms.animation_type == 'actions' else 0)
 
 features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)
