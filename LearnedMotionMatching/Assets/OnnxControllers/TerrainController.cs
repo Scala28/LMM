@@ -523,7 +523,11 @@ public class TerrainController : MotionController
         }
         else
         {
-            simulation_position = pose.root_position;
+            Vector4 adjusted_rotation = simulation_rotation;
+            simulation_position.x = pose.root_position.x;
+            simulation_position.z = pose.root_position.z;
+            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    simulation_position, adjusted_rotation);
         }
 
         adjusted_bones_pose = pose.DeepClone();
@@ -558,6 +562,7 @@ public class TerrainController : MotionController
         }
     }
     #endregion
+
     public (Vector3[], Vector4[], Vector3[][]) Gizmos() => (trajectory_positions, trajectory_rotations, terrain_toe_positions);
 
 

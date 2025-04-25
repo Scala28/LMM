@@ -40,34 +40,32 @@ if __name__ == "__main__":
 
     venv_path = "C:/Users/lucas/AppData/Local/Programs/Python/Python39/python.exe"
 
-    if settings.animation_type == 'move':
-        if 'generate_database' in settings.settings_run_components:
-            print("Generating database ...")
-            subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.controller_type)])
-            print("Generating root direction bvh ...")
-            subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.controller_type)])
+    if 'generate_database' in settings.settings_run_components:
+        print("Generating database ...")
+        subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.controller_type)])
+        print("Generating root direction bvh ...")
+        subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.controller_type)])
 
-        if 'generate_features' in settings.settings_run_components:
-            print("Generating features ...")
-            subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.controller_type)])
+    if 'generate_features' in settings.settings_run_components:
+        print("Generating features ...")
+        subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.controller_type)])
 
-        if 'train_decompressor' in settings.settings_run_components:
-            print("Starting decompressor training ...")
-            subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.controller_type)])
+    if 'train_decompressor' in settings.settings_run_components:
+        print("Starting decompressor training ...")
+        subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.controller_type)])
 
-        if 'train_projector' in settings.settings_run_components:
-            print("Starting projector training ...")
-            subprocess.run([venv_path, "trainings/train_projector.py"])
+    if 'train_projector' in settings.settings_run_components:
+        print("Starting projector training ...")
+        subprocess.run([venv_path, "trainings/train_projector.py"])
 
-        if 'train_stepper' in settings.settings_run_components:
-            print("Starting stepper training ...")
-            subprocess.run([venv_path, "trainings/train_stepper.py"])
+    if 'train_stepper' in settings.settings_run_components:
+        print("Starting stepper training ...")
+        subprocess.run([venv_path, "trainings/train_stepper.py"])
 
-        if 'train_stepper_projector' in settings.settings_run_components:
-            print("Starting stepper and projector training ...")
-            process1 = subprocess.Popen([venv_path, "trainings/train_stepper.py"])
-            process2 = subprocess.Popen([venv_path, "trainings/train_projector.py"])
-            process1.wait()
-            process2.wait()
-
+    if 'train_stepper_projector' in settings.settings_run_components:
+        print("Starting stepper and projector training ...")
+        process1 = subprocess.Popen([venv_path, "trainings/train_stepper.py"])
+        process2 = subprocess.Popen([venv_path, "trainings/train_projector.py"])
+        process1.wait()
+        process2.wait()
 

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
 using UnityEngine;
+using UnityEngine.InputSystem.XR;
 public abstract class MotionController : ScriptableObject
 {
     protected ControllerOrchestrator controller;
@@ -31,6 +32,7 @@ public abstract class MotionController : ScriptableObject
     private Model stepper_nn;
     private Model projector_nn;
     #endregion
+
     public float search_time = 0.1f;
     protected float search_timer;
     protected float force_search_timer;
@@ -54,7 +56,7 @@ public abstract class MotionController : ScriptableObject
     [SerializeField]
     private string latent_filename;
     protected DataManager.database db;
-    private int frame_index;
+    protected int frame_index;
     private float[][] latents;
     public DataManager.database getDB() => db;
     public float[][] getLatents() => latents;
@@ -128,7 +130,7 @@ public abstract class MotionController : ScriptableObject
     public bool ik_enabled = true;
     protected float ik_max_length_buffer = 0.015f;
     protected float ik_foot_height = 0.02f;
-    protected float ik_toe_length = 0.15f;
+    protected float ik_toe_length = 0.1f;
     protected float ik_unlock_radius = 0.2f;
     protected float ik_blending_halflife = 0.1f;
 
@@ -163,6 +165,7 @@ public abstract class MotionController : ScriptableObject
     protected float clamping_max_angle = .5f * Mathf.PI;
     #endregion
 
+    public List<Motion_Action> actions;
 
 
     protected float dt;
@@ -170,7 +173,7 @@ public abstract class MotionController : ScriptableObject
     public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
         dt = 1f / FPS;
-        db = DataManager.load_database("Data/" + db_filename, controller.controllers.Find(x => x.motion_controller == this).behaviour);
+        db = DataManager.load_database("Data/" + db_filename, controller.controllers.Find(x => x.motion_controller == this).behaviour, false);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/" + features_filename);
         latents = DataManager.load_latent("Data/" + latent_filename);
 
@@ -620,7 +623,6 @@ public abstract class MotionController : ScriptableObject
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
-        Debug.Log(db.contact_states[frame_index][0] && db.contact_states[frame_index][1]);
         adjusted_bones_pose = pose.DeepClone();
         kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
 
@@ -657,4 +659,27 @@ public abstract class MotionController : ScriptableObject
     protected float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
     protected float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
     protected float squaref(float x) { return x * x; }
+}
+
+[System.Serializable]
+public class Motion_Action
+{
+    private MotionController _controller;
+
+    [SerializeField]
+    private string ations_filename;
+    private DataManager.database database;
+    private int frame_index;
+
+    public int FPS;
+    private float dt;
+
+    public void SetUp(MotionController controller, Behaviour behav)
+    {
+        _controller = controller;
+        dt = 1f / FPS;
+        database = DataManager.load_database("Data/" + ations_filename, behav, true);
+    }
+
+
 }

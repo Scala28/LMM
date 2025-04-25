@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 422060b3ea79598489c0229fb7039289, type: 3}
   m_Name: terrain1_motion-controller
   m_EditorClassIdentifier: 
-  stepper: {fileID: 0}
-  decompressor: {fileID: 0}
-  projector: {fileID: 0}
-  stepper_name: terrain/terrin1/stepper.bin
-  decompressor_name: terrain/terrin1/decompressor.bin
-  projector_name: terrain/terrin1/projector.bin
+  stepper: {fileID: 5022602860645237092, guid: e82ea946012b5f645b2b4a54715c9c93, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: d185796dabf507e4484b5c8cf8964d10, type: 3}
+  projector: {fileID: 5022602860645237092, guid: 8bf489b2aadd216499d9dc5ce24e93c2, type: 3}
+  stepper_name: terrain/terrain1/stepper.bin
+  decompressor_name: terrain/terrain1/decompressor.bin
+  projector_name: terrain/terrain1/projector.bin
   search_time: 0.1
-  db_filename: terrain/terrin1/database.bin
-  features_filename: terrain/terrin1/features.bin
-  latent_filename: terrain/terrin1/latent.bin
+  db_filename: terrain/terrain1/database.bin
+  features_filename: terrain/terrain1/features.bin
+  latent_filename: terrain/terrain1/latent.bin
   camera_azimuth: 0
   camera_altitude: 0.4
   camera_distance: 4
@@ -33,6 +33,7 @@ MonoBehaviour:
   controller_oriented: 1
   adjustment_enabled: 1
   clamping_enabled: 1
+  actions: []
   simulation_run_fwrd_speed: 3.3
   simulation_run_side_speed: 2.8
   simulation_run_back_speed: 2

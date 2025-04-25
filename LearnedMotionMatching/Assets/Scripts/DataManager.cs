@@ -6,6 +6,7 @@ using System.IO;
 using UnityEditor;
 using System;
 using Unity.Barracuda;
+using System.Threading;
 
 
 public static class DataManager
@@ -520,7 +521,7 @@ public static class DataManager
             return model;
         }
     }
-    public static database load_database(string filename, Behaviour behaviour)
+    public static database load_database(string filename, Behaviour behaviour, bool action)
     {
         string path = Path.Combine(Application.streamingAssetsPath, filename);
         database db = new database();
@@ -640,6 +641,11 @@ public static class DataManager
                 rows = reader.ReadInt32();
                 cols = reader.ReadInt32();
                 db.contact_states = readBool_toArray2d(reader, rows, cols);
+            }
+            if (action)
+            {
+                int count = reader.ReadInt32();
+                db.action_tags = readInt_toArray(reader, count);
             }
         }
         return db;
@@ -769,6 +775,8 @@ public static class DataManager
 
         // Fight-stance
         public Vector2[] traj_torso_local;
+
+        public int[] action_tags;
 
         public float[][] bound_sm_min;
         public float[][] bound_sm_max;

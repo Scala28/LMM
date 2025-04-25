@@ -1222,7 +1222,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rigToTransform: []
   controllers:
-  - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
+  - motion_controller: {fileID: 0}
     behaviour: 0
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 1135148370}
@@ -2078,9 +2078,9 @@ MonoBehaviour:
   - {fileID: 1173602566}
   - {fileID: 1948065010}
   controllers:
-  - motion_controller: {fileID: 11400000, guid: 886d67497ab1002439c0a619970335e9, type: 2}
+  - motion_controller: {fileID: 0}
     behaviour: 2
-  - motion_controller: {fileID: 11400000, guid: 4a16dfad7be799a4689dd582e4b90103, type: 2}
+  - motion_controller: {fileID: 0}
     behaviour: 0
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 693160731}
@@ -2277,7 +2277,7 @@ Transform:
   m_GameObject: {fileID: 852832053}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.43, y: 0, z: -0.16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5682,10 +5682,12 @@ MonoBehaviour:
   - {fileID: 6364630152257095250}
   - {fileID: 7177859795516888915}
   controllers:
-  - motion_controller: {fileID: 11400000, guid: bfaabb96171a5f541ae3b8bbbf771887, type: 2}
-    behaviour: 2
+  - motion_controller: {fileID: 11400000, guid: 947d21973ed0da140b6e051694ab1e6a, type: 2}
+    behaviour: 1
   - motion_controller: {fileID: 11400000, guid: ff231d5f41f2aaa48b8815d2d74370b9, type: 2}
     behaviour: 0
+  - motion_controller: {fileID: 11400000, guid: bfaabb96171a5f541ae3b8bbbf771887, type: 2}
+    behaviour: 2
   vcam: {fileID: 769392282}
   camera_follow: {fileID: 4679961807489525841}
   camera_lookAt: {fileID: 536774741496980935}

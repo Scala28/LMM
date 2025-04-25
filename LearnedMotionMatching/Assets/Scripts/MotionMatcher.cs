@@ -226,7 +226,7 @@ public class MotionMatcher : MonoBehaviour
         _sync60Fps = SyncFPS.Instance;
         input_handler = GetComponent<InputHandler>();
 
-        db = DataManager.load_database("Data/terrain/terrain_db.bin", Behaviour.terrain);
+        db = DataManager.load_database("Data/terrain/terrain_db.bin", Behaviour.terrain, false);
         (db.features, db.features_offset, db.features_scale) = DataManager.load_features("Data/terrain/terrain_features.bin");
 
         ch = DataManager.load_character("Data/character.bin");
