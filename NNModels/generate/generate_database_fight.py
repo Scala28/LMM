@@ -271,11 +271,9 @@ action_tags = np.concatenate(action_tags, axis=0).astype(np.uint8)
 
 """ Write Database """
 
-print(("Writing Database generate/data/plane/{0}/" +
-       'database.bin' if ms.animation_type == 'move' else 'action.bin' + " ...").format(ms.animation_type))
+print('generate/data/fight/{0}/database.bin ...')
 
-with open(('generate/data/fight/{0}/' + 'database.bin' if ms.animation_type == 'move' else 'action.bin')
-                  .format(format(ms.animation_type)), 'wb') as f:
+with open('generate/data/fight/{0}/database.bin', 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]

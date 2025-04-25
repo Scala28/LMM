@@ -35,6 +35,9 @@ def load_database(filename):
             [nframes, ncontacts])
 
         if 'terrain' not in ms.controller_type:
+            if ms.settings_animations == 'actions':
+                ntags = struct.unpack('I', f.read(4))[0]
+                action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=nranges).reshape([nranges])
             return {
                 'bone_positions': bone_positions,
                 'bone_rotations': bone_rotations,
@@ -43,7 +46,8 @@ def load_database(filename):
                 'bone_parents': bone_parents,
                 'range_starts': range_starts,
                 'range_stops': range_stops,
-                'contact_states': contact_states
+                'contact_states': contact_states,
+                'action_tags': action_tags if ms.settings_animations == 'action' else None
             }
 
         nframes, nterrain = struct.unpack('II', f.read(8))
@@ -53,6 +57,9 @@ def load_database(filename):
         nframes, ntoe_trajectories = struct.unpack('II', f.read(8))
         trajectory_toe_positions = np.frombuffer(f.read(nframes * ntoe_trajectories * 4), dtype=np.float32,
                                                  count=nframes*ntoe_trajectories).reshape([nframes, 3, 2, 3])
+        if ms.settings_animations == 'actions':
+            ntags = struct.unpack('I', f.read(4))[0]
+            action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=nranges).reshape([nranges])
 
         return {
             'bone_positions': bone_positions,
@@ -64,7 +71,8 @@ def load_database(filename):
             'range_stops': range_stops,
             'contact_states': contact_states,
             'terrain_positions': terrain_positions,
-            'trajectory_toe_positions': trajectory_toe_positions
+            'trajectory_toe_positions': trajectory_toe_positions,
+            'action_tags': action_tags if ms.settings_animations == 'action' else None
         }
 
 

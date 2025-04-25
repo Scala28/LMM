@@ -1,6 +1,7 @@
 import sys
 import os
 import main_settings as ms
+
 sys.path.append('my_modules')
 from my_modules import Bvh
 import my_modules.quat as quat
@@ -18,11 +19,11 @@ def forward_kinematics(out_bone_position,
                        in_bone):
     if in_bone_parents[in_bone] != -1:
         out_parent_position, out_parent_rotation = forward_kinematics(np.ndarray(3),
-                                                                     np.ndarray(4),
-                                                                     in_bone_positions,
-                                                                     in_bone_rotations,
-                                                                     in_bone_parents,
-                                                                     in_bone_parents[in_bone])
+                                                                      np.ndarray(4),
+                                                                      in_bone_positions,
+                                                                      in_bone_rotations,
+                                                                      in_bone_parents,
+                                                                      in_bone_parents[in_bone])
 
         out_bone_position = quat.mul_vec(out_parent_rotation, in_bone_positions[in_bone]) + out_parent_position
         out_bone_rotation = quat.mul(out_parent_rotation, in_bone_rotations[in_bone])
@@ -41,17 +42,19 @@ def forward_kinematics_velocity(in_bone_positions,
     if in_bone_parents[in_bone] != -1:
 
         parent_position, parent_velocity, \
-        parent_rotation,parent_angular_velocity = forward_kinematics_velocity(in_bone_positions,
-                                                                              in_bone_velocities,
-                                                                              in_bone_rotations,
-                                                                              in_bone_angular_velocities,
-                                                                              in_bone_parents,
-                                                                              in_bone_parents[in_bone])
+            parent_rotation, parent_angular_velocity = forward_kinematics_velocity(in_bone_positions,
+                                                                                   in_bone_velocities,
+                                                                                   in_bone_rotations,
+                                                                                   in_bone_angular_velocities,
+                                                                                   in_bone_parents,
+                                                                                   in_bone_parents[in_bone])
         bone_position = quat.mul_vec(parent_rotation, in_bone_positions[in_bone]) + parent_position
-        bone_velocity = parent_velocity + quat.mul_vec(parent_rotation, in_bone_velocities[in_bone]) +\
-                        quat._fast_cross(parent_angular_velocity, quat.mul_vec(parent_rotation, in_bone_positions[in_bone]))
+        bone_velocity = parent_velocity + quat.mul_vec(parent_rotation, in_bone_velocities[in_bone]) + \
+                        quat._fast_cross(parent_angular_velocity,
+                                         quat.mul_vec(parent_rotation, in_bone_positions[in_bone]))
         bone_rotation = quat.mul(parent_rotation, in_bone_rotations[in_bone])
-        bone_angular_velocity = quat.mul_vec(parent_rotation, in_bone_angular_velocities[in_bone]) + parent_angular_velocity
+        bone_angular_velocity = quat.mul_vec(parent_rotation,
+                                             in_bone_angular_velocities[in_bone]) + parent_angular_velocity
     else:
         bone_position = in_bone_positions[in_bone]
         bone_velocity = in_bone_velocities[in_bone]
@@ -90,20 +93,21 @@ def normalize_feature(offset, size, weight):
     # Using the offset and scale we can then normalize the features
     for i in range(nframes):
         for j in range(size):
-            features[i, offset + j] = (features[i, offset + j] - features_offset[offset + j]) / features_scale[offset + j]
+            features[i, offset + j] = (features[i, offset + j] - features_offset[offset + j]) / features_scale[
+                offset + j]
 
 
-def compute_bone_position_feature(offset, bone, weight):
+def compute_bone_position_feature(offset, bone, relativeTo, weight):
     global features
 
     for i in range(nframes):
         bone_position, bone_rotation = forward_kinematics(np.ndarray(3),
-                           np.ndarray(4),
-                           bone_positions[i],
-                           bone_rotations[i],
-                           bone_parents,
-                           bone)
-        bone_position = quat.mul_vec(quat.inv(bone_rotations[i,0]), bone_position - bone_positions[i,0])
+                                                          np.ndarray(4),
+                                                          bone_positions[i],
+                                                          bone_rotations[i],
+                                                          bone_parents,
+                                                          bone)
+        bone_position = quat.mul_vec(quat.inv(bone_rotations[i, relativeTo]), bone_position - bone_positions[i, relativeTo])
 
         features[i, offset + 0] = bone_position[0]
         features[i, offset + 1] = bone_position[1]
@@ -113,21 +117,21 @@ def compute_bone_position_feature(offset, bone, weight):
     return offset + 3
 
 
-def compute_bone_velocity_feature(offset, bone, weight):
+def compute_bone_velocity_feature(offset, bone, relativeTo, weight):
     global features
 
     for i in range(nframes):
         bone_position, bone_velocity, \
-        bone_rotation, bone_angular_velocity = forward_kinematics_velocity(bone_positions[i],
-                                                                                bone_velocities[i],
-                                                                                bone_rotations[i],
-                                                                                bone_angular_velocities[i],
-                                                                                bone_parents,
-                                                                                bone)
-        bone_velocity = quat.mul_vec(quat.inv(bone_rotations[i,0]), bone_velocity)
-        features[i, offset + 0] = bone_velocity[0];
-        features[i, offset + 1] = bone_velocity[1];
-        features[i, offset + 2] = bone_velocity[2];
+            bone_rotation, bone_angular_velocity = forward_kinematics_velocity(bone_positions[i],
+                                                                               bone_velocities[i],
+                                                                               bone_rotations[i],
+                                                                               bone_angular_velocities[i],
+                                                                               bone_parents,
+                                                                               bone)
+        bone_velocity = quat.mul_vec(quat.inv(bone_rotations[i, relativeTo]), bone_velocity)
+        features[i, offset + 0] = bone_velocity[0]
+        features[i, offset + 1] = bone_velocity[1]
+        features[i, offset + 2] = bone_velocity[2]
 
     normalize_feature(offset, 3, weight)
     return offset + 3
@@ -172,9 +176,12 @@ def compute_trajectory_direction_feature(offset, weight):
         t1 = database_trajectory_index_clamp(i, 40)
         t2 = database_trajectory_index_clamp(i, 60)
 
-        trajectory_dir0 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), quat.mul_vec(bone_rotations[t0, 0], np.array([0, 0, 1])))
-        trajectory_dir1 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), quat.mul_vec(bone_rotations[t1, 0], np.array([0, 0, 1])))
-        trajectory_dir2 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), quat.mul_vec(bone_rotations[t2, 0], np.array([0, 0, 1])))
+        trajectory_dir0 = quat.mul_vec(quat.inv(bone_rotations[i, 0]),
+                                       quat.mul_vec(bone_rotations[t0, 0], np.array([0, 0, 1])))
+        trajectory_dir1 = quat.mul_vec(quat.inv(bone_rotations[i, 0]),
+                                       quat.mul_vec(bone_rotations[t1, 0], np.array([0, 0, 1])))
+        trajectory_dir2 = quat.mul_vec(quat.inv(bone_rotations[i, 0]),
+                                       quat.mul_vec(bone_rotations[t2, 0], np.array([0, 0, 1])))
 
         features[i, offset + 0] = trajectory_dir0[0]
         features[i, offset + 1] = trajectory_dir0[2]
@@ -187,103 +194,49 @@ def compute_trajectory_direction_feature(offset, weight):
     return offset + 6
 
 
-def compute_future_terrain_feature(offset, bone, weight):
+def compute_bone_local_position(frame_indx, bone, relativeTo):
+    bone_position, bone_rotation = forward_kinematics(np.ndarray(3),
+                                                      np.ndarray(4),
+                                                      bone_positions[frame_indx],
+                                                      bone_rotations[frame_indx],
+                                                      bone_parents,
+                                                      bone)
+    bone_position = quat.mul_vec(quat.inv(bone_rotations[frame_indx, relativeTo]),
+                                 bone_position - bone_positions[frame_indx, relativeTo])
+    return bone_position
+
+
+def compute_bone_local_velocity(frame_indx, bone, relativeTo):
+    bone_position, bone_velocity, \
+        bone_rotation, bone_angular_velocity = forward_kinematics_velocity(bone_positions[frame_indx],
+                                                                           bone_velocities[frame_indx],
+                                                                           bone_rotations[frame_indx],
+                                                                           bone_angular_velocities[frame_indx],
+                                                                           bone_parents,
+                                                                           bone)
+    bone_velocity = quat.mul_vec(quat.inv(bone_rotations[frame_indx, relativeTo]), bone_velocity)
+    return bone_velocity
+
+
+def compute_future_bone_localPos_feature(offset, bone, relativeTo, weight):
     global features
 
     for i in range(nframes):
-        bone_position, bone_rotation = forward_kinematics(np.ndarray(3),
-                           np.ndarray(4),
-                           bone_positions[i],
-                           bone_rotations[i],
-                           bone_parents,
-                           bone)
-        bone_position = quat.mul_vec(quat.inv(bone_rotations[i,0]), bone_position - bone_positions[i,0])
+        local_pos = compute_bone_local_position(i, bone, relativeTo)
 
-        features[i, offset + 0] = bone_position[1]
+        features[i, offset + 0] = local_pos[0]
+        features[i, offset + 1] = local_pos[2]
 
-        t0 = database_trajectory_index_clamp(i, 15)
-        t1 = database_trajectory_index_clamp(i, 30)
-        t2 = database_trajectory_index_clamp(i, 45)
+        t0 = database_trajectory_index_clamp(i, 10)
+        t1 = database_trajectory_index_clamp(i, 20)
 
-        bone_position_15, bone_rotation_15 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t0],
-                                                                bone_rotations[t0],
-                                                                bone_parents,
-                                                                bone)
+        local_pos_15 = compute_bone_local_position(t0, bone, relativeTo)
+        features[i, offset + 2] = local_pos_15[0]
+        features[i, offset + 3] = local_pos_15[2]
 
-        bone_position_15 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_15 - bone_positions[i, 0])
-
-        features[i, offset + 1] = bone_position_15[1]
-
-        bone_position_30, bone_rotation_30 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t1],
-                                                                bone_rotations[t1],
-                                                                bone_parents,
-                                                                bone)
-
-        bone_position_30 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_30 - bone_positions[i, 0])
-
-        features[i, offset + 2] = bone_position_30[1]
-
-        bone_position_45, bone_rotation_45 = forward_kinematics(np.ndarray(3),
-                                                                np.ndarray(4),
-                                                                bone_positions[t2],
-                                                                bone_rotations[t2],
-                                                                bone_parents,
-                                                                bone)
-
-        bone_position_45 = quat.mul_vec(quat.inv(bone_rotations[i, 0]), bone_position_45 - bone_positions[i, 0])
-
-        features[i, offset + 3] = bone_position_45[1]
-    normalize_feature(offset, 4, weight)
-    return offset + 4
-
-
-def compute_torso_local_position(frame_indx, bone):
-    hips_gp, hips_gr = forward_kinematics(np.ndarray(3),
-                                          np.ndarray(4),
-                                          bone_positions[frame_indx],
-                                          bone_rotations[frame_indx],
-                                          bone_parents,
-                                          Bone_Hips)
-
-    torso_gp, torso_gr = forward_kinematics(np.ndarray(3),
-                                            np.ndarray(4),
-                                            bone_positions[frame_indx],
-                                            bone_rotations[frame_indx],
-                                            bone_parents,
-                                            bone)
-
-    torso_local = quat.mul_vec(quat.inv(hips_gr), torso_gp - hips_gp)
-    return torso_local
-
-
-def compute_future_torso_feature(offset, bone,  weight):
-    global features
-
-    for i in range(nframes):
-        torso_local = compute_torso_local_position(i, bone)
-
-        features[i, offset + 0] = torso_local[0]
-        features[i, offset + 1] = torso_local[2]
-
-        t0 = database_trajectory_index_clamp(i, 15)
-        t1 = database_trajectory_index_clamp(i, 30)
-        # t2 = database_trajectory_index_clamp(i, 45)
-
-        torso_local_15 = compute_torso_local_position(t0, bone)
-        features[i, offset + 2] = torso_local_15[0]
-        features[i, offset + 3] = torso_local_15[2]
-
-        torso_local_30 = compute_torso_local_position(t1, bone)
-        features[i, offset + 4] = torso_local_30[0]
-        features[i, offset + 5] = torso_local_30[2]
-
-        # torso_local_45 = compute_torso_local_position(t2)
-        # features[i, offset + 6] = torso_local_45[0]
-        # features[i, offset + 7] = torso_local_45[2]
+        local_pos_30 = compute_bone_local_position(t1, bone, relativeTo)
+        features[i, offset + 4] = local_pos_30[0]
+        features[i, offset + 5] = local_pos_30[2]
 
     normalize_feature(offset, 6, weight)
     return offset + 6
@@ -296,24 +249,40 @@ def database_build_matching_features():
     feature_weight_hip_velocity = 1.0
     feature_weight_trajectory_positions = 1.0
     feature_weight_trajectory_directions = 1.5
-    feature_weight_torso_position = 1.5
+    feature_weight_torso_position = 1.0
+    feature_weight_hands_positions = 0.6
+    feature_weight_hands_velocity = 0.6
     offset = 0
-    offset = compute_bone_position_feature(offset, Bone_LeftFoot, feature_weight_foot_position)
+    offset = compute_bone_position_feature(offset, Bone_LeftFoot, Bone_Entity, feature_weight_foot_position)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-    offset = compute_bone_position_feature(offset, Bone_RightFoot, feature_weight_foot_position)
+    offset = compute_bone_position_feature(offset, Bone_RightFoot, Bone_Entity, feature_weight_foot_position)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-    offset = compute_bone_velocity_feature(offset, Bone_LeftFoot, feature_weight_foot_velocity)
+    offset = compute_bone_velocity_feature(offset, Bone_LeftFoot, Bone_Entity, feature_weight_foot_velocity)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-    offset = compute_bone_velocity_feature(offset, Bone_RightFoot, feature_weight_foot_velocity)
+    offset = compute_bone_velocity_feature(offset, Bone_RightFoot, Bone_Entity, feature_weight_foot_velocity)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-    offset = compute_bone_velocity_feature(offset, Bone_Hips, feature_weight_hip_velocity)
+    offset = compute_bone_velocity_feature(offset, Bone_Hips, Bone_Entity, feature_weight_hip_velocity)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_position_feature(offset, feature_weight_trajectory_positions)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_direction_feature(offset, feature_weight_trajectory_directions)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
-    offset = compute_future_torso_feature(offset, Bone_Spine2,  feature_weight_torso_position)
+    offset = compute_future_bone_localPos_feature(offset, Bone_Spine2, Bone_Hips, feature_weight_torso_position)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_position_feature(offset, Bone_LeftHand, Bone_Hips, feature_weight_hands_positions)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_position_feature(offset, Bone_RightHand, Bone_Hips, feature_weight_hands_positions)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_velocity_feature(offset, Bone_LeftHand, Bone_Hips, feature_weight_hands_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_velocity_feature(offset, Bone_RightHand, Bone_Hips, feature_weight_hands_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+
+    if ms.animation_type == 'actions':
+        for i in range(nframes):
+            features[i, offset + 1] = action_tags[i]
+        offset += 1
+
     print("\n")
     if nfeatures != offset:
         print("\nAssertion error!")
@@ -352,9 +321,15 @@ bone_angular_velocities = database['bone_angular_velocities']
 bone_parents = database['bone_parents']
 range_starts = database['range_starts']
 range_stops = database['range_stops']
+
+if ms.animation_type == 'actions':
+    action_tags = database['action_tags']
+
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]
-nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6
+
+nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6 + 3 + 3 + 3 + 3 + 1 if ms.animation_type == 'actions' else 0
+
 features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)
 features_scale = np.zeros(nfeatures)
