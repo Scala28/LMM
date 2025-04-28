@@ -523,7 +523,7 @@ public class TerrainController : MotionController
         }
         else
         {
-            Vector4 adjusted_rotation = simulation_rotation;
+            Vector4 adjusted_rotation = pose.root_rotation;
             simulation_position.x = pose.root_position.x;
             simulation_position.z = pose.root_position.z;
             Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,

@@ -35,7 +35,7 @@ def load_database(filename):
             [nframes, ncontacts])
 
         if 'terrain' not in ms.controller_type:
-            if ms.settings_animations == 'actions':
+            if ms.animation_type == 'actions':
                 ntags = struct.unpack('I', f.read(4))[0]
                 action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=nranges).reshape([nranges])
             return {
@@ -47,7 +47,7 @@ def load_database(filename):
                 'range_starts': range_starts,
                 'range_stops': range_stops,
                 'contact_states': contact_states,
-                'action_tags': action_tags if ms.settings_animations == 'action' else None
+                'action_tags': action_tags if ms.animation_type == 'actions' else None
             }
 
         nframes, nterrain = struct.unpack('II', f.read(8))

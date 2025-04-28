@@ -223,7 +223,7 @@ for filename, start, stop, root_approach, toe_info, action_params, speed_up_fact
             angular_velocities,
             bone_parents)
 
-        contact_velocity_threshold = 0.15
+        contact_velocity_threshold = 0.3
 
         contact_velocity = np.sqrt(np.sum(global_velocities[:, np.array([
             bone_names.index("LeftToeBase"),
@@ -255,7 +255,7 @@ for filename, start, stop, root_approach, toe_info, action_params, speed_up_fact
         leftFoot_xz = []
         rightFoot_xz = []
 
-        n_neighbors = 20
+        n_neighbors = 25
 
         is_first_left = True
         is_first_right = True
@@ -382,14 +382,15 @@ trajectory_toe_positions = np.concatenate(trajectory_toe_positions, axis=0).asty
 range_starts = np.array(range_starts).astype(np.int32)
 range_stops = np.array(range_stops).astype(np.int32)
 
-action_tags = np.concatenate(action_tags, axis=0).astype(np.uint8)
+if ms.animation_type == 'actions':
+    action_tags = np.concatenate(action_tags, axis=0).astype(np.uint8)
 
 
 """ Write Database """
 
-print('generate/data/fight/{0}/database.bin ...')
+print('generate/data/fight/{0}/database.bin ...'.format(ms.animation_type))
 
-with open('generate/data/fight/{0}/database.bin', 'wb') as f:
+with open('generate/data/fight/{0}/database.bin'.format(ms.animation_type), 'wb') as f:
     nframes = bone_positions.shape[0]
     nbones = bone_positions.shape[1]
     nranges = range_starts.shape[0]
@@ -407,7 +408,8 @@ with open('generate/data/fight/{0}/database.bin', 'wb') as f:
     f.write(struct.pack('II', nframes, ncontacts) + contact_states.ravel().tobytes())
     f.write(struct.pack('II', nframes, nterrain) + terrain_positions.ravel().tobytes())
     f.write(struct.pack('II', nframes, ntoe_trajectory) + trajectory_toe_positions.ravel().tobytes())
-    f.write(struct.pack('I', nframes) + action_tags.ravel().tobytes())
+    if ms.animation_type == 'actions':
+        f.write(struct.pack('I', nframes) + action_tags.ravel().tobytes())
 
 Bvh.save('generate/data/terrain/{0}/database.bvh'.format(ms.animation_type), {
     'rotations': np.degrees(quat.to_euler(bone_rotations)),

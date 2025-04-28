@@ -30,7 +30,7 @@ MonoBehaviour:
   simulation_rotation_halflife: 0.27
   inertialize_blending_halflife: 0.1
   ik_enabled: 1
-  controller_oriented: 1
+  controller_oriented: 0
   adjustment_enabled: 1
   clamping_enabled: 1
   actions: []
@@ -43,4 +43,4 @@ MonoBehaviour:
   whatIsTerrain:
     serializedVersion: 2
     m_Bits: 64
-  clamp_character_y: 1
+  clamp_character_y: 0

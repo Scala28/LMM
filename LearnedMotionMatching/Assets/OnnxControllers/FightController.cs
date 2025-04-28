@@ -18,6 +18,7 @@ public class FightController : MotionController
     float simulation_back_speed;
 
     public ControllerOrchestrator.character busto_bone;
+    public Vector3 offset_busto_zero;
 
     public LayerMask whatIsTerrain;
 
@@ -242,23 +243,46 @@ public class FightController : MotionController
         hips_gp.y = 0f;
         busto_gp.y = 0f;
 
-        Vector3 offset_busto_zero = new Vector3(0, 0, 0.02f);
-        Vector3 input_torso;
-        if (!target_lock)
-            input_torso = Quat.quat_mul_vec(hips_gr, offset_busto_zero);
-        else
-            input_torso = Quat.quat_mul_vec(hips_gr, rightStick / 5f + offset_busto_zero);
+        Vector3 input_torso = target_lock ? rightStick / 5f + offset_busto_zero : offset_busto_zero;
 
         Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, busto_gp - hips_gp);
-        Vector3 input_torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, input_torso);
 
         query[offset + 0] = torso_relative_position.x;
         query[offset + 1] = torso_relative_position.z;
-        query[offset + 2] = torso_relative_position.x + (input_torso_relative_position.x - torso_relative_position.x) * 2f / 3f;
-        query[offset + 3] = torso_relative_position.z + (input_torso_relative_position.z - torso_relative_position.z) * 2f / 3f;
-        query[offset + 4] = input_torso_relative_position.x;
-        query[offset + 5] = input_torso_relative_position.z;
+        query[offset + 2] = torso_relative_position.x + (input_torso.x - torso_relative_position.x) * 2f / 3f;
+        query[offset + 3] = torso_relative_position.z + (input_torso.z - torso_relative_position.z) * 2f / 3f;
+        query[offset + 4] = input_torso.x;
+        query[offset + 5] = input_torso.z;
         offset += 6;
+
+        //// Left hand pos
+        //for (int i = 0; i < 3; i++)
+        //{
+        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        //}
+        //offset += 3;
+
+        //// Right hand pos
+        //for (int i = 0; i < 3; i++)
+        //{
+        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        //}
+        //offset += 3;
+
+        //// Left hand velocity
+        //for (int i = 0; i < 3; i++)
+        //{
+        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        //}
+        //offset += 3;
+
+        //// Right hand velocity
+        //for (int i = 0; i < 3; i++)
+        //{
+        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        //}
+        //offset += 3;
+
 
         return (query, offset);
     }
@@ -289,8 +313,7 @@ public class FightController : MotionController
     {
         if(target_lock)
         {
-            Vector3 gamepadaxis = gamepadstick_right;
-            return clampf(std_camera_altitude + 2.0f * dt * gamepadaxis.z, 0.0f, 0.4f * Mathf.PI);
+            return lerpf(camera_altitude, std_camera_altitude, .8f);
         }
         else
         {

@@ -244,9 +244,9 @@ def database_build_matching_features():
     feature_weight_foot_position = 0.75
     feature_weight_foot_velocity = 1.0
     feature_weight_hip_velocity = 1.0
-    feature_weight_trajectory_positions = 1.0
-    feature_weight_trajectory_directions = 1.5
-    feature_weight_torso_position = 1.0
+    feature_weight_trajectory_positions = 1.3
+    feature_weight_trajectory_directions = 1.3
+    feature_weight_torso_position = 1.5
     feature_weight_hands_positions = 0.6
     feature_weight_hands_velocity = 0.6
     offset = 0
@@ -277,7 +277,7 @@ def database_build_matching_features():
 
     if ms.animation_type == 'actions':
         for i in range(nframes):
-            features[i, offset + 1] = action_tags[i]
+            features[i, offset] = action_tags[i]
         offset += 1
 
     print("\n")
@@ -321,6 +321,7 @@ range_stops = database['range_stops']
 
 if ms.animation_type == 'actions':
     action_tags = database['action_tags']
+    print(action_tags.shape[0])
 
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]
