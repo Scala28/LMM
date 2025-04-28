@@ -37,7 +37,7 @@ def load_database(filename):
         if 'terrain' not in ms.controller_type:
             if ms.animation_type == 'actions':
                 ntags = struct.unpack('I', f.read(4))[0]
-                action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=nranges).reshape([nranges])
+                action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=ntags).reshape([ntags])
             return {
                 'bone_positions': bone_positions,
                 'bone_rotations': bone_rotations,
@@ -59,7 +59,7 @@ def load_database(filename):
                                                  count=nframes*ntoe_trajectories).reshape([nframes, 3, 2, 3])
         if ms.settings_animations == 'actions':
             ntags = struct.unpack('I', f.read(4))[0]
-            action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=nranges).reshape([nranges])
+            action_tags = np.frombuffer(f.read(ntags * 4), dtype=np.int32, count=ntags).reshape([ntags])
 
         return {
             'bone_positions': bone_positions,

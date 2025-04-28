@@ -279,6 +279,7 @@ def database_build_matching_features():
         for i in range(nframes):
             features[i, offset] = action_tags[i]
         offset += 1
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
 
     print("\n")
     if nfeatures != offset:
@@ -321,7 +322,6 @@ range_stops = database['range_stops']
 
 if ms.animation_type == 'actions':
     action_tags = database['action_tags']
-    print(action_tags.shape[0])
 
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]

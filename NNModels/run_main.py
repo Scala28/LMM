@@ -35,35 +35,35 @@ if __name__ == "__main__":
     backup_old_executions_settings()
 
     if 'parse_bvh' in settings.settings_run_components:
-        print("Starting BVH parsing ...")
+        print("Starting BVH parsing ...\n")
         parse_input_animations(settings.settings_animations)
 
     venv_path = "C:/Users/lucas/AppData/Local/Programs/Python/Python39/python.exe"
 
     if 'generate_database' in settings.settings_run_components:
-        print("Generating database ...")
+        print("Generating database ...\n")
         subprocess.run([venv_path, "generate/generate_database_{0}.py".format(settings.controller_type)])
-        print("Generating root direction bvh ...")
+        print("Generating root direction bvh ...\n")
         subprocess.run([venv_path, "generate/root_direction_tester.py".format(settings.controller_type)])
 
     if 'generate_features' in settings.settings_run_components:
-        print("Generating features ...")
+        print("Generating features ...\n")
         subprocess.run([venv_path, "generate/generate_features_{0}.py".format(settings.controller_type)])
 
     if 'train_decompressor' in settings.settings_run_components:
-        print("Starting decompressor training ...")
+        print("Starting decompressor training ...\n")
         subprocess.run([venv_path, "trainings/train_decompressor_{0}.py".format(settings.controller_type)])
 
     if 'train_projector' in settings.settings_run_components:
-        print("Starting projector training ...")
+        print("Starting projector training ...\n")
         subprocess.run([venv_path, "trainings/train_projector.py"])
 
     if 'train_stepper' in settings.settings_run_components:
-        print("Starting stepper training ...")
+        print("Starting stepper training ...\n")
         subprocess.run([venv_path, "trainings/train_stepper.py"])
 
     if 'train_stepper_projector' in settings.settings_run_components:
-        print("Starting stepper and projector training ...")
+        print("Starting stepper and projector training ...\n")
         process1 = subprocess.Popen([venv_path, "trainings/train_stepper.py"])
         process2 = subprocess.Popen([venv_path, "trainings/train_projector.py"])
         process1.wait()

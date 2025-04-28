@@ -275,7 +275,7 @@ range_starts = np.array(range_starts).astype(np.int32)
 range_stops = np.array(range_stops).astype(np.int32)
 
 if ms.animation_type == 'actions':
-    action_tags = np.concatenate(action_tags, axis=0).astype(np.uint8)
+    action_tags = np.concatenate(action_tags, axis=0).astype(np.int32)
 
 """ Write Database """
 

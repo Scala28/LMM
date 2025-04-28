@@ -214,6 +214,13 @@ def database_build_matching_features():
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_trajectory_direction_feature(offset, feature_weight_trajectory_directions)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+
+    if ms.animation_type == 'actions':
+        for i in range(nframes):
+            features[i, offset] = action_tags[i]
+        offset += 1
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    
     print("\n")
     if nfeatures != offset:
         print("\nAssertion error!")
@@ -252,9 +259,14 @@ bone_angular_velocities = database['bone_angular_velocities']
 bone_parents = database['bone_parents']
 range_starts = database['range_starts']
 range_stops = database['range_stops']
+
+if ms.animation_type == 'actions':
+    action_tags = database['action_tags']
+
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]
-nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6
+nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + (1 if ms.animation_type == 'actions' else 0)
+
 features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)
 features_scale = np.zeros(nfeatures)
