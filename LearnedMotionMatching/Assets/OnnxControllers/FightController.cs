@@ -478,7 +478,7 @@ public class FightController : MotionController
         }
         else
         {
-            Vector4 adjusted_rotation = simulation_rotation;
+            Vector4 adjusted_rotation = target_lock? pose.root_rotation : simulation_rotation;
             simulation_position = pose.root_position;
             Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
                     simulation_position, adjusted_rotation);

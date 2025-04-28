@@ -22,7 +22,7 @@ MonoBehaviour:
   db_filename: terrain/terrain1/database.bin
   features_filename: terrain/terrain1/features.bin
   latent_filename: terrain/terrain1/latent.bin
-  camera_azimuth: 0
+  camera_azimuth: 1.3333334
   camera_altitude: 0.4
   camera_distance: 4
   FPS: 60
