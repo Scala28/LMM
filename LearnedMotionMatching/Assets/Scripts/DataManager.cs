@@ -642,6 +642,7 @@ public static class DataManager
                 cols = reader.ReadInt32();
                 db.contact_states = readBool_toArray2d(reader, rows, cols);
             }
+
             if (action)
             {
                 int count = reader.ReadInt32();

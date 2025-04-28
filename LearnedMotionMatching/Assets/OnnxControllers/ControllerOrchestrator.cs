@@ -75,10 +75,11 @@ public class ControllerOrchestrator : MonoBehaviour
     public bool rigged = true;
     [ConditionalField("rigged", false)]
     [SerializeField] private string ch_filename;
+    private DataManager.character ch;
     private Mesh mesh;
 
     public bool read_database = false;
-    private DataManager.character ch;
+    public bool read_actions = false;
 
     public bool gizmos = false;
 
@@ -166,6 +167,12 @@ public class ControllerOrchestrator : MonoBehaviour
             global_pose = current_controller.motion_controller.GetFrameDatabase();
             display_frame_pose();
             current_controller.motion_controller.NextFrame();
+            return;
+        }else if(read_actions)
+        {
+            global_pose = current_controller.motion_controller.GetFrameAction(0);
+            display_frame_pose();
+            current_controller.motion_controller.actions[0].NextFrame();
             return;
         }
 

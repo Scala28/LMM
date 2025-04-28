@@ -237,6 +237,9 @@ public abstract class MotionController : ScriptableObject
 
         latent_curr = new float[latents[0].Length];
         latent_proj = new float[latents[0].Length];
+
+        foreach (Motion_Action action in actions)
+            action.SetUp(this, controller.controllers.Find(x => x.motion_controller == this).behaviour);
     }
 
     #region Init
@@ -623,8 +626,7 @@ public abstract class MotionController : ScriptableObject
             pose.joints[i - 1].velocity = db.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = db.bone_angular_velocities[frame_index][i];
         }
-        adjusted_bones_pose = pose.DeepClone();
-        kinematics.forward_kinamatic_full(db, ref global_pose, adjusted_bones_pose);
+        kinematics.forward_kinamatic_full(db, ref global_pose, pose);
 
         return global_pose;
     }
@@ -640,6 +642,15 @@ public abstract class MotionController : ScriptableObject
             _out.Add(Quat.quat_mul_vec(db.bone_rotations[frame_index][0], loc_pos) + db.bone_positions[frame_index][0]);
         }
         return _out;
+    }
+    public Pose GetFrameAction(int action_idx)
+    {
+        int action_tag;
+        (pose, action_tag) = actions[action_idx].GetFrameAction();
+        kinematics.forward_kinamatic_full(db, ref global_pose, pose);
+        Debug.Log("action-tag: " + action_tag);
+
+        return global_pose;
     }
     public void NextFrame() => frame_index += 1;
     #endregion
@@ -671,15 +682,36 @@ public class Motion_Action
     private DataManager.database database;
     private int frame_index;
 
-    public int FPS;
     private float dt;
+
+    private Pose pose;
 
     public void SetUp(MotionController controller, Behaviour behav)
     {
         _controller = controller;
-        dt = 1f / FPS;
+        dt = 1f / controller.FPS;
         database = DataManager.load_database("Data/" + ations_filename, behav, true);
+        frame_index = database.range_starts[0];
+        pose = pose = new Pose(database.nbones(), database.ncontacts());
     }
 
+    public (Pose, int) GetFrameAction()
+    {
+        pose.root_position = database.bone_positions[frame_index][0];
+        pose.root_rotation = database.bone_rotations[frame_index][0];
+        pose.root_velocity = database.bone_velocities[frame_index][0];
+        pose.root_angular_velocity = database.bone_angular_velocities[frame_index][0];
 
+        for (int i = 1; i < database.nbones(); i++)
+        {
+            pose.joints[i - 1].position = database.bone_positions[frame_index][i];
+            pose.joints[i - 1].rotation = database.bone_rotations[frame_index][i];
+            pose.joints[i - 1].velocity = database.bone_velocities[frame_index][i];
+            pose.joints[i - 1].angular_velocity = database.bone_angular_velocities[frame_index][i];
+        }
+
+        return (pose, database.action_tags[frame_index]);
+    }
+
+    public void NextFrame() => frame_index++;
 }
