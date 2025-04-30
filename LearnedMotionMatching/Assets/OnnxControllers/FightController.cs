@@ -60,7 +60,7 @@ public class FightController : MotionController
 
         return Quat.quat_mul_vec(simulation_rotation, local_desired_velocity);
     }
-    public Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, float camera_azimuth, bool target_lock, Vector3 desired_velocity)
+    public Vector4 desired_rotation_update(Vector4 desired_rotation, Vector3 gamepad_stickleft, float camera_azimuth, bool target_lock, bool move_torso, Vector3 desired_velocity)
     {
         Vector4 desired_rotation_curr = desired_rotation;
         if (target_lock)
@@ -69,7 +69,7 @@ public class FightController : MotionController
             return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
         }
         // stick as long as that stick is being used
-        else if (length(gamepad_stickleft) > 0.01f)
+        else if (length(gamepad_stickleft) > 0.01f && !move_torso)
         {
             Vector3 desired_dir = Quat.vec_normalize(desired_velocity);
             return Quat.quat_from_angle_axis(Mathf.Atan2(desired_dir.x, desired_dir.z), new Vector3(0f, 1f, 0f));
@@ -103,7 +103,7 @@ public class FightController : MotionController
         velocity = eydt * (j0 + j1 * dt) + desired_velocity;
         acceleration = eydt * (acceleration - j1 * y * dt);
     }
-    public void trajectory_desired_rotations_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camera_azimuth, bool target_lock, float dt)
+    public void trajectory_desired_rotations_predict(Vector3 gamepadstick_left, Vector3 gamepadstick_right, float camera_azimuth, bool target_lock, bool move_torso, float dt)
     {
         trajectory_desired_rotations[0] = desired_rotation;
 
@@ -114,6 +114,7 @@ public class FightController : MotionController
                 gamepadstick_left,
                 orbit_camera_azimuth(camera_azimuth, target_lock, gamepadstick_right, i * dt),
                 target_lock,
+                move_torso,
                 trajectory_desired_velocities[i]);
         }
     }
@@ -167,7 +168,7 @@ public class FightController : MotionController
                 dt);
         }
     }
-    public (float[], int) compute_query_vector(Vector3 rightStick, bool target_lock)
+    public (float[], int) compute_query_vector(Vector3 torso_)
     {
         float[] query = new float[db.nfeatures()];
         int offset = 0;
@@ -243,7 +244,7 @@ public class FightController : MotionController
         hips_gp.y = 0f;
         busto_gp.y = 0f;
 
-        Vector3 input_torso = target_lock ? rightStick / 5f + offset_busto_zero : offset_busto_zero;
+        Vector3 input_torso = torso_ / 5f + offset_busto_zero;
 
         Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, busto_gp - hips_gp);
 
@@ -254,6 +255,7 @@ public class FightController : MotionController
         query[offset + 4] = input_torso.x;
         query[offset + 5] = input_torso.z;
         offset += 6;
+
 
         return (query, offset);
     }
@@ -320,14 +322,14 @@ public class FightController : MotionController
         Vector3 stickLeft = controller.input_handler.StickLeft;
         Vector3 stickRight = controller.input_handler.StickRight;
         bool target_lock = false;
-        if(controller.input_handler.LeftTrigger)
-            try
-            {
-                Target = GameObject.FindGameObjectWithTag("target").transform;
-                target_lock = true;
+        bool move_torso = controller.input_handler.LeftTrigger;
+        try
+        {
+            Target = GameObject.FindGameObjectWithTag("target").transform;
+            target_lock = true;
 
-            }
-            catch { }
+        }
+        catch { }
 
         compute_torso_multiplier(target_lock, stickRight);
 
@@ -336,10 +338,10 @@ public class FightController : MotionController
         simulation_back_speed = simulation_std_back_speed * rightStick_speed_multiplier;
 
         // Get the desired velocity
-        Vector3 desired_velocity_curr = desired_velocity_update(stickLeft, camera_azimuth, simulation_rotation);
+        Vector3 desired_velocity_curr = desired_velocity_update(move_torso? Vector3.zero : stickLeft, camera_azimuth, simulation_rotation);
 
         // Get the desired rotation/direction
-        Vector4 desired_rotation_curr = desired_rotation_update(desired_rotation, stickLeft, camera_azimuth, target_lock, desired_velocity_curr); 
+        Vector4 desired_rotation_curr = desired_rotation_update(desired_rotation, stickLeft, camera_azimuth, target_lock, move_torso, desired_velocity_curr); 
 
         desired_velocity_change_prev = desired_velocity_change_curr;
         desired_velocity_change_curr = (desired_velocity_curr - desired_velocity) / dt;
@@ -363,17 +365,17 @@ public class FightController : MotionController
         else if (force_search_timer > 0f)
             force_search_timer -= dt;
 
-        trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, target_lock, 20f * dt);
+        trajectory_desired_rotations_predict(move_torso ? Vector3.zero : stickLeft, stickRight, camera_azimuth, target_lock, move_torso, 20f * dt);
         trajectory_rotations_predict(20.0f * dt);
 
-        trajectory_desired_velocities_predict(stickLeft, stickRight, camera_azimuth, target_lock, dt);
+        trajectory_desired_velocities_predict(move_torso ? Vector3.zero : stickLeft, stickRight, camera_azimuth, target_lock, dt);
         trajectory_positions_predict(20.0f * dt);
 
         // Do we need to search?
         if (force_search || search_timer <= 0.0f)
         {
             // Compute the features of the query vector
-            (float[] query, int offset) = compute_query_vector(stickRight, target_lock);
+            (float[] query, int offset) = compute_query_vector(move_torso ? stickLeft : Vector3.zero);
 
             Debug.Assert(offset == db.nfeatures());
 

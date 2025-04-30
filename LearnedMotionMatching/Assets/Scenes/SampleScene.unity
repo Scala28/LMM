@@ -5698,7 +5698,7 @@ MonoBehaviour:
   rigged: 1
   ch_filename: 
   read_database: 0
-  read_actions: 1
+  read_actions: 0
   gizmos: 1
 --- !u!1 &2066386692105713107
 GameObject:
