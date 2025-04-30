@@ -176,3 +176,5 @@ if __name__ == '__main__':
 
         if i % 1000 == 0:
             scheduler.step()
+
+    print('\n')

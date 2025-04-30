@@ -255,35 +255,6 @@ public class FightController : MotionController
         query[offset + 5] = input_torso.z;
         offset += 6;
 
-        //// Left hand pos
-        //for (int i = 0; i < 3; i++)
-        //{
-        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
-        //}
-        //offset += 3;
-
-        //// Right hand pos
-        //for (int i = 0; i < 3; i++)
-        //{
-        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
-        //}
-        //offset += 3;
-
-        //// Left hand velocity
-        //for (int i = 0; i < 3; i++)
-        //{
-        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
-        //}
-        //offset += 3;
-
-        //// Right hand velocity
-        //for (int i = 0; i < 3; i++)
-        //{
-        //    query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
-        //}
-        //offset += 3;
-
-
         return (query, offset);
     }
     private float orbit_camera_azimuth(float azimuth, bool target_lock, Vector3 gamepadstick_right, float dt)

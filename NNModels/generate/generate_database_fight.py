@@ -151,7 +151,7 @@ for filename, start, stop, root_approach, toe_info, action_params, speed_up_fact
                 for i in range(3):  # Process each Euler axis separately
                     smoothed[:, 0, i] = gaussian_filter1d(sim_direction[:, 0, i].flatten(), sigma=window_size,
                                                           mode="nearest")
-            savgol_filter_param = 61 if ms.animation_type == 'move' else 20
+            savgol_filter_param = 61 if ms.animation_type == 'move' else 10
             sim_direction = smoothed / np.sqrt(np.sum(np.square(smoothed), axis=-1))[..., np.newaxis]
             sim_direction = signal.savgol_filter(sim_direction, savgol_filter_param, 3, axis=0, mode='interp')
             sim_direction = sim_direction / np.sqrt(np.sum(np.square(sim_direction), axis=-1)[..., np.newaxis])

@@ -545,6 +545,7 @@ public class TerrainController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
+
     #region clamping
     protected override Vector3 clamp_character_position(Vector3 character_position, Vector3 simulation_position, float max_distance)
     {

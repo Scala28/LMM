@@ -677,8 +677,8 @@ public class Motion_Action
 {
     private MotionController _controller;
 
-    [SerializeField]
-    private string ations_filename;
+    [SerializeField] private string database_filename;
+
     private DataManager.database database;
     private int frame_index;
 
@@ -690,7 +690,7 @@ public class Motion_Action
     {
         _controller = controller;
         dt = 1f / controller.FPS;
-        database = DataManager.load_database("Data/" + ations_filename, behav, true);
+        database = DataManager.load_database("Data/" + database_filename, behav, true);
         frame_index = database.range_starts[0];
         pose = pose = new Pose(database.nbones(), database.ncontacts());
     }
