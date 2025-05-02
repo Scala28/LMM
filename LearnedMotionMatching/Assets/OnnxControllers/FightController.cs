@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
@@ -30,11 +31,18 @@ public class FightController : MotionController
 
 
     #region Trajectory & Gameplay Data
+    public void check_action_input()
+    {
+        Dictionary<int, bool> actions = controller.input_handler.actions;
+        (int action_tag, bool value) = actions.FirstOrDefault(x => x.Value == true);
+        input_action_tag = action_tag;
+    }
     public void compute_torso_multiplier(bool target_lock, Vector3 rightStick)
     {
         if (target_lock)
         {
-            rightStick_speed_multiplier = clampf(1f - rightStick.sqrMagnitude, rightStick_speed_penalizer_min, 1f);
+            //rightStick_speed_multiplier = clampf(1f - rightStick.sqrMagnitude, rightStick_speed_penalizer_min, 1f);
+            rightStick_speed_multiplier = 1f;
         }
         else
         {
@@ -259,6 +267,15 @@ public class FightController : MotionController
 
         return (query, offset);
     }
+    public float[] compute_action_query(Vector3  torso_)
+    {
+        (float[] query, int offset) = compute_query_vector(torso_);
+        float[] action_query = new float[offset + 1];
+        Array.Copy(query, action_query, query.Length);
+        action_query[offset] = input_action_tag;
+
+        return action_query;
+    }
     private float orbit_camera_azimuth(float azimuth, bool target_lock, Vector3 gamepadstick_right, float dt)
     {
         if (target_lock)
@@ -332,6 +349,32 @@ public class FightController : MotionController
         catch { }
 
         compute_torso_multiplier(target_lock, stickRight);
+
+        check_action_input();
+        if(input_action_tag > 0 && current_action_tag == 0)
+        {
+            float[] query = compute_action_query(move_torso ? stickLeft : Vector3.zero);
+            if(input_action_tag != 0)
+                controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
+            actions[0].database_search(query, true);
+            current_action_tag = input_action_tag;
+        }
+        else if(current_action_tag > 0)
+        {
+            float[] action_features;
+            float[] action_latent;
+            actions[0].tansform_local_pose_action(ref pose, out action_features, out action_latent);
+
+            if (action_features[action_features.Length - 1] == 0 && input_action_tag > 0)
+                current_action_tag = 0;
+
+            kinematics.forward_kinamatic_full(db, ref global_pose, pose);
+            bool end_of_anim = actions[0].NextFrame();
+            if (end_of_anim)
+                current_action_tag = 0;
+            return (global_pose, action_features, action_latent);
+        }
+        
 
         simulation_fwrd_speed = simulation_std_frwd_speed * rightStick_speed_multiplier;
         simulation_side_speed = simulation_std_side_speed * rightStick_speed_multiplier;

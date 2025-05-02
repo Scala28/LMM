@@ -1253,6 +1253,7 @@ MonoBehaviour:
   RightShoulder: 0
   LeftTrigger: 0
   deadzone: 0.2
+  input_buffering_time: 0.2
 --- !u!114 &619851157
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2112,6 +2113,7 @@ MonoBehaviour:
   RightShoulder: 0
   LeftTrigger: 0
   deadzone: 0.2
+  input_buffering_time: 0.2
 --- !u!114 &852832056
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2777,6 +2779,7 @@ MonoBehaviour:
   RightShoulder: 0
   LeftTrigger: 0
   deadzone: 0.2
+  input_buffering_time: 0.2
 --- !u!114 &1013524423
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5138,6 +5141,7 @@ MonoBehaviour:
   RightShoulder: 0
   LeftTrigger: 0
   deadzone: 0.2
+  input_buffering_time: 0.2
 --- !u!114 &919132148757540219
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8756,6 +8760,7 @@ MonoBehaviour:
   RightShoulder: 0
   LeftTrigger: 0
   deadzone: 0.2
+  input_buffering_time: 0.1
 --- !u!1 &7426991354884244887
 GameObject:
   m_ObjectHideFlags: 0
@@ -9388,6 +9393,38 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 5ce7454f-25f3-4aca-ad86-045a4fdfe6e5
     m_ActionName: fight/change target[/Keyboard/shift]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 7410056235954719429}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnActionCalled
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: e2c1c811-813d-4be7-a10b-49f829796cdb
+    m_ActionName: fight/actions[/Keyboard/1]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 7410056235954719429}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnActionCalled
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 05fe2531-6373-485c-9263-bcd56058d847
+    m_ActionName: fight/2[/Keyboard/2]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: locomotion

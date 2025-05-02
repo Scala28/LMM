@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,25 +7,40 @@ using UnityEngine.InputSystem;
 public class InputHandler : MonoBehaviour
 {
     private PlayerInput _playerInput;
+    private InputActionMap _actionMap;
 
     #region Inputs
-    public Vector2 Raw_stickLeft;
-    public Vector3 StickLeft;
-    public Vector2 Raw_stickRight;
-    public Vector3 StickRight;
+    private Vector2 Raw_stickLeft;
+    public Vector3 StickLeft { get; private set; }
+    private Vector2 Raw_stickRight;
+    public Vector3 StickRight { get; private set; }
 
-    public bool RightShoulder;
-    public bool LeftTrigger;
+    public bool RightShoulder { get; private set; }
+    public bool LeftTrigger { get; private set; }
+
+    public Dictionary<int, bool> actions { get; private set; }
     #endregion
 
-    #region Smooth movement input
+    #region Options
     [Header("Input options")]
     public float deadzone = .2f;
+    public float input_buffering_time = .1f;
     #endregion
 
     void Start()
     {
         _playerInput = GetComponent<PlayerInput>();
+        actions = new Dictionary<int, bool>
+        {
+            { 1, false },
+            { 2, false },
+            { 3, false },
+            { 4, false }
+        };
+    }
+    private void Update()
+    {
+        _actionMap = _playerInput.currentActionMap;
     }
 
     #region Input event callbacks
@@ -75,6 +91,26 @@ public class InputHandler : MonoBehaviour
     {
         if (context.started)
             RightShoulder = !RightShoulder;
+        switch (_actionMap.name)
+        {
+            case "plane":
+                if (context.started)
+                    RightShoulder = !RightShoulder;
+                break;
+            case "terrain":
+                if (context.started)
+                    RightShoulder = !RightShoulder;
+                break;
+            case "fight":
+                if (context.started)
+                    RightShoulder = true;
+                else if(context.canceled)
+                    StartCoroutine(ResetBoolAfterDelay(val => RightShoulder = val, false, input_buffering_time)); 
+                break;
+            default:
+                break;
+
+        }
     }
     public void OnLeftTrigger(InputAction.CallbackContext context)
     {
@@ -85,5 +121,24 @@ public class InputHandler : MonoBehaviour
         if (context.canceled)
             LeftTrigger = false;
     }
+
+    public void OnActionCalled(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            int action_tag = int.Parse(context.action.name);
+            actions[action_tag] = true;
+        }else if(context.canceled)
+        {
+            int action_tag = int.Parse(context.action.name);
+            StartCoroutine(ResetBoolAfterDelay(val => actions[action_tag] = val, false, input_buffering_time));
+        }
+    }
     #endregion
+    public void SetButton(Action<bool> setter, bool value = false) => setter(value);
+    private IEnumerator ResetBoolAfterDelay(System.Action<bool> setter, bool value, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        setter(value);
+    }
 }

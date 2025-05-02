@@ -16,8 +16,8 @@ public static class DataManager
 
     #region Build Matching features
 
-    private const int BOUND_SM_SIZE = 16;
-    private const int BOUND_LR_SIZE = 64;
+    private const int BOUND_SM_SIZE = 2;
+    private const int BOUND_LR_SIZE = 8;
 
     private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales,
         int offset, int size, float weight = 1.0f)
@@ -207,7 +207,7 @@ public static class DataManager
 
         offset += 6;
     }
-    private static void database_build_bounds(ref database db)
+    public static void database_build_bounds(ref database db)
     {
         int nbound_sm = ((db.nframes() + BOUND_SM_SIZE - 1) / BOUND_SM_SIZE);
         int nbound_lr = ((db.nframes() + BOUND_LR_SIZE - 1) / BOUND_LR_SIZE);
@@ -804,7 +804,20 @@ public static class DataManager
 
             return -1;
         }
+        public int database_get_animation_index(int frame)
+        {
+            for (int i = 0; i < this.nranges(); i++)
+            {
+                if (frame >= this.range_starts[i] && frame < this.range_stops[i])
+                {
+                    return i;
+                }
+            }
 
+            Debug.Assert(false);
+
+            return -1;
+        }
 
     }
     public struct character

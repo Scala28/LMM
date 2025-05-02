@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
+using UnityEditor.TerrainTools;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 public abstract class MotionController : ScriptableObject
@@ -165,8 +166,10 @@ public abstract class MotionController : ScriptableObject
     protected float clamping_max_angle = .5f * Mathf.PI;
     #endregion
 
-    public List<Motion_Action> actions;
 
+    public List<Motion_Action> actions;
+    protected int current_action_tag = 0;
+    protected int input_action_tag = 0;
 
     protected float dt;
 
@@ -240,6 +243,9 @@ public abstract class MotionController : ScriptableObject
 
         foreach (Motion_Action action in actions)
             action.SetUp(this, controller.controllers.Find(x => x.motion_controller == this).behaviour);
+
+        input_action_tag = 0;
+        current_action_tag = 0;
     }
 
     #region Init
@@ -646,7 +652,7 @@ public abstract class MotionController : ScriptableObject
     public Pose GetFrameAction(int action_idx)
     {
         int action_tag;
-        (pose, action_tag) = actions[action_idx].GetFrameAction();
+        (pose, action_tag) = actions[action_idx].GetFramePose();
         kinematics.forward_kinamatic_full(db, ref global_pose, pose);
         Debug.Log("action-tag: " + action_tag);
 
@@ -678,25 +684,48 @@ public class Motion_Action
     private MotionController _controller;
 
     [SerializeField] private string database_filename;
+    [SerializeField] private string features_filename;
+    [SerializeField] private string latent_filename;
+
+    [SerializeField] private NNModel decompressor;
+    [SerializeField] private string decompressor_name;
+    private IWorker decompressor_inference;
+    private Model decompressor_nn;
+
+    private float[][] features;
+    private float[] features_offset, features_scale;
+    private float[][] latent;
 
     private DataManager.database database;
     private int frame_index;
 
     private float dt;
 
-    private Pose pose;
+
+    private const int BOUND_LR_SIZE = 8;
+    private const int BOUND_SM_SIZE = 2;
 
     public void SetUp(MotionController controller, Behaviour behav)
     {
         _controller = controller;
         dt = 1f / controller.FPS;
         database = DataManager.load_database("Data/" + database_filename, behav, true);
+        (database.features, database.features_offset, database.features_scale) = DataManager.load_features("Data/" + features_filename);
+        (features, features_offset, features_scale) = (database.features, database.features_offset, database.features_scale);
+        DataManager.database_build_bounds(ref database);
+        latent = DataManager.load_latent("Data/" + latent_filename);
+
+        decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+            ModelLoader.Load(decompressor));
+        decompressor_nn = DataManager.Load_net_fromParameters("NNModels/" + decompressor_name);
+
+
         frame_index = database.range_starts[0];
-        pose = pose = new Pose(database.nbones(), database.ncontacts());
     }
 
-    public (Pose, int) GetFrameAction()
+    public (Pose, int) GetFramePose()
     {
+        Pose pose = new Pose(database.nbones(), database.ncontacts());
         pose.root_position = database.bone_positions[frame_index][0];
         pose.root_rotation = database.bone_rotations[frame_index][0];
         pose.root_velocity = database.bone_velocities[frame_index][0];
@@ -713,5 +742,180 @@ public class Motion_Action
         return (pose, database.action_tags[frame_index]);
     }
 
-    public void NextFrame() => frame_index++;
+    public bool NextFrame()
+    {
+        int next = database.database_trajectory_index_clamp(frame_index, 1);
+        bool end_of_anim = next == frame_index;
+        frame_index++;
+        return end_of_anim;
+    }
+
+    public void tansform_local_pose_action(ref Pose pose, out float[] features_curr, out float[] latent_curr)
+    {
+        pose.root_velocity = database.bone_velocities[frame_index][0];
+        pose.root_angular_velocity = database.bone_angular_velocities[frame_index][0];
+
+        for (int i = 1; i < database.nbones(); i++)
+        {
+            pose.joints[i - 1].position = database.bone_positions[frame_index][i];
+            pose.joints[i - 1].rotation = database.bone_rotations[frame_index][i];
+            pose.joints[i - 1].velocity = database.bone_velocities[frame_index][i];
+            pose.joints[i - 1].angular_velocity = database.bone_angular_velocities[frame_index][i];
+        }
+        features_curr = new float[features[frame_index].Length];
+        Array.Copy(features[frame_index], features_curr, features_curr.Length);
+        latent_curr = new float[latent[frame_index].Length];
+        Array.Copy(latent[frame_index], latent_curr, latent_curr.Length);
+    }
+    public Pose evaluate_decompressor(float[] features, float[] latents, Pose current_pose, Behaviour behav)
+    {
+        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, features.Length + latents.Length));
+        for (int i = 0; i < features.Length; i++)
+            decompressor_in[i] = features[i];
+        for (int i = 0; i < latents.Length; i++)
+            decompressor_in[i + features.Length] = latents[i];
+
+        //nnLayer_normalize(decompressor_in, decompressor_nn);
+        decompressor_inference.Execute(decompressor_in);
+        Tensor decompressor_out = decompressor_inference.PeekOutput();
+        decompressor_nn.nnLayer_denormalize(decompressor_out);
+
+        decompressor_in.Dispose();
+        decompressor_out.Dispose();
+
+        return Parser.parse_decompressor_out(decompressor_out, current_pose, database.nbones(), database.ncontacts(), behav);
+
+    }
+    #region Database search
+    public void database_search(float[] query, bool first_action, float transition_cost = 0.0f)
+    {
+        Debug.Assert(query.Length == database.nfeatures());
+
+        float[] query_normalized = new float[query.Length];
+        for (int i = 0; i < database.nfeatures()-1; i++)
+        {
+            query_normalized[i] = (query[i] - features_offset[i]) / features_scale[i];
+        }
+        query_normalized[database.nfeatures() - 1] = query[database.nfeatures() - 1];
+
+        int best_idx = frame_index;
+        float best_cost = float.MaxValue;
+
+        motion_matching(ref best_idx, ref best_cost, query_normalized, transition_cost);
+
+        frame_index = first_action ? database.range_starts[database.database_get_animation_index(best_idx)] : best_idx;
+
+    }
+
+    private void motion_matching(ref int best_idx, ref float best_cost, float[] query_n, float transition_cost)
+    {
+        float ACTION_TAG = query_n[query_n.Length - 1];
+
+        int curr_idx = best_idx;
+        if (best_idx != -1)
+        {
+            best_cost = 0.0f;
+            for (int i = 0; i < database.nfeatures(); i++)
+            {
+                best_cost += squaref(query_n[i] - features[best_idx][i]);
+            }
+        }
+
+        float curr_cost = 0.0f;
+
+        for (int r = 0; r < database.nranges(); r++)
+        {
+            int i = database.range_starts[r];
+            int end_range = database.range_stops[r];
+            while (i < end_range)
+            {
+                if (features[i][database.nfeatures() - 1] != ACTION_TAG) // Skip frames with action_tag != query ACTION_TAG
+                    break;
+
+                // Find index of current and next large box
+                int i_lr = i / BOUND_LR_SIZE;
+                int i_lr_next = (i_lr + 1) * BOUND_LR_SIZE;
+
+                // Find distance to box
+                curr_cost = transition_cost;
+                for (int j = 0; j < database.nfeatures(); j++)
+                {
+                    curr_cost += squaref(query_n[j] - clampf(query_n[j],
+                        database.bound_lr_min[i_lr][j], database.bound_lr_max[i_lr][j]));
+
+                    if (curr_cost >= best_cost)
+                    {
+                        break;
+                    }
+                }
+
+                // If distance is greater than current best jump to next box
+                if (curr_cost >= best_cost)
+                {
+                    i = i_lr_next;
+                    continue;
+                }
+
+                // Check against small box
+                while (i < i_lr_next && i < end_range)
+                {
+                    // Find index of current and next small box
+                    int i_sm = i / BOUND_SM_SIZE;
+                    int i_sm_next = (i_sm + 1) * BOUND_SM_SIZE;
+
+                    // Find distance to box
+                    curr_cost = transition_cost;
+                    for (int j = 0; j < database.nfeatures(); j++)
+                    {
+                        curr_cost += squaref(query_n[j] - clampf(query_n[j],
+                            database.bound_sm_min[i_sm][j], database.bound_sm_max[i_sm][j]));
+
+                        if (curr_cost >= best_cost)
+                        {
+                            break;
+                        }
+                    }
+                    // If distance is greater than current best jump to next box
+                    if (curr_cost >= best_cost)
+                    {
+                        i = i_sm_next;
+                        continue;
+                    }
+
+                    // Search inside small box
+                    while (i < i_sm_next && i < end_range)
+                    {
+
+                        // Check against each frame inside small box
+                        curr_cost = transition_cost;
+                        for (int j = 0; j < database.nfeatures(); j++)
+                        {
+                            curr_cost += squaref(query_n[j] - features[i][j]);
+                            if (curr_cost >= best_cost)
+                            {
+                                break;
+                            }
+                        }
+
+                        // If cost is lower than current best then update best
+                        if (curr_cost < best_cost)
+                        {
+                            best_idx = i;
+                            best_cost = curr_cost;
+                        }
+
+                        i++;
+
+                    }
+
+                }
+            }
+        }
+    }
+    #endregion
+    protected float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
+    protected float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
+    protected float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+    protected float squaref(float x) { return x * x; }
 }
+
