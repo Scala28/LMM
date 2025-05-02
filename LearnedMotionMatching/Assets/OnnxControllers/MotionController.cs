@@ -687,11 +687,6 @@ public class Motion_Action
     [SerializeField] private string features_filename;
     [SerializeField] private string latent_filename;
 
-    [SerializeField] private NNModel decompressor;
-    [SerializeField] private string decompressor_name;
-    private IWorker decompressor_inference;
-    private Model decompressor_nn;
-
     private float[][] features;
     private float[] features_offset, features_scale;
     private float[][] latent;
@@ -714,11 +709,6 @@ public class Motion_Action
         (features, features_offset, features_scale) = (database.features, database.features_offset, database.features_scale);
         DataManager.database_build_bounds(ref database);
         latent = DataManager.load_latent("Data/" + latent_filename);
-
-        decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
-            ModelLoader.Load(decompressor));
-        decompressor_nn = DataManager.Load_net_fromParameters("NNModels/" + decompressor_name);
-
 
         frame_index = database.range_starts[0];
     }
@@ -766,26 +756,10 @@ public class Motion_Action
         Array.Copy(features[frame_index], features_curr, features_curr.Length);
         latent_curr = new float[latent[frame_index].Length];
         Array.Copy(latent[frame_index], latent_curr, latent_curr.Length);
+
+        Debug.Log(features_curr[features_curr.Length - 1]);
     }
-    public Pose evaluate_decompressor(float[] features, float[] latents, Pose current_pose, Behaviour behav)
-    {
-        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, features.Length + latents.Length));
-        for (int i = 0; i < features.Length; i++)
-            decompressor_in[i] = features[i];
-        for (int i = 0; i < latents.Length; i++)
-            decompressor_in[i + features.Length] = latents[i];
 
-        //nnLayer_normalize(decompressor_in, decompressor_nn);
-        decompressor_inference.Execute(decompressor_in);
-        Tensor decompressor_out = decompressor_inference.PeekOutput();
-        decompressor_nn.nnLayer_denormalize(decompressor_out);
-
-        decompressor_in.Dispose();
-        decompressor_out.Dispose();
-
-        return Parser.parse_decompressor_out(decompressor_out, current_pose, database.nbones(), database.ncontacts(), behav);
-
-    }
     #region Database search
     public void database_search(float[] query, bool first_action, float transition_cost = 0.0f)
     {
@@ -803,7 +777,7 @@ public class Motion_Action
 
         motion_matching(ref best_idx, ref best_cost, query_normalized, transition_cost);
 
-        frame_index = first_action ? database.range_starts[database.database_get_animation_index(best_idx)] : best_idx;
+        frame_index = first_action ? database.range_starts[database.database_get_animation_index(best_idx)] + 1 : best_idx;
 
     }
 

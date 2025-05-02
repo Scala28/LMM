@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using UnityEditor.Search;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "FightController", menuName = "OnnxMotionController/Fight")]
@@ -354,8 +355,7 @@ public class FightController : MotionController
         if(input_action_tag > 0 && current_action_tag == 0)
         {
             float[] query = compute_action_query(move_torso ? stickLeft : Vector3.zero);
-            if(input_action_tag != 0)
-                controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
+            controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
             actions[0].database_search(query, true);
             current_action_tag = input_action_tag;
         }
@@ -365,8 +365,12 @@ public class FightController : MotionController
             float[] action_latent;
             actions[0].tansform_local_pose_action(ref pose, out action_features, out action_latent);
 
-            if (action_features[action_features.Length - 1] == 0 && input_action_tag > 0)
-                current_action_tag = 0;
+            if (action_features[action_features.Length - 1] == 0 && input_action_tag > 0) {
+                float[] query = compute_action_query(move_torso ? stickLeft : Vector3.zero);
+                controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
+                actions[0].database_search(query, false);
+                current_action_tag = input_action_tag;
+            }
 
             kinematics.forward_kinamatic_full(db, ref global_pose, pose);
             bool end_of_anim = actions[0].NextFrame();
