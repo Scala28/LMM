@@ -170,6 +170,7 @@ public abstract class MotionController : ScriptableObject
     public List<Motion_Action> actions;
     protected int current_action_tag = 0;
     protected int input_action_tag = 0;
+    protected bool first_action = true;
 
     protected float dt;
 
@@ -691,14 +692,13 @@ public class Motion_Action
     private float[] features_offset, features_scale;
     private float[][] latent;
 
+    public int BOUND_LR_SIZE = 8;
+    public int BOUND_SM_SIZE = 2;
+
     private DataManager.database database;
     private int frame_index;
 
     private float dt;
-
-
-    private const int BOUND_LR_SIZE = 8;
-    private const int BOUND_SM_SIZE = 2;
 
     public void SetUp(MotionController controller, Behaviour behav)
     {
@@ -707,7 +707,7 @@ public class Motion_Action
         database = DataManager.load_database("Data/" + database_filename, behav, true);
         (database.features, database.features_offset, database.features_scale) = DataManager.load_features("Data/" + features_filename);
         (features, features_offset, features_scale) = (database.features, database.features_offset, database.features_scale);
-        DataManager.database_build_bounds(ref database);
+        DataManager.database_build_bounds(ref database, BOUND_LR_SIZE, BOUND_SM_SIZE);
         latent = DataManager.load_latent("Data/" + latent_filename);
 
         frame_index = database.range_starts[0];
@@ -775,7 +775,7 @@ public class Motion_Action
         int best_idx = frame_index;
         float best_cost = float.MaxValue;
 
-        motion_matching(ref best_idx, ref best_cost, query_normalized, transition_cost);
+        motion_matching(ref best_idx, ref best_cost, query, transition_cost);
 
         frame_index = first_action ? database.range_starts[database.database_get_animation_index(best_idx)] + 1 : best_idx;
 
@@ -803,12 +803,13 @@ public class Motion_Action
             int end_range = database.range_stops[r];
             while (i < end_range)
             {
-                if (features[i][database.nfeatures() - 1] != ACTION_TAG) // Skip frames with action_tag != query ACTION_TAG
+                float action_tag = features[i][database.nfeatures() - 1];
+                if (action_tag != ACTION_TAG) // Skip frames with action_tag != query ACTION_TAG
                     break;
 
                 // Find index of current and next large box
-                int i_lr = i / BOUND_LR_SIZE;
-                int i_lr_next = (i_lr + 1) * BOUND_LR_SIZE;
+                int i_lr = i / database.BOUND_LR_SIZE;
+                int i_lr_next = (i_lr + 1) * database.BOUND_LR_SIZE;
 
                 // Find distance to box
                 curr_cost = transition_cost;
@@ -834,8 +835,8 @@ public class Motion_Action
                 while (i < i_lr_next && i < end_range)
                 {
                     // Find index of current and next small box
-                    int i_sm = i / BOUND_SM_SIZE;
-                    int i_sm_next = (i_sm + 1) * BOUND_SM_SIZE;
+                    int i_sm = i / database.BOUND_SM_SIZE;
+                    int i_sm_next = (i_sm + 1) * database.BOUND_SM_SIZE;
 
                     // Find distance to box
                     curr_cost = transition_cost;

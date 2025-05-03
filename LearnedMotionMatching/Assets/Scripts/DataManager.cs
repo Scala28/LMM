@@ -16,8 +16,6 @@ public static class DataManager
 
     #region Build Matching features
 
-    private const int BOUND_SM_SIZE = 2;
-    private const int BOUND_LR_SIZE = 8;
 
     private static void normalize_features(float[][] features, float[] feature_offsets, float[] feature_scales,
         int offset, int size, float weight = 1.0f)
@@ -207,7 +205,7 @@ public static class DataManager
 
         offset += 6;
     }
-    public static void database_build_bounds(ref database db)
+    public static void database_build_bounds(ref database db, int BOUND_LR_SIZE, int BOUND_SM_SIZE)
     {
         int nbound_sm = ((db.nframes() + BOUND_SM_SIZE - 1) / BOUND_SM_SIZE);
         int nbound_lr = ((db.nframes() + BOUND_LR_SIZE - 1) / BOUND_LR_SIZE);
@@ -250,6 +248,8 @@ public static class DataManager
                 db.bound_lr_max[i_lr][j] = Mathf.Max(db.bound_lr_max[i_lr][j], db.features[i][j]);
             }
         }
+        db.BOUND_LR_SIZE = BOUND_LR_SIZE;
+        db.BOUND_SM_SIZE = BOUND_SM_SIZE;
     }
     public static void database_build_matching_features(ref database db, float weight_foot_position, float weight_foot_veloity,
         float weight_hip_velocity, float weight_trajectory_position, float weight_trajectory_direction, float weight_trajectory_toe_height, float foot_height)
@@ -276,8 +276,6 @@ public static class DataManager
         compute_bone_height_feature(ref db, ref offset, (int)MotionMatcher.character.Bone_RightToe, foot_height, weight_trajectory_toe_height);
 
         Debug.Assert(offset == nfeatures);
-
-        database_build_bounds(ref db);
     }
     public static void database_save_matching_features(database db, String filename)
     {
@@ -783,6 +781,9 @@ public static class DataManager
         public float[][] bound_sm_max;
         public float[][] bound_lr_min;
         public float[][] bound_lr_max;
+
+        public int BOUND_LR_SIZE;
+        public int BOUND_SM_SIZE;
 
         public int nframes() { return bone_positions.Length; }
         public int nbones() { return bone_positions[0].Length; }
