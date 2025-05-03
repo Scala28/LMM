@@ -397,7 +397,10 @@ public class FightController : MotionController
 
             bool end_of_anim = actions[0].NextFrame();
             if (end_of_anim)
+            {
                 current_action_tag = 0;
+                force_search = true;
+            }
             
             return (global_pose, action_features, action_latent);
         }
@@ -524,7 +527,9 @@ public class FightController : MotionController
             if (move_torso || stickLeft == Vector3.zero)
                 pose.root_position = root_pos_; 
             simulation_position = pose.root_position;
-            simulation_rotation = pose.root_rotation;
+            //simulation_rotation = pose.root_rotation;
+            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    simulation_position, simulation_rotation);
         }
 
         adjusted_bones_pose = pose.DeepClone();

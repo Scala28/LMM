@@ -529,7 +529,9 @@ public class TerrainController : MotionController
                 pose.root_position = root_pos_;
             simulation_position.x = pose.root_position.x;
             simulation_position.z = pose.root_position.z;
-            simulation_rotation = pose.root_rotation;
+            //simulation_rotation = pose.root_rotation;
+            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
+                    simulation_position, simulation_rotation);
         }
 
         adjusted_bones_pose = pose.DeepClone();
