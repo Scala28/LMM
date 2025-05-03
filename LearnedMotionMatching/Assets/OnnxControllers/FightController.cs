@@ -270,12 +270,9 @@ public class FightController : MotionController
     }
     public float[] compute_action_query(Vector3  torso_)
     {
-        //(float[] query, int offset) = compute_query_vector(torso_);
-        //float[] action_query = new float[offset + 1];
-        //Array.Copy(query, action_query, query.Length);
-        //action_query[offset] = input_action_tag;
-        float[] action_query = new float[db.nfeatures() + 1];
+        float[] action_query = new float[db.nfeatures() + 1 + latent_curr.Length];
         Array.Copy(feature_curr, action_query, feature_curr.Length);
+        Array.Copy(latent_curr, 0, action_query, feature_curr.Length + 1, latent_curr.Length);
         action_query[db.nfeatures()] = input_action_tag;
 
         return action_query;
@@ -406,6 +403,7 @@ public class FightController : MotionController
         }
 
         Vector3 root_pos_ = pose.root_position;
+        Vector4 root_rot_ = pose.root_rotation;
 
         simulation_fwrd_speed = simulation_std_frwd_speed * rightStick_speed_multiplier;
         simulation_side_speed = simulation_std_side_speed * rightStick_speed_multiplier;
@@ -523,12 +521,10 @@ public class FightController : MotionController
         }
         else
         {
-            Vector4 adjusted_rotation = target_lock? pose.root_rotation : simulation_rotation;
             if (move_torso || stickLeft == Vector3.zero)
-                pose.root_position = root_pos_;
+                pose.root_position = root_pos_; 
             simulation_position = pose.root_position;
-            //Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-            //        simulation_position, adjusted_rotation);
+            simulation_rotation = pose.root_rotation;
         }
 
         adjusted_bones_pose = pose.DeepClone();

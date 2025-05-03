@@ -394,6 +394,8 @@ public class TerrainController : MotionController
 
         desired_gait_update(gait);
 
+        Vector3 root_pos_ = pose.root_position;
+
         simulation_fwrd_speed = lerpf(simulation_walk_fwrd_speed, simulation_run_fwrd_speed, desired_gait) * terrain_speed_multiplier;
         simulation_side_speed = lerpf(simulation_walk_side_speed, simulation_run_side_speed, desired_gait) * terrain_speed_multiplier;
         simulation_back_speed = lerpf(simulation_walk_back_speed, simulation_run_back_speed, desired_gait) * terrain_speed_multiplier;
@@ -523,11 +525,11 @@ public class TerrainController : MotionController
         }
         else
         {
+            if (stickLeft == Vector3.zero)
+                pose.root_position = root_pos_;
             simulation_position.x = pose.root_position.x;
             simulation_position.z = pose.root_position.z;
-            Vector4 adjusted_rotation = pose.root_rotation;
-            Inertializers.inertialize_root_adjust(ref pose, ref transition_src_position, ref transition_dst_position, transition_src_rotation, ref transition_dst_rotation, ref bone_offset_positions,
-                    simulation_position, adjusted_rotation);
+            simulation_rotation = pose.root_rotation;
         }
 
         adjusted_bones_pose = pose.DeepClone();

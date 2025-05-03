@@ -763,14 +763,7 @@ public class Motion_Action
     #region Database search
     public void database_search(float[] query, bool first_action, float transition_cost = 0.0f)
     {
-        Debug.Assert(query.Length == database.nfeatures());
-
-        float[] query_normalized = new float[query.Length];
-        for (int i = 0; i < database.nfeatures()-1; i++)
-        {
-            query_normalized[i] = (query[i] - features_offset[i]) / features_scale[i];
-        }
-        query_normalized[database.nfeatures() - 1] = query[database.nfeatures() - 1];
+        Debug.Assert(query.Length == database.nfeatures() + latent[0].Length);
 
         int best_idx = frame_index;
         float best_cost = float.MaxValue;
@@ -781,17 +774,21 @@ public class Motion_Action
 
     }
 
-    private void motion_matching(ref int best_idx, ref float best_cost, float[] query_n, float transition_cost)
+    private void motion_matching(ref int best_idx, ref float best_cost, float[] query, float transition_cost)
     {
-        float ACTION_TAG = query_n[query_n.Length - 1];
+        float ACTION_TAG = query[database.nfeatures() - 1];
 
         int curr_idx = best_idx;
+        float[] best = new float[features[0].Length + latent[0].Length];
+        Array.Copy(features[best_idx], best, features[0].Length);
+        Array.Copy(latent[best_idx], 0, best, features[0].Length, latent[0].Length);
+
         if (best_idx != -1)
         {
             best_cost = 0.0f;
-            for (int i = 0; i < database.nfeatures(); i++)
+            for (int i = 0; i < query.Length; i++)
             {
-                best_cost += squaref(query_n[i] - features[best_idx][i]);
+                best_cost += squaref(query[i] - best[i]);
             }
         }
 
@@ -807,6 +804,10 @@ public class Motion_Action
                 if (action_tag != ACTION_TAG) // Skip frames with action_tag != query ACTION_TAG
                     break;
 
+                float[] current = new float[features[0].Length + latent[0].Length];
+                Array.Copy(features[i], current, features[0].Length);
+                Array.Copy(latent[i], 0, current, features[0].Length, latent[0].Length);
+
                 // Find index of current and next large box
                 int i_lr = i / database.BOUND_LR_SIZE;
                 int i_lr_next = (i_lr + 1) * database.BOUND_LR_SIZE;
@@ -815,7 +816,7 @@ public class Motion_Action
                 curr_cost = transition_cost;
                 for (int j = 0; j < database.nfeatures(); j++)
                 {
-                    curr_cost += squaref(query_n[j] - clampf(query_n[j],
+                    curr_cost += squaref(query[j] - clampf(query[j],
                         database.bound_lr_min[i_lr][j], database.bound_lr_max[i_lr][j]));
 
                     if (curr_cost >= best_cost)
@@ -842,7 +843,7 @@ public class Motion_Action
                     curr_cost = transition_cost;
                     for (int j = 0; j < database.nfeatures(); j++)
                     {
-                        curr_cost += squaref(query_n[j] - clampf(query_n[j],
+                        curr_cost += squaref(query[j] - clampf(query[j],
                             database.bound_sm_min[i_sm][j], database.bound_sm_max[i_sm][j]));
 
                         if (curr_cost >= best_cost)
@@ -863,9 +864,9 @@ public class Motion_Action
 
                         // Check against each frame inside small box
                         curr_cost = transition_cost;
-                        for (int j = 0; j < database.nfeatures(); j++)
+                        for (int j = 0; j < query.Length; j++)
                         {
-                            curr_cost += squaref(query_n[j] - features[i][j]);
+                            curr_cost += squaref(query[j] - current[j]);
                             if (curr_cost >= best_cost)
                             {
                                 break;
