@@ -104,8 +104,6 @@ public class InputHandler : MonoBehaviour
             case "fight":
                 if (context.started)
                     RightShoulder = true;
-                else if(context.canceled)
-                    StartCoroutine(ResetBoolAfterDelay(val => RightShoulder = val, false, input_buffering_time)); 
                 break;
             default:
                 break;

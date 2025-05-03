@@ -26,13 +26,14 @@ MonoBehaviour:
   camera_altitude: 0.4
   camera_distance: 4
   FPS: 60
-  simulation_velocity_halflife: 0.27
-  simulation_rotation_halflife: 0.27
+  simulation_velocity_halflife: 0.15
+  simulation_rotation_halflife: 0.15
   inertialize_blending_halflife: 0.1
   ik_enabled: 1
   controller_oriented: 1
   adjustment_enabled: 1
   clamping_enabled: 1
+  actions: []
   simulation_run_fwrd_speed: 3.3
   simulation_run_side_speed: 2.8
   simulation_run_back_speed: 2

@@ -40,6 +40,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "switch",
+                    "type": "Button",
+                    "id": "0e0df195-d6fb-4403-aad3-28af23861650",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -306,6 +315,17 @@
                     "action": "strafe",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c776f325-d072-471a-a617-8c3ba4a4106d",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "switch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },
@@ -380,6 +400,15 @@
                     "name": "4",
                     "type": "Button",
                     "id": "a856866a-0c28-485a-9907-1aad7cf03211",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "switch",
+                    "type": "Button",
+                    "id": "43a2b217-ee05-43f8-8cd8-4759ff163bd3",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -692,6 +721,17 @@
                     "processors": "",
                     "groups": "keyboard",
                     "action": "4",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d3a43dae-c6f6-43f8-a59a-cae56aa0882a",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "keyboard",
+                    "action": "switch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

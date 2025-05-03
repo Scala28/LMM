@@ -174,6 +174,26 @@ public abstract class MotionController : ScriptableObject
 
     protected float dt;
 
+    public void SetController(MotionController other)
+    {
+        this.bone_offset_positions = other.bone_offset_positions;
+        bone_offset_rotations = other.bone_offset_rotations;
+        bone_offset_velocities = other.bone_offset_velocities;
+        bone_offset_angular_velocities = other.bone_offset_angular_velocities;
+
+        transition_src_position = other.transition_src_position;
+        transition_src_rotation = other.transition_src_rotation;
+        transition_dst_position = other.transition_dst_position;
+        transition_dst_rotation = other.transition_dst_rotation;
+
+        simulation_position = other.simulation_position;
+        simulation_velocity = other.simulation_velocity;
+        simulation_acceleration = other.simulation_acceleration;
+        simulation_rotation = other.simulation_rotation;
+        simulation_angular_velocity = other.simulation_angular_velocity;
+
+        pose = other.pose;
+    }
     public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
         dt = 1f / FPS;

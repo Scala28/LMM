@@ -8730,7 +8730,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   deadzone: 0.2
-  input_buffering_time: 0.1
+  input_buffering_time: 0.2
 --- !u!1 &7426991354884244887
 GameObject:
   m_ObjectHideFlags: 0
@@ -9427,6 +9427,38 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: a856866a-0c28-485a-9907-1aad7cf03211
     m_ActionName: fight/4[/Keyboard/4]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 7410056235954719429}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnSwitchController
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 0e0df195-d6fb-4403-aad3-28af23861650
+    m_ActionName: locomotion/switch[/Keyboard/q]
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 7410056235954719429}
+        m_TargetAssemblyTypeName: InputHandler, Assembly-CSharp
+        m_MethodName: OnSwitchController
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 43a2b217-ee05-43f8-8cd8-4759ff163bd3
+    m_ActionName: fight/switch[/Keyboard/q]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: locomotion

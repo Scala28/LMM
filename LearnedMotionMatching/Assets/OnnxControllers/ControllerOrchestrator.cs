@@ -123,40 +123,6 @@ public class ControllerOrchestrator : MonoBehaviour
             vcam.LookAt = camera_lookAt;
         }
     }
-    private void switchCurrentController(Controller controller)
-    {
-        Debug.Assert(controller.motion_controller.getDB().nbones() == nbones);
-
-        float[] x_pass = new float[controller.motion_controller.getDB().nfeatures()];
-        float[] z_pass = new float[controller.motion_controller.getLatents()[0].Length];
-
-        Array.Copy(latent_curr, z_pass, latent_curr.Length);
-
-        // First 27 values (plane locomotion) are in common
-        Array.Copy(feature_curr, x_pass, 27);
-
-        //TODO: set x_pass based on current behaviour and new behaviour
-        switch (current_controller.behaviour)
-        {
-            case Behaviour.plane: // Add terrain/fight features
-                break;
-            case Behaviour.terrain: // add fight features if controller.behav is Fight
-                break;
-            case Behaviour.fight: // add terrain features if controller.behav is Terrain
-                break;
-            default: break;
-        }
-
-        controller.motion_controller.camera_azimuth = current_controller.motion_controller.camera_azimuth;
-        controller.motion_controller.camera_altitude = current_controller.motion_controller.camera_altitude;
-        controller.motion_controller.camera_distance = current_controller.motion_controller.camera_distance;
-
-        current_controller = controller;
-        current_db = current_controller.motion_controller.getDB();
-        current_controller.motion_controller.SetFeatureCurr(x_pass);
-        current_controller.motion_controller.SetLatentCurr(z_pass);
-        player_input.SwitchCurrentActionMap(action_maps[current_controller.behaviour]);
-    }
     private void FixedUpdate()
     {
         if (lock60Fps && !_sync60Fps.isSyncFrame)
