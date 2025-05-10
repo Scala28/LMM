@@ -268,7 +268,7 @@ public class FightController : MotionController
 
         return (query, offset);
     }
-    public float[] compute_action_query(Vector3  torso_)
+    public float[] compute_action_query()
     {
         float[] action_query = new float[db.nfeatures() + 1 + latent_curr.Length];
         Array.Copy(feature_curr, action_query, feature_curr.Length);
@@ -357,7 +357,7 @@ public class FightController : MotionController
         check_action_input();
         if(input_action_tag > 0 && current_action_tag == 0)
         {
-            float[] query = compute_action_query(move_torso ? stickLeft : Vector3.zero);
+            float[] query = compute_action_query();
             controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
             actions[0].database_search(query, true);
             current_action_tag = input_action_tag;
@@ -368,7 +368,7 @@ public class FightController : MotionController
             float[] action_features;
             float[] action_latent;
 
-            if (first_action)
+            if (false)
             {
                 actions[0].tansform_local_pose_action(ref trns_pose, out action_features, out action_latent);
                 Inertializers.inertialize_pose_transition(ref bone_offset_positions, ref bone_offset_rotations, ref bone_offset_velocities, ref bone_offset_angular_velocities,
@@ -378,7 +378,7 @@ public class FightController : MotionController
             {
                 actions[0].tansform_local_pose_action(ref current_pose, out action_features, out action_latent);
                 Inertializers.inertialize_pose_update(ref bone_offset_positions, ref bone_offset_rotations, ref bone_offset_velocities, ref bone_offset_angular_velocities,
-                    ref transition_src_position, ref transition_src_rotation, ref transition_dst_position, ref transition_dst_rotation, pose, db, current_pose, dt, .001f);
+                    ref transition_src_position, ref transition_src_rotation, ref transition_dst_position, ref transition_dst_rotation, pose, db, current_pose, dt, .3f);
             }
             first_action = false;
 
@@ -386,7 +386,7 @@ public class FightController : MotionController
             Array.Copy(action_latent, latent_curr, latent_curr.Length);
 
             if (action_features[action_features.Length - 1] == 0 && input_action_tag > 0) { // "Must frames" ended and new input detected
-                float[] query = compute_action_query(move_torso ? stickLeft : Vector3.zero);
+                float[] query = compute_action_query();
                 controller.input_handler.SetButton(val => controller.input_handler.actions[input_action_tag] = val);
                 actions[0].database_search(query, false);
                 current_action_tag = input_action_tag;

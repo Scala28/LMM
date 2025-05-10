@@ -141,6 +141,9 @@ if __name__ == '__main__':
         Yextra_scale.repeat(nextra)
     ))
 
+    compressor_mean_out = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
+    compressor_std_out = torch.ones([nfeatures + nlatent], dtype=torch.float32)
+
     # NN models
     compressor = NNModels.Compressor(len(compressor_mean_in), nlatent)
     decompressor = NNModels.Decompressor(nfeatures + nlatent, len(decompressor_mean_out))
@@ -469,6 +472,19 @@ if __name__ == '__main__':
             save_network_onnx(decompressor,
                               decompressor_mean_in,
                               './train_ris/fight/{0}/decompressor/decompressor.onnx'.format(ms.animation_type))
+            save_network('./train_ris/fight/{0}/decompressor/compressor.bin'.format(ms.animation_type), [
+                compressor.layer1,
+                compressor.layer2,
+                compressor.layer3,
+                compressor.predict],
+                         compressor_mean_in,
+                         compressor_std_in,
+                         compressor_mean_out,
+                         compressor_std_out
+                         )
+            save_network_onnx(compressor,
+                              compressor_mean_in,
+                              './train_ris/fight/{0}/decompressor/compressor.onnx'.format(ms.animation_type))
 
         if i % 1000 == 0:
             # c_scheduler.step()

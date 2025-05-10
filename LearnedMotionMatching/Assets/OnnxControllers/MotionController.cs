@@ -772,10 +772,8 @@ public class Motion_Action
             pose.joints[i - 1].velocity = database.bone_velocities[frame_index][i];
             pose.joints[i - 1].angular_velocity = database.bone_angular_velocities[frame_index][i];
         }
-        features_curr = new float[features[frame_index].Length];
-        Array.Copy(features[frame_index], features_curr, features_curr.Length);
-        latent_curr = new float[latent[frame_index].Length];
-        Array.Copy(latent[frame_index], latent_curr, latent_curr.Length);
+        features_curr = features[frame_index];
+        latent_curr = latent[frame_index];
 
         Debug.Log(features_curr[features_curr.Length - 1]);
     }
@@ -884,7 +882,7 @@ public class Motion_Action
 
                         // Check against each frame inside small box
                         curr_cost = transition_cost;
-                        for (int j = 0; j < query.Length; j++)
+                        for (int j = 0; j < database.nfeatures(); j++)
                         {
                             curr_cost += squaref(query[j] - current[j]);
                             if (curr_cost >= best_cost)
@@ -898,6 +896,7 @@ public class Motion_Action
                         {
                             best_idx = i;
                             best_cost = curr_cost;
+                            Debug.Log(best_cost);
                         }
 
                         i++;
