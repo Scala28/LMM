@@ -8,7 +8,7 @@ import my_modules.Bvh as bvh
 import my_modules.NNModels as NNModels
 import my_modules.quat_functions as quat
 import my_modules.xform_functions as xform
-from train_common import load_database, load_features, save_network, save_network_onnx
+from train_common import load_database, load_features, load_network, save_network, save_network_onnx
 from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
@@ -27,9 +27,9 @@ if __name__ == '__main__':
     Yang = database['bone_angular_velocities'].astype(np.float32)
 
     # As pyTorch tensors
-    X = torch.as_tensor(X) # (nframes, nfeatures)
+    X = torch.as_tensor(X)  # (nframes, nfeatures)
 
-    Ypos = torch.as_tensor(Ypos) # (nframes, nbones, 3/4)
+    Ypos = torch.as_tensor(Ypos)  # (nframes, nbones, 3/4)
     Yrot = torch.as_tensor(Yrot)
     Yvel = torch.as_tensor(Yvel)
     Yang = torch.as_tensor(Yang)
@@ -38,13 +38,13 @@ if __name__ == '__main__':
     nbones = Ypos.shape[1]
     nextra = contacts.shape[1]
     nfeatures = X.shape[1]
-    nlatent = 34
+    nlatent = 36
 
     # Parameters
     seed = 1234
     batchsize = 32
-    lr = 0.001
-    niter = 500000
+    lr = (0.001 if ms.animation_type == 'move' else 0.0001)
+    niter = (500000 if ms.animation_type == 'move' else 100000)
     window = 2
     dt = 1.0 / 60.0
 
@@ -76,78 +76,97 @@ if __name__ == '__main__':
     # Compute extra outputs
     Yextra = torch.as_tensor(contacts.astype(np.float32))
 
-    # Compute mean/stds
-    Ypos_scale = Ypos[:, 1:].std()
-    Ytxy_scale = Ytxy[:, 1:].std()
-    Yvel_scale = Yvel[:, 1:].std()
-    Yang_scale = Yang[:, 1:].std()
+    if ms.animation_type == 'move':  # Start a new training if move animation type
+        # Compute mean/stds
+        Ypos_scale = Ypos[:, 1:].std()
+        Ytxy_scale = Ytxy[:, 1:].std()
+        Yvel_scale = Yvel[:, 1:].std()
+        Yang_scale = Yang[:, 1:].std()
 
-    Qpos_scale = Qpos[:, 1:].std()
-    Qtxy_scale = Qtxy[:, 1:].std()
-    Qvel_scale = Qvel[:, 1:].std()
-    Qang_scale = Qang[:, 1:].std()
+        Qpos_scale = Qpos[:, 1:].std()
+        Qtxy_scale = Qtxy[:, 1:].std()
+        Qvel_scale = Qvel[:, 1:].std()
+        Qang_scale = Qang[:, 1:].std()
 
-    Yrvel_scale = Yrvel.std()
-    Yrang_scale = Yrang.std()
+        Yrvel_scale = Yrvel.std()
+        Yrang_scale = Yrang.std()
 
-    Yextra_scale = Yextra.std()
+        Yextra_scale = Yextra.std()
 
-    decompressor_mean_out = torch.cat((
-        torch.ravel(Ypos[:, 1:].mean(dim=0)),
-        torch.ravel(Ytxy[:, 1:].mean(dim=0)),
-        torch.ravel(Yvel[:, 1:].mean(dim=0)),
-        torch.ravel(Yang[:, 1:].mean(dim=0)),
-        torch.ravel(Yrvel.mean(dim=0)),
-        torch.ravel(Yrang.mean(dim=0)),
-        torch.ravel(Yextra.mean(dim=0))
-    ))
-    decompressor_std_out = torch.cat((
-        torch.ravel(Ypos[:, 1:].std(dim=0)),
-        torch.ravel(Ytxy[:, 1:].std(dim=0)),
-        torch.ravel(Yvel[:, 1:].std(dim=0)),
-        torch.ravel(Yang[:, 1:].std(dim=0)),
-        torch.ravel(Yrvel.std(dim=0)),
-        torch.ravel(Yrang.std(dim=0)),
-        torch.ravel(Yextra.std(dim=0))
-    ))
+        decompressor_mean_out = torch.cat((
+            torch.ravel(Ypos[:, 1:].mean(dim=0)),
+            torch.ravel(Ytxy[:, 1:].mean(dim=0)),
+            torch.ravel(Yvel[:, 1:].mean(dim=0)),
+            torch.ravel(Yang[:, 1:].mean(dim=0)),
+            torch.ravel(Yrvel.mean(dim=0)),
+            torch.ravel(Yrang.mean(dim=0)),
+            torch.ravel(Yextra.mean(dim=0))
+        ))
+        decompressor_std_out = torch.cat((
+            torch.ravel(Ypos[:, 1:].std(dim=0)),
+            torch.ravel(Ytxy[:, 1:].std(dim=0)),
+            torch.ravel(Yvel[:, 1:].std(dim=0)),
+            torch.ravel(Yang[:, 1:].std(dim=0)),
+            torch.ravel(Yrvel.std(dim=0)),
+            torch.ravel(Yrang.std(dim=0)),
+            torch.ravel(Yextra.std(dim=0))
+        ))
 
-    decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
-    decompressor_std_in = torch.ones([nfeatures + nlatent], dtype=torch.float32)
+        decompressor_mean_in = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
+        decompressor_std_in = torch.ones([nfeatures + nlatent], dtype=torch.float32)
 
-    compressor_mean_in = torch.cat((
-        torch.ravel(Ypos[:, 1:].mean(dim=0)),
-        torch.ravel(Ytxy[:, 1:].mean(dim=0)),
-        torch.ravel(Yvel[:, 1:].mean(dim=0)),
-        torch.ravel(Yang[:, 1:].mean(dim=0)),
-        torch.ravel(Qpos[:, 1:].mean(dim=0)),
-        torch.ravel(Qtxy[:, 1:].mean(dim=0)),
-        torch.ravel(Qvel[:, 1:].mean(dim=0)),
-        torch.ravel(Qang[:, 1:].mean(dim=0)),
-        torch.ravel(Yrvel.mean(dim=0)),
-        torch.ravel(Yrang.mean(dim=0)),
-        torch.ravel(Yextra.mean(dim=0))
-    ))
-    compressor_std_in = torch.cat((
-        Ypos_scale.repeat((nbones - 1) * 3),
-        Ytxy_scale.repeat((nbones - 1) * 6),
-        Yvel_scale.repeat((nbones - 1) * 3),
-        Yang_scale.repeat((nbones - 1) * 3),
-        Qpos_scale.repeat((nbones - 1) * 3),
-        Qtxy_scale.repeat((nbones - 1) * 6),
-        Qvel_scale.repeat((nbones - 1) * 3),
-        Qang_scale.repeat((nbones - 1) * 3),
-        Yrvel_scale.repeat(3),
-        Yrang_scale.repeat(3),
-        Yextra_scale.repeat(nextra)
-    ))
+        compressor_mean_in = torch.cat((
+            torch.ravel(Ypos[:, 1:].mean(dim=0)),
+            torch.ravel(Ytxy[:, 1:].mean(dim=0)),
+            torch.ravel(Yvel[:, 1:].mean(dim=0)),
+            torch.ravel(Yang[:, 1:].mean(dim=0)),
+            torch.ravel(Qpos[:, 1:].mean(dim=0)),
+            torch.ravel(Qtxy[:, 1:].mean(dim=0)),
+            torch.ravel(Qvel[:, 1:].mean(dim=0)),
+            torch.ravel(Qang[:, 1:].mean(dim=0)),
+            torch.ravel(Yrvel.mean(dim=0)),
+            torch.ravel(Yrang.mean(dim=0)),
+            torch.ravel(Yextra.mean(dim=0))
+        ))
+        compressor_std_in = torch.cat((
+            Ypos_scale.repeat((nbones - 1) * 3),
+            Ytxy_scale.repeat((nbones - 1) * 6),
+            Yvel_scale.repeat((nbones - 1) * 3),
+            Yang_scale.repeat((nbones - 1) * 3),
+            Qpos_scale.repeat((nbones - 1) * 3),
+            Qtxy_scale.repeat((nbones - 1) * 6),
+            Qvel_scale.repeat((nbones - 1) * 3),
+            Qang_scale.repeat((nbones - 1) * 3),
+            Yrvel_scale.repeat(3),
+            Yrang_scale.repeat(3),
+            Yextra_scale.repeat(nextra)
+        ))
 
-    compressor_mean_out = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
-    compressor_std_out = torch.ones([nfeatures + nlatent], dtype=torch.float32)
+        compressor_mean_out = torch.zeros([nfeatures + nlatent], dtype=torch.float32)
+        compressor_std_out = torch.ones([nfeatures + nlatent], dtype=torch.float32)
 
-    # NN models
-    compressor = NNModels.Compressor(len(compressor_mean_in), nlatent)
-    decompressor = NNModels.Decompressor(nfeatures + nlatent, len(decompressor_mean_out))
+        # NN models
+        compressor = NNModels.Compressor(len(compressor_mean_in), nlatent)
+        decompressor = NNModels.Decompressor(nfeatures + nlatent, len(decompressor_mean_out))
+    else:  # Continue nnet training adding action_db to Domain if animation type is actions
+        compressor_mean_in, compressor_std_in, compressor_mean_out, compressor_std_out, compressor_layers = load_network(
+            './train_ris/fight/move/decompressor/compressor.bin')
+        compressor = NNModels.Compressor.load(compressor_mean_in, compressor_std_in, compressor_mean_out,
+                                              compressor_std_out, compressor_layers)
 
+        decompressor_mean_in, decompressor_std_in, decompressor_mean_out, decompressor_std_out, decompressor_layers = load_network(
+            './train_ris/fight/move/decompressor/decompressor.bin'.format(ms.controller_type))
+        decompressor = NNModels.Decompressor.load(decompressor_mean_in, decompressor_std_in, decompressor_mean_out,
+                                                  decompressor_std_out, decompressor_layers)
+
+        compressor_mean_in = torch.as_tensor(compressor_mean_in.astype(np.float32))
+        compressor_mean_out = torch.as_tensor(compressor_mean_out.astype(np.float32))
+        compressor_std_in = torch.as_tensor(compressor_std_in.astype(np.float32))
+        compressor_std_out = torch.as_tensor(compressor_std_out.astype(np.float32))
+        decompressor_mean_in = torch.as_tensor(decompressor_mean_in.astype(np.float32))
+        decompressor_mean_out = torch.as_tensor(decompressor_mean_out.astype(np.float32))
+        decompressor_std_in = torch.as_tensor(decompressor_std_in.astype(np.float32))
+        decompressor_std_out = torch.as_tensor(decompressor_std_out.astype(np.float32))
 
     def _save_compressed_database():
         with torch.no_grad():
@@ -190,6 +209,9 @@ if __name__ == '__main__':
             Ygnd_extra = Yextra[start:stop][np.newaxis]
 
             Xgnd = X[start:stop][np.newaxis]  # (1, stop-start, nfeatures)
+
+            if ms.animation_type == 'actions':
+                Xgnd = Xgnd[..., :-1]
 
             Zgnd = compressor((torch.cat([
                 Ygnd_pos[:, :, 1:].reshape([1, stop - start, -1]),  # (1, stop-start, (nbones-1)*3)
@@ -291,6 +313,8 @@ if __name__ == '__main__':
         batch = indices[torch.randint(0, len(indices), size=[batchsize])]  # (batchsize, window)
 
         Xgnd = X[batch]  # (batchsize, window, nfeatures)
+        if ms.animation_type == 'actions':
+            Xgnd = Xgnd[..., :-1]
 
         Ygnd_pos = Ypos[batch]  # (batchsize, window, nbones, 3)
         Ygnd_txy = Ytxy[batch]  # (batchsize, window, nbones, 3, 2)

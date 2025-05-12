@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1851fe0bf3bfa364aa7ef2863ae891d6, type: 3}
   m_Name: boxe_motion-controller
   m_EditorClassIdentifier: 
-  stepper: {fileID: 5022602860645237092, guid: 00877e8e517c7124da48eaebb786f440, type: 3}
-  decompressor: {fileID: 5022602860645237092, guid: d345b322b3065aa409a62f851b2592fb, type: 3}
-  projector: {fileID: 5022602860645237092, guid: 8143da98f5d34e0438ecbb1dacb1529c, type: 3}
-  stepper_name: fight/boxe/stepper.bin
-  decompressor_name: fight/boxe/decompressor.bin
-  projector_name: fight/boxe/projector.bin
+  stepper: {fileID: 5022602860645237092, guid: e3cc9e529af7c194d8654564b30c58a4, type: 3}
+  decompressor: {fileID: 5022602860645237092, guid: 822eeb84c78e39149a5832650e256406, type: 3}
+  projector: {fileID: 5022602860645237092, guid: d2f92533c138fa94b9b9c525af3daf0f, type: 3}
+  stepper_name: fight/boxe1/stepper.bin
+  decompressor_name: fight/boxe1/decompressor.bin
+  projector_name: fight/boxe1/projector.bin
   search_time: 0.1
-  db_filename: fight/boxe/database.bin
-  features_filename: fight/boxe/features.bin
-  latent_filename: fight/boxe/latent.bin
-  camera_azimuth: 2.2505205
+  db_filename: fight/boxe1/database.bin
+  features_filename: fight/boxe1/features.bin
+  latent_filename: fight/boxe1/latent.bin
+  camera_azimuth: -0.18782948
   camera_altitude: 0.4
   camera_distance: 4
   FPS: 60
@@ -34,9 +34,11 @@ MonoBehaviour:
   adjustment_enabled: 0
   clamping_enabled: 1
   actions:
-  - database_filename: fight/boxe/actions/actions_db.bin
-    features_filename: fight/boxe/actions/actions_features.bin
-    latent_filename: fight/boxe/actions/actions_latent.bin
+  - database_filename: fight/boxe1/actions/database.bin
+    features_filename: fight/boxe1/actions/features.bin
+    latent_filename: fight/boxe1/actions/latent.bin
+    decompressor: {fileID: 5022602860645237092, guid: 88374a40255d0f34e99e3d74cde97b5f, type: 3}
+    decompressor_name: fight/boxe1/action_decompr.bin
     BOUND_LR_SIZE: 8
     BOUND_SM_SIZE: 2
   simulation_std_frwd_speed: 2.4

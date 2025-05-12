@@ -37,6 +37,7 @@ public abstract class MotionController : ScriptableObject
     public float search_time = 0.1f;
     protected float search_timer;
     protected float force_search_timer;
+    protected bool force_search = false;
 
     #region LMM
     protected float[] feature_curr;
@@ -171,6 +172,7 @@ public abstract class MotionController : ScriptableObject
     protected int current_action_tag = 0;
     protected int input_action_tag = 0;
     protected bool first_action = true;
+    protected bool last_frame_action = false;
 
     protected float dt;
 
@@ -263,7 +265,7 @@ public abstract class MotionController : ScriptableObject
         latent_proj = new float[latents[0].Length];
 
         foreach (Motion_Action action in actions)
-            action.SetUp(this, controller.controllers.Find(x => x.motion_controller == this).behaviour);
+            action.SetUp(controller.controllers.Find(x => x.motion_controller == this));
 
         input_action_tag = 0;
         current_action_tag = 0;
@@ -691,6 +693,9 @@ public abstract class MotionController : ScriptableObject
             decompressor_inference.Dispose();
         if (projector_inference != null)
             projector_inference.Dispose();
+
+        foreach (Motion_Action action in actions)
+            action.CleanUp();
     }
 
     protected float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
@@ -702,11 +707,16 @@ public abstract class MotionController : ScriptableObject
 [System.Serializable]
 public class Motion_Action
 {
-    private MotionController _controller;
+    private Controller _controller;
 
     [SerializeField] private string database_filename;
     [SerializeField] private string features_filename;
     [SerializeField] private string latent_filename;
+
+    [SerializeField] private NNModel decompressor;
+    private IWorker decompressor_inference;
+    [SerializeField] private string decompressor_name;
+    private Model decompressor_nn;
 
     private float[][] features;
     private float[] features_offset, features_scale;
@@ -720,15 +730,19 @@ public class Motion_Action
 
     private float dt;
 
-    public void SetUp(MotionController controller, Behaviour behav)
+    public void SetUp(Controller controller)
     {
         _controller = controller;
-        dt = 1f / controller.FPS;
-        database = DataManager.load_database("Data/" + database_filename, behav, true);
+        dt = 1f / controller.motion_controller.FPS;
+        database = DataManager.load_database("Data/" + database_filename, controller.behaviour, true);
         (database.features, database.features_offset, database.features_scale) = DataManager.load_features("Data/" + features_filename);
         (features, features_offset, features_scale) = (database.features, database.features_offset, database.features_scale);
         DataManager.database_build_bounds(ref database, BOUND_LR_SIZE, BOUND_SM_SIZE);
         latent = DataManager.load_latent("Data/" + latent_filename);
+
+        decompressor_inference = WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled,
+            ModelLoader.Load(decompressor));
+        decompressor_nn = DataManager.Load_net_fromParameters("NNModels/" + decompressor_name);
 
         frame_index = database.range_starts[0];
     }
@@ -759,24 +773,51 @@ public class Motion_Action
         frame_index++;
         return end_of_anim;
     }
-
-    public void tansform_local_pose_action(ref Pose pose, out float[] features_curr, out float[] latent_curr)
+    #region Nnet inference
+    public void get_current_pose(Pose current_pose, ref Pose pose, out float[] features_curr, out float[] latent_curr)
     {
-        pose.root_velocity = database.bone_velocities[frame_index][0];
-        pose.root_angular_velocity = database.bone_angular_velocities[frame_index][0];
+        //pose.root_velocity = database.bone_velocities[frame_index][0];
+        //pose.root_angular_velocity = database.bone_angular_velocities[frame_index][0];
 
-        for (int i = 1; i < database.nbones(); i++)
-        {
-            pose.joints[i - 1].position = database.bone_positions[frame_index][i];
-            pose.joints[i - 1].rotation = database.bone_rotations[frame_index][i];
-            pose.joints[i - 1].velocity = database.bone_velocities[frame_index][i];
-            pose.joints[i - 1].angular_velocity = database.bone_angular_velocities[frame_index][i];
-        }
+        //for (int i = 1; i < database.nbones(); i++)
+        //{
+        //    pose.joints[i - 1].position = database.bone_positions[frame_index][i];
+        //    pose.joints[i - 1].rotation = database.bone_rotations[frame_index][i];
+        //    pose.joints[i - 1].velocity = database.bone_velocities[frame_index][i];
+        //    pose.joints[i - 1].angular_velocity = database.bone_angular_velocities[frame_index][i];
+        //}
         features_curr = features[frame_index];
         latent_curr = latent[frame_index];
 
-        Debug.Log(features_curr[features_curr.Length - 1]);
+        Pose new_pose = evaluate_decompressor(current_pose, features_curr, latent_curr);
+
+        //pose.root_position = new_pose.root_position;
+        //pose.root_rotation = new_pose.root_rotation;
+        //pose.root_velocity = new_pose.root_velocity;
+        //pose.root_angular_velocity = new_pose.root_angular_velocity;
+
+        pose.joints = new_pose.joints;
     }
+    private Pose evaluate_decompressor(Pose current_pose, float[] features, float[] latents)
+    {
+        Tensor decompressor_in = new Tensor(new TensorShape(1, 1, 1, features.Length - 1 + latents.Length));
+        for (int i = 0; i < features.Length-1; i++)
+            decompressor_in[i] = features[i];
+        for (int i = 0; i < latents.Length; i++)
+            decompressor_in[i + features.Length - 1] = latents[i];
+
+        decompressor_inference.Execute(decompressor_in);
+        Tensor decompressor_out = decompressor_inference.PeekOutput();
+        decompressor_nn.nnLayer_denormalize(decompressor_out);
+
+        Pose pose = Parser.parse_decompressor_out(decompressor_out, current_pose, database.nbones(), database.ncontacts(), _controller.behaviour);
+
+        decompressor_in.Dispose();
+        decompressor_out.Dispose();
+
+        return pose;
+    }
+    #endregion
 
     #region Database search
     public void database_search(float[] query, bool first_action, float transition_cost = 0.0f)
@@ -882,7 +923,7 @@ public class Motion_Action
 
                         // Check against each frame inside small box
                         curr_cost = transition_cost;
-                        for (int j = 0; j < database.nfeatures(); j++)
+                        for (int j = 0; j < query.Length; j++)
                         {
                             curr_cost += squaref(query[j] - current[j]);
                             if (curr_cost >= best_cost)
@@ -896,7 +937,6 @@ public class Motion_Action
                         {
                             best_idx = i;
                             best_cost = curr_cost;
-                            Debug.Log(best_cost);
                         }
 
                         i++;
@@ -908,6 +948,12 @@ public class Motion_Action
         }
     }
     #endregion
+
+    public void CleanUp()
+    {
+        if (decompressor_inference != null)
+            decompressor_inference.Dispose();
+    }
     protected float lerpf(float x, float y, float a) { return (1.0f - a) * x + a * y; }
     protected float clampf(float x, float min, float max) { return x > max ? max : x < min ? min : x; }
     protected float length(Vector3 v) { return Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }

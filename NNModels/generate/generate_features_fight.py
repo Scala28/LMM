@@ -246,7 +246,8 @@ def database_build_matching_features():
     feature_weight_hip_velocity = 1.0
     feature_weight_trajectory_positions = 1.3
     feature_weight_trajectory_directions = 1.3
-    feature_weight_torso_position = 1.5
+    feature_weight_torso_position = 1.7
+    feature_weight_hand_velocity = 0.7
 
     offset = 0
     offset = compute_bone_position_feature(offset, Bone_LeftFoot, Bone_Entity, feature_weight_foot_position)
@@ -264,6 +265,10 @@ def database_build_matching_features():
     offset = compute_trajectory_direction_feature(offset, feature_weight_trajectory_directions)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
     offset = compute_future_bone_localPos_feature(offset, Bone_Spine2, Bone_Hips, feature_weight_torso_position)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_velocity_feature(offset, Bone_LeftHand, Bone_Spine2, feature_weight_hand_velocity)
+    sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
+    offset = compute_bone_velocity_feature(offset, Bone_RightHand, Bone_Spine2, feature_weight_hand_velocity)
     sys.stdout.write('\rOffset: %2i / %2i' % (offset, nfeatures))
 
     if ms.animation_type == 'actions':
@@ -317,7 +322,7 @@ if ms.animation_type == 'actions':
 nranges = range_starts.shape[0]
 nframes = bone_positions.shape[0]
 
-nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6 + (1 if ms.animation_type == 'actions' else 0)
+nfeatures = 3 + 3 + 3 + 3 + 3 + 6 + 6 + 6 + 3 + 3 + (1 if ms.animation_type == 'actions' else 0)
 
 features = np.zeros((nframes, nfeatures))
 features_offset = np.zeros(nfeatures)

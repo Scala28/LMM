@@ -265,6 +265,19 @@ public class FightController : MotionController
         query[offset + 5] = input_torso.z;
         offset += 6;
 
+        // Left hand velocity
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
+
+        // Right hand velocity
+        for (int i = 0; i < 3; i++)
+        {
+            query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+        }
+        offset += 3;
 
         return (query, offset);
     }
@@ -342,7 +355,8 @@ public class FightController : MotionController
         bool target_lock = false;
         bool move_torso = controller.input_handler.LeftTrigger;
 
-        bool force_search = false;
+        Vector3 root_pos_ = pose.root_position;
+        Vector4 root_rot_ = pose.root_rotation;
 
         try
         {
@@ -368,22 +382,24 @@ public class FightController : MotionController
             float[] action_features;
             float[] action_latent;
 
-            if (false)
+            if (first_action)
             {
-                actions[0].tansform_local_pose_action(ref trns_pose, out action_features, out action_latent);
+                actions[0].get_current_pose(current_pose, ref trns_pose, out action_features, out action_latent);
                 Inertializers.inertialize_pose_transition(ref bone_offset_positions, ref bone_offset_rotations, ref bone_offset_velocities, ref bone_offset_angular_velocities,
                     ref transition_src_position, ref transition_src_rotation, ref transition_dst_position, ref transition_dst_rotation, pose, current_pose, trns_pose, db);
             }
             else
             {
-                actions[0].tansform_local_pose_action(ref current_pose, out action_features, out action_latent);
-                Inertializers.inertialize_pose_update(ref bone_offset_positions, ref bone_offset_rotations, ref bone_offset_velocities, ref bone_offset_angular_velocities,
-                    ref transition_src_position, ref transition_src_rotation, ref transition_dst_position, ref transition_dst_rotation, pose, db, current_pose, dt, .3f);
+                actions[0].get_current_pose(current_pose, ref current_pose, out action_features, out action_latent);
             }
-            first_action = false;
+            Inertializers.inertialize_pose_update(ref bone_offset_positions, ref bone_offset_rotations, ref bone_offset_velocities, ref bone_offset_angular_velocities,
+                    ref transition_src_position, ref transition_src_rotation, ref transition_dst_position, ref transition_dst_rotation, pose, db, current_pose, dt, .05f);
 
             Array.Copy(action_features, feature_curr, feature_curr.Length);
             Array.Copy(action_latent, latent_curr, latent_curr.Length);
+            last_frame_action = true;
+
+            first_action = false;
 
             if (action_features[action_features.Length - 1] == 0 && input_action_tag > 0) { // "Must frames" ended and new input detected
                 float[] query = compute_action_query();
@@ -393,20 +409,22 @@ public class FightController : MotionController
                 first_action = true;
             }
 
+
+            pose.root_position = root_pos_;
+            pose.root_rotation = root_rot_;
+
             kinematics.forward_kinamatic_full(db, ref global_pose, pose);
 
             bool end_of_anim = actions[0].NextFrame();
             if (end_of_anim)
             {
                 current_action_tag = 0;
-                force_search = true;
+                evaluate_stepper();
             }
             
             return (global_pose, action_features, action_latent);
         }
 
-        Vector3 root_pos_ = pose.root_position;
-        Vector4 root_rot_ = pose.root_rotation;
 
         simulation_fwrd_speed = simulation_std_frwd_speed * rightStick_speed_multiplier;
         simulation_side_speed = simulation_std_side_speed * rightStick_speed_multiplier;
@@ -436,7 +454,10 @@ public class FightController : MotionController
             force_search_timer = search_time;
         }
         else if (force_search_timer > 0f)
+        {
             force_search_timer -= dt;
+            force_search = false;
+        }
 
         trajectory_desired_rotations_predict(move_torso ? Vector3.zero : stickLeft, stickRight, camera_azimuth, target_lock, move_torso, 20f * dt);
         trajectory_rotations_predict(20.0f * dt);
@@ -445,7 +466,7 @@ public class FightController : MotionController
         trajectory_positions_predict(20.0f * dt);
 
         // Do we need to search?
-        if (force_search || search_timer <= 0.0f)
+        if (force_search || search_timer <= 0.0f || last_frame_action)
         {
             // Compute the features of the query vector
             (float[] query, int offset) = compute_query_vector(move_torso ? stickLeft : Vector3.zero);
@@ -466,6 +487,7 @@ public class FightController : MotionController
         }
         search_timer -= dt;
         evaluate_stepper();
+        last_frame_action = false;
 
         evaluate_decompressor(ref current_pose, feature_curr, latent_curr);
 

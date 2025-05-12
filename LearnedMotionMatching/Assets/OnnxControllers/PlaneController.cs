@@ -301,7 +301,7 @@ public class PlaneController : MotionController
         desired_rotation_change_curr = Quat.quat_to_scaled_angle_axis(Quat.quat_abs(Quat.quat_mul_inv(desired_rotation_curr, desired_rotation))) / dt;
         desired_rotation = desired_rotation_curr;
 
-        bool force_search = false;
+        //bool force_search = false;
 
         if (force_search_timer <= 0.0f && (
             (length(desired_velocity_change_prev) >= desired_velocity_change_threshold &&
@@ -313,7 +313,10 @@ public class PlaneController : MotionController
             force_search_timer = search_time;
         }
         else if (force_search_timer > 0f)
+        {
             force_search_timer -= dt;
+            force_search = false;
+        }
 
         trajectory_desired_rotations_predict(stickLeft, stickRight, camera_azimuth, strafe, 20.0f * dt);
         trajectory_rotations_predict(20.0f * dt);
