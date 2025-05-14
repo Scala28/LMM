@@ -837,7 +837,6 @@ public class Motion_Action
     {
         float ACTION_TAG = query[database.nfeatures() - 1];
 
-        int curr_idx = best_idx;
         float[] best = new float[features[0].Length + latent[0].Length];
         Array.Copy(features[best_idx], best, features[0].Length);
         Array.Copy(latent[best_idx], 0, best, features[0].Length, latent[0].Length);

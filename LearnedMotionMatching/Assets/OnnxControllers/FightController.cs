@@ -265,14 +265,14 @@ public class FightController : MotionController
         query[offset + 5] = input_torso.z;
         offset += 6;
 
-        // Left hand velocity
+        // Left hand position
         for (int i = 0; i < 3; i++)
         {
             query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
         }
         offset += 3;
 
-        // Right hand velocity
+        // Right hand position
         for (int i = 0; i < 3; i++)
         {
             query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
@@ -569,6 +569,18 @@ public class FightController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
-
+    public List<Vector3> GetFrameFeatures_TorsoPosition()
+    {
+        List<Vector3> _out = new List<Vector3>();
+        int offset = 27;
+        for (int i = 0; i < 6; i += 2)
+        {
+            float x = db.features[frame_index][offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
+            float z = db.features[frame_index][offset + i + 1] * db.features_scale[offset + i] + db.features_offset[offset + i + 1];
+            Vector3 loc_pos = new Vector3(x, 0, z);
+            _out.Add(loc_pos);
+        }
+        return _out;
+    }
     public (Vector3[], Vector4[]) Gizmos() => (trajectory_positions, trajectory_rotations);
 }

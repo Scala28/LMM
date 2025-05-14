@@ -233,7 +233,7 @@ public class ControllerOrchestrator : MonoBehaviour
                 default:
                     break;
             }
-        else if (read_database)
+        else if (Application.isPlaying  && read_database)
         {
             try
             {
@@ -244,6 +244,23 @@ public class ControllerOrchestrator : MonoBehaviour
                 }
             }
             catch { }
+            switch (current_controller.behaviour)
+            {
+                case Behaviour.fight:
+                    try
+                    {
+                        List<Vector3> traj_pos = (current_controller.motion_controller as FightController).GetFrameFeatures_TorsoPosition();
+                        foreach (Vector3 v in traj_pos)
+                        {
+                            Gizmos.DrawSphere(v, .15f);
+                        }
+                    }
+                    catch { }
+                    break;
+                default:
+                    break;
+            }
+
         }
     }
     private void OnDestroy()

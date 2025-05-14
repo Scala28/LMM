@@ -22,7 +22,7 @@ MonoBehaviour:
   db_filename: fight/boxe1/database.bin
   features_filename: fight/boxe1/features.bin
   latent_filename: fight/boxe1/latent.bin
-  camera_azimuth: -0.18782948
+  camera_azimuth: 0
   camera_altitude: 0.4
   camera_distance: 4
   FPS: 60
