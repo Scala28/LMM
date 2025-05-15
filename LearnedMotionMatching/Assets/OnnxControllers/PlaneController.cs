@@ -435,5 +435,4 @@ public class PlaneController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
-    public (Vector3[], Vector4[]) Gizmos() => (trajectory_positions, trajectory_rotations);
 }

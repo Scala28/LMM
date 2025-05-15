@@ -664,19 +664,6 @@ public abstract class MotionController : ScriptableObject
 
         return global_pose;
     }
-    public List<Vector3> GetFrameFeatures_trajPositions()
-    {
-        List<Vector3> _out = new List<Vector3>();
-        int offset = 15;
-        for(int i=0; i<6; i+=2)
-        {
-            float x = db.features[frame_index][offset + i];
-            float z = db.features[frame_index][offset + i + 1];
-            Vector3 loc_pos = new Vector3(x, 0, z);
-            _out.Add(Quat.quat_mul_vec(db.bone_rotations[frame_index][0], loc_pos) + db.bone_positions[frame_index][0]);
-        }
-        return _out;
-    }
     public Pose GetFrameAction(int action_idx)
     {
         int action_tag;

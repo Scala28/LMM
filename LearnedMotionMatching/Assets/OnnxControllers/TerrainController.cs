@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 
@@ -35,6 +36,44 @@ public class TerrainController : MotionController
 
     [ConditionalField("controller_oriented", true)]
     public bool clamp_character_y = true;
+
+    public override int SetController(MotionController other)
+    {
+        int offset = base.SetController(other);
+
+        kinematics.forward_kinamatic_full(db, ref global_pose, pose);
+
+        // terrain heights at 0, 15, 30, 45 local to root now
+        RaycastHit hit;
+        Physics.Raycast(global_pose.joints[(int)ControllerOrchestrator.character.Bone_LeftToe - 1].position,
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
+
+        Vector3 terrain_height_0_left = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
+
+        Physics.Raycast(global_pose.joints[(int)ControllerOrchestrator.character.Bone_RightToe - 1].position,
+                    -Vector3.up, out hit, float.MaxValue, whatIsTerrain);
+        Vector3 terrain_height_0_right = Quat.quat_inv_mul_vec(global_pose.root_rotation,
+            hit.point - global_pose.root_position);
+
+        compute_trajectory_toe_position();
+
+        (float[][] terrain_heights, float height_variance) = cast_terrain_height(pose);
+
+        feature_curr[offset + 0] = (terrain_height_0_left.y - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 1] = (terrain_height_0_right.y - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 2] = (terrain_heights[0][0] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 3] = (terrain_heights[0][1] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 4] = (terrain_heights[1][0] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 5] = (terrain_heights[1][1] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 6] = (terrain_heights[2][0] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 7] = (terrain_heights[2][1] - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+
+        offset += 8;
+
+        Debug.Assert(offset == db.nfeatures());
+        return offset;
+    }
 
     #region Trajectory & Gameplay Data
     public void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
@@ -570,8 +609,5 @@ public class TerrainController : MotionController
         }
     }
     #endregion
-
-    public (Vector3[], Vector4[], Vector3[][]) Gizmos() => (trajectory_positions, trajectory_rotations, terrain_toe_positions);
-
 
 }

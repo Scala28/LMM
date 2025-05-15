@@ -11,7 +11,6 @@ public class ControllerOrchestrator : MonoBehaviour
     public List<Controller> controllers;
     private Controller current_controller;
     private DataManager.database current_db;
-    private int controller_idx;
 
     #region LMM
     private float[] feature_curr;
@@ -112,7 +111,6 @@ public class ControllerOrchestrator : MonoBehaviour
 
         current_controller = controllers[0];
         current_db = current_controller.motion_controller.getDB();
-        controller_idx = 0;
         Debug.Assert(current_db.nbones() == nbones);
 
         feature_curr = new float[current_db.nfeatures()];
@@ -185,85 +183,6 @@ public class ControllerOrchestrator : MonoBehaviour
 
             joint.position = new Vector3(jdata.position.x, jdata.position.y, jdata.position.z);
             joint.rotation = new Quaternion(jdata.rotation.y, jdata.rotation.z, jdata.rotation.w, jdata.rotation.x);
-        }
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        if (Application.isPlaying && gizmos && !read_database)
-            switch (current_controller.behaviour)
-            {
-                case Behaviour.plane:
-                    try
-                    {
-                        (Vector3[] traj_pos, Vector4[] traj_rot) = (current_controller.motion_controller as PlaneController).Gizmos();
-                        foreach (Vector3 v in traj_pos)
-                        {
-                            Gizmos.DrawSphere(v, .15f);
-                        }
-                    }
-                    catch { }
-                    break;
-                case Behaviour.terrain:
-                    try
-                    {
-                        (Vector3[] traj_pos, Vector4[] traj_rot, Vector3[][] terrain_toe_pos) = (current_controller.motion_controller as TerrainController).Gizmos();
-                        foreach (Vector3 v in traj_pos)
-                        {
-                            Gizmos.DrawSphere(v, .15f);
-                        }
-                        foreach (Vector3[] vec in terrain_toe_pos)
-                        {
-                            foreach (Vector3 v in vec)
-                            {
-                                Gizmos.DrawCube(v, new Vector3(.2f, .2f, .2f));
-                            }
-                        }
-                    }
-                    catch { }
-                    break;
-                case Behaviour.fight:
-                    try
-                    {
-                        (Vector3[] traj_pos, Vector4[] traj_rot) = (current_controller.motion_controller as FightController).Gizmos();
-                        foreach (Vector3 v in traj_pos)
-                        {
-                            Gizmos.DrawSphere(v, .15f);
-                        }
-                    }
-                    catch { }
-                    break;
-                default:
-                    break;
-            }
-        else if (Application.isPlaying  && read_database)
-        {
-            try
-            {
-                List<Vector3> traj_pos = current_controller.motion_controller.GetFrameFeatures_trajPositions();
-                foreach (Vector3 v in traj_pos)
-                {
-                    Gizmos.DrawSphere(v, .15f);
-                }
-            }
-            catch { }
-            switch (current_controller.behaviour)
-            {
-                case Behaviour.fight:
-                    try
-                    {
-                        List<Vector3> traj_pos = (current_controller.motion_controller as FightController).GetFrameFeatures_TorsoPosition();
-                        foreach (Vector3 v in traj_pos)
-                        {
-                            Gizmos.DrawSphere(v, .15f);
-                        }
-                    }
-                    catch { }
-                    break;
-                default:
-                    break;
-            }
-
         }
     }
     private void OnDestroy()

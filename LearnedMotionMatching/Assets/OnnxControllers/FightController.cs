@@ -47,11 +47,11 @@ public class FightController : MotionController
         Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, busto_gp - hips_gp);
 
         feature_curr[offset + 0] = (torso_relative_position.x - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
-        feature_curr[offset + 1] = (torso_relative_position.z - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
-        feature_curr[offset + 2] = ((torso_relative_position.x + (input_torso.x - torso_relative_position.x) * 2f / 3f) - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
-        feature_curr[offset + 3] = ((torso_relative_position.z + (input_torso.z - torso_relative_position.z) * 2f / 3f) - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
-        feature_curr[offset + 4] = (input_torso.x - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
-        feature_curr[offset + 5] = (input_torso.z - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 1] = (torso_relative_position.z - db.features_offset[offset + 1]) / db.features_scale[offset + 1];
+        feature_curr[offset + 2] = ((torso_relative_position.x + (input_torso.x - torso_relative_position.x) * 2f / 3f) - db.features_offset[offset + 2]) / db.features_scale[offset + 2];
+        feature_curr[offset + 3] = ((torso_relative_position.z + (input_torso.z - torso_relative_position.z) * 2f / 3f) - db.features_offset[offset + 3]) / db.features_scale[offset + 3];
+        feature_curr[offset + 4] = (input_torso.x - db.features_offset[offset + 4]) / db.features_scale[offset + 4];
+        feature_curr[offset + 5] = (input_torso.z - db.features_offset[offset + 5]) / db.features_scale[offset + 5];
         offset += 6;
 
         //Left hand vel
@@ -616,18 +616,4 @@ public class FightController : MotionController
 
         return (global_pose, feature_curr, latent_curr);
     }
-    public List<Vector3> GetFrameFeatures_TorsoPosition()
-    {
-        List<Vector3> _out = new List<Vector3>();
-        int offset = 27;
-        for (int i = 0; i < 6; i += 2)
-        {
-            float x = db.features[frame_index][offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
-            float z = db.features[frame_index][offset + i + 1] * db.features_scale[offset + i] + db.features_offset[offset + i + 1];
-            Vector3 loc_pos = new Vector3(x, 0, z);
-            _out.Add(loc_pos);
-        }
-        return _out;
-    }
-    public (Vector3[], Vector4[]) Gizmos() => (trajectory_positions, trajectory_rotations);
 }
