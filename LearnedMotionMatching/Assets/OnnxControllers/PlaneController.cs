@@ -25,6 +25,14 @@ public class PlaneController : MotionController
     private float desired_gait = 0.0f;
     private float desired_gait_velocity = 0.0f;
 
+    public override int SetController(MotionController other)
+    {
+        int offset = base.SetController(other);
+
+        Debug.Assert(offset == db.nfeatures());
+        return offset;
+    }
+
     #region Trajectory & Gameplay Data
     public void desired_gait_update(bool gait, float gait_change_halflife = 0.1f)
     {

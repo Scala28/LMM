@@ -15,7 +15,7 @@ public class InputHandler : MonoBehaviour
     private Vector2 Raw_stickRight;
     public Vector3 StickRight { get; private set; }
 
-    public bool RightShoulder { get; private set; }
+    public bool RightShoulder { get; set; }
     public bool LeftTrigger { get; private set; }
 
     public Dictionary<int, bool> actions { get; private set; }

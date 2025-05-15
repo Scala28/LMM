@@ -11,6 +11,7 @@ public class ControllerOrchestrator : MonoBehaviour
     public List<Controller> controllers;
     private Controller current_controller;
     private DataManager.database current_db;
+    private int controller_idx;
 
     #region LMM
     private float[] feature_curr;
@@ -84,6 +85,7 @@ public class ControllerOrchestrator : MonoBehaviour
     public bool gizmos = false;
 
     int nbones = Enum.GetValues(typeof(character)).Length;
+
     private void Awake()
     {
         Application.targetFrameRate = 60;
@@ -110,6 +112,7 @@ public class ControllerOrchestrator : MonoBehaviour
 
         current_controller = controllers[0];
         current_db = current_controller.motion_controller.getDB();
+        controller_idx = 0;
         Debug.Assert(current_db.nbones() == nbones);
 
         feature_curr = new float[current_db.nfeatures()];

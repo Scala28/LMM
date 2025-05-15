@@ -28,7 +28,39 @@ public class FightController : MotionController
     public float std_camera_altitude = .4f;
     public float rightStick_speed_penalizer_min = .65f;
     private float rightStick_speed_multiplier;
-    private Transform Target;
+    private GameObject Target;
+    private Transform target_transform;
+
+    public override int SetController(MotionController other)
+    {
+        int offset = base.SetController(other);
+
+        // Compute torso local position
+        Vector3 hips_gp = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].position;
+        Vector4 hips_gr = global_pose.joints[(int)ControllerOrchestrator.character.Bone_Hips - 1].rotation;
+        Vector3 busto_gp = global_pose.joints[(int)busto_bone - 1].position;
+        hips_gp.y = 0f;
+        busto_gp.y = 0f;
+
+        Vector3 input_torso = offset_busto_zero;
+
+        Vector3 torso_relative_position = Quat.quat_inv_mul_vec(hips_gr, busto_gp - hips_gp);
+
+        feature_curr[offset + 0] = (torso_relative_position.x - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 1] = (torso_relative_position.z - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 2] = ((torso_relative_position.x + (input_torso.x - torso_relative_position.x) * 2f / 3f) - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 3] = ((torso_relative_position.z + (input_torso.z - torso_relative_position.z) * 2f / 3f) - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 4] = (input_torso.x - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        feature_curr[offset + 5] = (input_torso.z - db.features_offset[offset + 0]) / db.features_scale[offset + 0];
+        offset += 6;
+
+        //Left hand vel
+        //Right hand vel
+        offset += 6;
+
+        Debug.Assert(offset == db.nfeatures());
+        return offset;
+    }
 
 
     #region Trajectory & Gameplay Data
@@ -37,6 +69,21 @@ public class FightController : MotionController
         Dictionary<int, bool> actions = controller.input_handler.actions;
         (int action_tag, bool value) = actions.FirstOrDefault(x => x.Value == true);
         input_action_tag = action_tag;
+    }
+    public bool switch_target()
+    {
+        try
+        {
+            GameObject temp = GameObject.FindGameObjectWithTag("target");
+            Target =  temp != Target ? GameObject.FindGameObjectWithTag("target") : null;
+
+        }
+        catch { }
+        if(Target != null )
+        {
+            target_transform = Target.transform;
+        }
+        return Target != null;
     }
     public void compute_torso_multiplier(bool target_lock, Vector3 rightStick)
     {
@@ -265,14 +312,14 @@ public class FightController : MotionController
         query[offset + 5] = input_torso.z;
         offset += 6;
 
-        // Left hand position
+        // Left hand velocity
         for (int i = 0; i < 3; i++)
         {
             query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
         }
         offset += 3;
 
-        // Right hand position
+        // Right hand velocity
         for (int i = 0; i < 3; i++)
         {
             query[offset + i] = feature_curr[offset + i] * db.features_scale[offset + i] + db.features_offset[offset + i];
@@ -295,7 +342,7 @@ public class FightController : MotionController
         if (target_lock)
         {
             // Compute the vector from camera to target
-            Vector3 dist = (Target.position - controller.vcam.transform.position);
+            Vector3 dist = (target_transform.position - controller.vcam.transform.position);
             Vector3 direction = dist;
             direction.y = 0; // Project onto the XZ plane to get the azimuthal direction
 
@@ -352,19 +399,19 @@ public class FightController : MotionController
     {
         Vector3 stickLeft = controller.input_handler.StickLeft;
         Vector3 stickRight = controller.input_handler.StickRight;
-        bool target_lock = false;
+        bool target_lock = Target != null;
         bool move_torso = controller.input_handler.LeftTrigger;
+
+        if (controller.input_handler.RightShoulder)
+        {
+            Debug.Log("swith");
+            target_lock = switch_target();
+            controller.input_handler.SetButton(x => controller.input_handler.RightShoulder = x, false);
+        }
+        Debug.Log(controller.input_handler.RightShoulder);
 
         Vector3 root_pos_ = pose.root_position;
         Vector4 root_rot_ = pose.root_rotation;
-
-        try
-        {
-            Target = GameObject.FindGameObjectWithTag("target").transform;
-            target_lock = true;
-
-        }
-        catch { }
 
         compute_torso_multiplier(target_lock, stickRight);
 
@@ -419,7 +466,7 @@ public class FightController : MotionController
             if (end_of_anim)
             {
                 current_action_tag = 0;
-                evaluate_stepper();
+                //evaluate_stepper();
             }
             
             return (global_pose, action_features, action_latent);
@@ -565,7 +612,7 @@ public class FightController : MotionController
         (Vector3 eye, Vector3 target) = orbit_camera_update(pose.root_position + Vector3.up, stickRight, target_lock, dt);
 
         if (controller.set_vcam)
-            controller.SetVcam(eye, target_lock ? Target.position : target); 
+            controller.SetVcam(eye, target_lock ? target_transform.position : target); 
 
         return (global_pose, feature_curr, latent_curr);
     }

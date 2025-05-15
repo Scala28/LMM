@@ -131,8 +131,8 @@ public abstract class MotionController : ScriptableObject
 
     public bool ik_enabled = true;
     protected float ik_max_length_buffer = 0.015f;
-    protected float ik_foot_height = 0.02f;
-    protected float ik_toe_length = 0.1f;
+    protected float ik_foot_height = 0.01f;
+    protected float ik_toe_length = 0.15f;
     protected float ik_unlock_radius = 0.2f;
     protected float ik_blending_halflife = 0.1f;
 
@@ -176,7 +176,7 @@ public abstract class MotionController : ScriptableObject
 
     protected float dt;
 
-    public void SetController(MotionController other)
+    public virtual int SetController(MotionController other)
     {
         this.bone_offset_positions = other.bone_offset_positions;
         bone_offset_rotations = other.bone_offset_rotations;
@@ -194,7 +194,12 @@ public abstract class MotionController : ScriptableObject
         simulation_rotation = other.simulation_rotation;
         simulation_angular_velocity = other.simulation_angular_velocity;
 
+        Array.Copy(other.latent_curr, this.latent_curr, Mathf.Min(other.latent_curr.Length, this.latent_curr.Length));
+        Array.Copy(other.feature_curr, this.feature_curr, 27);
+
         pose = other.pose;
+
+        return 27;
     }
     public virtual void Setup(ControllerOrchestrator controller) {
         this.controller = controller;
@@ -791,10 +796,10 @@ public class Motion_Action
 
         Pose new_pose = evaluate_decompressor(current_pose, features_curr, latent_curr);
 
-        //pose.root_position = new_pose.root_position;
-        //pose.root_rotation = new_pose.root_rotation;
-        //pose.root_velocity = new_pose.root_velocity;
-        //pose.root_angular_velocity = new_pose.root_angular_velocity;
+        pose.root_position = new_pose.root_position;
+        pose.root_rotation = new_pose.root_rotation;
+        pose.root_velocity = new_pose.root_velocity;
+        pose.root_angular_velocity = new_pose.root_angular_velocity;
 
         pose.joints = new_pose.joints;
     }

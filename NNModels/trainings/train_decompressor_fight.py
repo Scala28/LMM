@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # Parameters
     seed = 1234
     batchsize = 32
-    lr = (0.001 if ms.animation_type == 'move' else 0.0001)
+    lr = (0.001 if ms.animation_type == 'move' else 0.0005)
     niter = (500000 if ms.animation_type == 'move' else 100000)
     window = 2
     dt = 1.0 / 60.0
